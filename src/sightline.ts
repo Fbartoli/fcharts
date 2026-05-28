@@ -206,6 +206,17 @@ export class Sightline {
     return this;
   }
 
+  /**
+   * Render immediately and synchronously, optionally to a given x-domain. Bypasses the
+   * rAF scheduler — useful for programmatic zoom, print/offscreen capture, and
+   * deterministic benchmarking.
+   */
+  renderSync(domain?: readonly [number, number]): Sightline {
+    if (domain) this.applyDomain(domain);
+    this.frame();
+    return this;
+  }
+
   /** Patch series and/or options. Series visibility/colors update in place. */
   update(patch: Partial<SightlineConfig>): Sightline {
     if (patch.series) this.series = resolveSeries(patch.series);
@@ -513,10 +524,10 @@ export class Sightline {
     return Math.max(1, i1 - i0 + 1);
   }
 
-  /** Apply a new x-domain with clamping to the data extent and a minimum span. */
-  private setDomain(next: [number, number]): void {
+  /** Clamp + apply a new x-domain (no render). Returns whether the domain changed. */
+  private applyDomain(next: readonly [number, number]): boolean {
     const [lo, hi] = this.data.xExtent();
-    const minSpan = (hi - lo) / Math.max(1, this.data.n - 1) * 4 || 1e-9;
+    const minSpan = ((hi - lo) / Math.max(1, this.data.n - 1)) * 4 || 1e-9;
     let a = next[0];
     let b = next[1];
     if (b - a < minSpan) {
@@ -534,11 +545,16 @@ export class Sightline {
     }
     a = Math.max(lo, a);
     b = Math.min(hi, b);
-    if (a === this.domain[0] && b === this.domain[1]) return;
+    if (a === this.domain[0] && b === this.domain[1]) return false;
     this.domain = [a, b];
     this.ticksDirty = true;
     this.scheduleTableUpdate();
-    this.requestRender();
+    return true;
+  }
+
+  /** Apply a new x-domain with clamping and request an async render. */
+  private setDomain(next: readonly [number, number]): void {
+    if (this.applyDomain(next)) this.requestRender();
   }
 }
 

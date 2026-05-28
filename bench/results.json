@@ -1,0 +1,87 @@
+{
+  "generatedAt": "2026-05-28T21:14:38.995Z",
+  "datasetN": 100000,
+  "durationMs": 5000,
+  "headline": [
+    {
+      "id": "sightline",
+      "label": "Sightline",
+      "kind": "sightline",
+      "nodeCount": 257,
+      "frames": 600,
+      "fps": 119.80031683190457,
+      "peakHeapMB": 14.067496299743652,
+      "frameMs": 0.061849999994039534,
+      "axe": {
+        "serious": 0,
+        "ids": []
+      },
+      "a11y": {
+        "liveRegion": true,
+        "keyboardCursor": true,
+        "textAlternative": true
+      }
+    },
+    {
+      "id": "uplot",
+      "label": "uPlot",
+      "kind": "fast-inaccessible",
+      "nodeCount": 35,
+      "frames": 600,
+      "fps": 119.99760004799907,
+      "peakHeapMB": 130.88685703277588,
+      "frameMs": 0.00032500000298023226,
+      "axe": {
+        "serious": 0,
+        "ids": []
+      },
+      "a11y": {
+        "liveRegion": false,
+        "keyboardCursor": false,
+        "textAlternative": false
+      }
+    },
+    {
+      "id": "svg",
+      "label": "Naive SVG (50k nodes)",
+      "kind": "accessible-slow",
+      "nodeCount": 50213,
+      "frames": 84,
+      "fps": 16.77182333679418,
+      "peakHeapMB": 234.45499801635742,
+      "frameMs": 48.84615384615385,
+      "axe": {
+        "serious": 0,
+        "ids": []
+      },
+      "a11y": {
+        "liveRegion": false,
+        "keyboardCursor": false,
+        "textAlternative": true
+      }
+    }
+  ],
+  "scaling": [
+    {
+      "n": 10000,
+      "frameMs": 0.061650000005960465
+    },
+    {
+      "n": 100000,
+      "frameMs": 0.072125
+    },
+    {
+      "n": 250000,
+      "frameMs": 0.07040000000596046
+    }
+  ],
+  "preciseHeap": true,
+  "acceptance": {
+    "liveRegionChangesOnArrow": true,
+    "tickLabelFindable": true,
+    "dataValueFindable": true,
+    "sightlineFrameUnder16ms": true,
+    "scalingRatioUnder1_5x": true,
+    "sightlineUniquelyFastAndAccessible": true
+  }
+}

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sightline — benchmark vs competition</title>
+  <style>
+    :root {
+      --bg: #07090d; --panel: #0c1016; --ink: #e7edf3; --muted: #7d8b99; --faint: #4a5662;
+      --line: rgba(255,255,255,.08); --accent: #6ee7a8; --danger: #f87171; --warn: #fbbf24;
+      /* Sightline theming (read by its renderer + DOM layer) */
+      --sl-ink: #cfd8e3; --sl-tick-color: #8b97a5; --sl-axis-title: #5b6675;
+      --sl-grid: rgba(110,231,168,.07); --sl-axis: rgba(255,255,255,.14);
+      --sl-cursor: rgba(255,255,255,.42); --sl-ring: #07090d; --sl-focus: #6ee7a8;
+      --sl-legend-border: rgba(255,255,255,.16); --sl-legend-border-hover: rgba(255,255,255,.4);
+      --sl-readout-bg: #0c1016; --sl-readout-ink: #e7edf3; --sl-readout-border: rgba(255,255,255,.16);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink);
+      font-family: system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+    .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-variant-numeric: tabular-nums; }
+    header { padding: 18px 24px; border-bottom: 1px solid var(--line); }
+    header h1 { margin: 0; font-size: 20px; letter-spacing: -.01em; }
+    header h1 b { color: var(--accent); }
+    header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+    main { padding: 20px 24px 60px; }
+    .controls { display: flex; align-items: center; gap: 14px; margin: 4px 0 20px; }
+    button#run { font: inherit; font-weight: 600; cursor: pointer; padding: 9px 16px; border-radius: 9px;
+      border: 1px solid var(--accent); background: rgba(110,231,168,.14); color: var(--accent); }
+    button#run[disabled] { opacity: .5; cursor: wait; }
+    .controls .hint { color: var(--muted); font-size: 12.5px; }
+    .charts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    @media (max-width: 1000px) { .charts { grid-template-columns: 1fr; } }
+    .chart-cell h3 { margin: 0 0 8px; font-size: 13px; display: flex; align-items: baseline; gap: 8px; }
+    .chart-cell h3 span { color: var(--faint); font-size: 11px; font-weight: 500;
+      text-transform: uppercase; letter-spacing: .08em; }
+    .frame { position: relative; height: 340px; border: 1px solid var(--line); border-radius: 12px;
+      background: var(--panel); overflow: hidden; }
+    .frame > div { position: absolute; inset: 0; }
+    #results { margin-top: 32px; }
+    #results h2 { font-size: 14px; color: var(--ink); margin: 26px 0 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    th { color: var(--muted); font-weight: 600; font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; }
+    td:first-child, th:first-child { font-weight: 600; }
+    .yes { color: var(--accent); font-weight: 700; }
+    .no { color: var(--danger); font-weight: 700; }
+    tr.me { background: linear-gradient(90deg, rgba(110,231,168,.12), transparent); }
+    tr.me td:first-child { color: var(--accent); }
+    .note { color: var(--muted); font-size: 12.5px; }
+    /* visually-hidden, but in the a11y tree (used by the SVG baseline's data table) */
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+    #scaling-host { position: absolute; left: -99999px; top: 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>SIGHT<b>LINE</b> — benchmark vs competition</h1>
+    <p>Same 100k-point × 3-series dataset, three renderers, a 5-second automated pan/zoom.
+      The thesis holds if Sightline is the only column that is fast <em>and</em> accessible.</p>
+  </header>
+  <main>
+    <div class="controls">
+      <button id="run" type="button">Run benchmark</button>
+      <span class="hint">Drag to pan · scroll to zoom · click a chart then use arrow keys.
+        Numbers fill in below after a run.</span>
+    </div>
+    <div class="charts">
+      <section class="chart-cell">
+        <h3>Sightline <span>canvas + DOM a11y</span></h3>
+        <div class="frame"><div id="cell-sightline"></div></div>
+      </section>
+      <section class="chart-cell">
+        <h3>uPlot <span>fast · inaccessible</span></h3>
+        <div class="frame"><div id="cell-uplot"></div></div>
+      </section>
+      <section class="chart-cell">
+        <h3>Naive SVG <span>accessible · slow</span></h3>
+        <div class="frame"><div id="cell-svg"></div></div>
+      </section>
+    </div>
+    <div id="results"></div>
+  </main>
+  <div id="scaling-host" aria-hidden="true"></div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

@@ -1,5 +1,4 @@
 node_modules/
 dist/
-bench/results.json
 *.local
 .DS_Store
