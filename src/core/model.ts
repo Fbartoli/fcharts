@@ -35,6 +35,49 @@ export interface Extent {
   max: number;
 }
 
+/** A series with all optional fields resolved to concrete defaults. */
+export interface ResolvedSeries {
+  /** Index into `ChartData.y` / `.pyramids`. */
+  index: number;
+  name: string;
+  color: string;
+  type: 'line' | 'area';
+  visible: boolean;
+  width: number;
+  fillAlpha: number;
+}
+
+/** Apply defaults to user series configs. Pure; safe to call per update. */
+export function resolveSeries(configs: readonly SeriesConfig[]): ResolvedSeries[] {
+  return configs.map((c, index) => ({
+    index,
+    name: c.name,
+    color: c.color,
+    type: c.type ?? 'line',
+    visible: c.visible ?? true,
+    width: c.width ?? 1.25,
+    fillAlpha: c.fillAlpha ?? 0.15,
+  }));
+}
+
+/** Which sample the keyboard/hover cursor currently points at. */
+export interface CursorState {
+  /** Resolved series index. */
+  series: number;
+  /** Sample index within the series. */
+  index: number;
+}
+
+/** Plot insets in CSS px (space reserved for axes/ticks around the plotting area). */
+export interface Margins {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+export const DEFAULT_MARGINS: Margins = { left: 56, right: 16, top: 20, bottom: 32 };
+
 function toF64(a: NumberArray): Float64Array {
   return a instanceof Float64Array ? a : Float64Array.from(a);
 }
