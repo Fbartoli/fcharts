@@ -4,6 +4,10 @@
   "description": "Charts that render 100k+ points at 60fps and pass the accessibility audit at the same time.",
   "type": "module",
   "license": "MIT",
+  "packageManager": "pnpm@11.4.0",
+  "engines": {
+    "node": ">=23.6"
+  },
   "sideEffects": false,
   "files": [
     "dist"
@@ -27,6 +31,7 @@
     "size": "node scripts/size.mjs"
   },
   "devDependencies": {
+    "@types/node": "^24.0.0",
     "axe-core": "^4.10.2",
     "playwright": "^1.49.1",
     "typescript": "^5.7.2",

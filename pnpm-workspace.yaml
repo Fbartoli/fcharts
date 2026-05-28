@@ -1,0 +1,19 @@
+# pnpm configuration + supply-chain hardening (requires pnpm >= 10.16; this project
+# pins pnpm 11 via package.json "packageManager", so a too-old global pnpm won't
+# silently skip these protections — run with `corepack` or the pinned version).
+
+# Package cooldown: refuse to install any version published less than this many minutes
+# ago. Fresh malicious releases are usually detected and yanked within hours-to-days,
+# so a few-day cooldown dodges most npm supply-chain attacks at the cost of slight lag.
+# Adjust to taste: 1440 = 1 day, 4320 = 3 days, 10080 = 1 week.
+minimumReleaseAge: 4320
+
+# Packages exempt from the cooldown (e.g. an urgent first-party patch). Empty by default.
+minimumReleaseAgeExclude: []
+
+# Dependency lifecycle scripts are blocked by default (pnpm >= 10) — a key supply-chain
+# protection. Only packages explicitly allowed here may run install/build scripts.
+# esbuild fetches its native binary this way and is required by the Vite build; nothing
+# else in the tree needs a build step.
+allowBuilds:
+  esbuild: true
