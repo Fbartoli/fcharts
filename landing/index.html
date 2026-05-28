@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sightline — financial charts that are fast and pass the audit</title>
+  <meta name="description" content="Trading-grade charting that renders 100k+ points at 60fps and is fully keyboard- and screen-reader-accessible. Built for regulated fintech." />
+  <style>
+    :root{
+      --bg:#06080c; --panel:#0c1016; --panel-2:#10151d; --ink:#e8eef4; --muted:#8794a3;
+      --faint:#5a6675; --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.14);
+      --accent:#6ee7a8; --accent-dim:rgba(110,231,168,.12); --amber:#fbbf24; --danger:#f87171;
+      --sky:#38bdf8;
+      /* Sightline theme */
+      --sl-ink:#cfd8e3; --sl-tick-color:#8794a3; --sl-axis-title:#5a6675;
+      --sl-grid:rgba(110,231,168,.06); --sl-axis:rgba(255,255,255,.12);
+      --sl-cursor:rgba(255,255,255,.4); --sl-ring:#06080c; --sl-focus:#6ee7a8;
+      --sl-legend-border:rgba(255,255,255,.16); --sl-legend-border-hover:rgba(255,255,255,.4);
+      --sl-readout-bg:#10151d; --sl-readout-ink:#e8eef4; --sl-readout-border:rgba(255,255,255,.16);
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:
+        radial-gradient(1100px 520px at 82% -8%, rgba(110,231,168,.06), transparent 60%),
+        radial-gradient(820px 460px at -8% 8%, rgba(56,189,248,.05), transparent 55%),
+        var(--bg);
+      color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+      -webkit-font-smoothing:antialiased;line-height:1.5}
+    .mono{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-variant-numeric:tabular-nums}
+    a{color:var(--accent);text-decoration:none}
+    .wrap{max-width:1140px;margin:0 auto;padding:0 24px}
+    h1,h2,h3{letter-spacing:-.02em;line-height:1.1;margin:0}
+    .btn{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:14px;
+      padding:11px 18px;border-radius:10px;cursor:pointer;border:1px solid transparent;transition:.15s}
+    .btn-primary{background:var(--accent);color:#04210f;border-color:var(--accent)}
+    .btn-primary:hover{filter:brightness(1.08)}
+    .btn-ghost{background:transparent;color:var(--ink);border-color:var(--line-2)}
+    .btn-ghost:hover{border-color:var(--faint)}
+
+    /* nav */
+    nav{position:sticky;top:0;z-index:20;backdrop-filter:blur(10px);
+      background:rgba(6,8,12,.7);border-bottom:1px solid var(--line)}
+    nav .wrap{display:flex;align-items:center;gap:24px;height:62px}
+    .logo{font-weight:800;font-size:18px;letter-spacing:-.02em}
+    .logo b{color:var(--accent)}
+    nav .links{display:flex;gap:22px;margin-left:auto;align-items:center}
+    nav .links a{color:var(--muted);font-size:14px;font-weight:500}
+    nav .links a:hover{color:var(--ink)}
+    @media(max-width:760px){nav .links a:not(.btn){display:none}}
+
+    /* hero */
+    .hero{padding:64px 0 32px}
+    .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600;
+      letter-spacing:.04em;text-transform:uppercase;color:var(--accent);
+      background:var(--accent-dim);border:1px solid var(--accent-dim);
+      padding:5px 11px;border-radius:999px}
+    .hero h1{font-size:clamp(34px,5.4vw,60px);font-weight:800;margin:20px 0 0;max-width:16ch}
+    .hero h1 .g{color:var(--accent)}
+    .hero p.sub{font-size:clamp(16px,2vw,20px);color:var(--muted);margin:18px 0 0;max-width:62ch}
+    .hero .cta{display:flex;gap:12px;margin-top:28px;flex-wrap:wrap}
+    .hero .note{margin-top:14px;color:var(--faint);font-size:13px}
+
+    /* chart card */
+    .demo{margin:40px 0 8px}
+    .demo-head{display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+    .demo-head .t{font-weight:600;font-size:14px}
+    .demo-head .pill{font-size:11px;color:var(--muted);border:1px solid var(--line-2);
+      border-radius:999px;padding:3px 9px}
+    .demo-head .pill b{color:var(--accent);font-weight:600}
+    .card{border:1px solid var(--line);border-radius:16px;background:var(--panel);overflow:hidden;
+      box-shadow:0 24px 60px rgba(0,0,0,.45)}
+    .chart-host{position:relative;height:440px}
+    .chart-host>div{position:absolute;inset:0}
+    .demo-hint{color:var(--faint);font-size:12.5px;margin-top:12px;text-align:center}
+    .demo-hint kbd{font-family:ui-monospace,monospace;font-size:11px;background:var(--panel-2);
+      border:1px solid var(--line-2);border-bottom-width:2px;border-radius:5px;padding:1px 6px;color:var(--ink)}
+
+    section.band{padding:64px 0;border-top:1px solid var(--line)}
+    .lead{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+    section h2{font-size:clamp(26px,3.6vw,38px);font-weight:800;margin:12px 0 0;max-width:20ch}
+    section .desc{color:var(--muted);margin:14px 0 0;max-width:64ch;font-size:16px}
+
+    /* 2x2 */
+    .matrix{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:36px}
+    @media(max-width:720px){.matrix{grid-template-columns:1fr}}
+    .quad{border:1px solid var(--line);border-radius:14px;padding:20px;background:var(--panel)}
+    .quad.win{border-color:var(--accent);background:linear-gradient(180deg,var(--accent-dim),transparent)}
+    .quad h3{font-size:16px;margin-bottom:6px}
+    .quad .who{font-size:13px;color:var(--muted)}
+    .quad .tags{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+    .tag{font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:999px;border:1px solid var(--line-2)}
+    .tag.ok{color:var(--accent);border-color:var(--accent-dim);background:var(--accent-dim)}
+    .tag.no{color:var(--danger);border-color:rgba(248,113,113,.25);background:rgba(248,113,113,.08)}
+
+    /* stats */
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:36px}
+    @media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}}
+    .stat{border:1px solid var(--line);border-radius:14px;padding:20px;background:var(--panel)}
+    .stat .v{font-size:30px;font-weight:800;letter-spacing:-.02em}
+    .stat .v.mono{font-size:26px}
+    .stat .k{color:var(--muted);font-size:13px;margin-top:4px}
+
+    /* compare table */
+    table.cmp{width:100%;border-collapse:collapse;margin-top:30px;font-size:13.5px}
+    table.cmp th,table.cmp td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+    table.cmp th{color:var(--muted);font-size:11px;letter-spacing:.04em;text-transform:uppercase;font-weight:600}
+    table.cmp td:first-child,table.cmp th:first-child{font-weight:600}
+    table.cmp .yes{color:var(--accent);font-weight:700}
+    table.cmp .no{color:var(--danger);font-weight:700}
+    table.cmp .mid{color:var(--amber);font-weight:700}
+    table.cmp tr.me{background:linear-gradient(90deg,var(--accent-dim),transparent)}
+    table.cmp tr.me td:first-child{color:var(--accent)}
+    .scroll-x{overflow-x:auto}
+
+    /* features */
+    .feat{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:36px}
+    @media(max-width:820px){.feat{grid-template-columns:1fr}}
+    .fcard{border:1px solid var(--line);border-radius:14px;padding:22px;background:var(--panel)}
+    .fcard h3{font-size:16px;margin-bottom:8px}
+    .fcard p{color:var(--muted);font-size:14px;margin:0}
+    .fcard .ic{font-size:20px}
+
+    /* cta */
+    .final{text-align:center;padding:80px 0}
+    .final h2{margin:0 auto;max-width:24ch}
+    .final p{margin:16px auto 0;max-width:56ch;color:var(--muted)}
+    form.waitlist{display:flex;gap:10px;justify-content:center;margin-top:28px;flex-wrap:wrap}
+    form.waitlist input{background:var(--panel-2);border:1px solid var(--line-2);color:var(--ink);
+      border-radius:10px;padding:11px 14px;font-size:14px;min-width:280px;font-family:inherit}
+    form.waitlist input:focus{outline:none;border-color:var(--accent)}
+    footer{border-top:1px solid var(--line);padding:28px 0;color:var(--faint);font-size:13px}
+    footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="wrap">
+      <div class="logo">SIGHT<b>LINE</b></div>
+      <div class="links">
+        <a href="#problem">The gap</a>
+        <a href="#proof">Proof</a>
+        <a href="#why">Why now</a>
+        <a class="btn btn-primary" href="#get">Get early access</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="wrap">
+      <span class="eyebrow">● Trading-grade · WCAG-ready</span>
+      <h1>Financial charts that are fast <span class="g">and</span> pass the audit.</h1>
+      <p class="sub">Render 100k+ ticks at 60fps on a canvas — while staying fully
+        keyboard-navigable, screen-reader-announced, and find-in-page-able. The combination
+        no charting library has shipped. Built for regulated fintech.</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="#get">Get early access</a>
+        <a class="btn btn-ghost" href="#proof">See the benchmark →</a>
+      </div>
+      <p class="note">Zero runtime dependencies · ~11&nbsp;KB gzip · Chrome, Firefox &amp; Safari, no flags</p>
+
+      <div class="demo">
+        <div class="demo-head">
+          <span class="t">Live · NDX intraday</span>
+          <span class="pill"><b id="tick-count">120,000</b> ticks rendered</span>
+          <span class="pill">render: <b id="path-badge">DOM-overlay</b></span>
+        </div>
+        <div class="card"><div class="chart-host"><div id="hero-chart"></div></div></div>
+        <p class="demo-hint">Drag to pan · scroll to zoom · click the chart and use
+          <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> — every value is announced aloud,
+          and <kbd>Ctrl</kbd>+<kbd>F</kbd> finds the axis &amp; data text.</p>
+      </div>
+    </div>
+  </header>
+
+  <section class="band" id="problem">
+    <div class="wrap">
+      <div class="lead">The gap</div>
+      <h2>Every financial chart makes you pick two.</h2>
+      <p class="desc">Fast, accessible, or shipped this quarter. The fast canvas libraries
+        throw away accessibility; the accessible ones fall over at tick-data scale. So
+        teams ship something inaccessible and hope no one files a complaint.</p>
+      <div class="matrix">
+        <div class="quad">
+          <h3>TradingView · uPlot · ECharts</h3>
+          <div class="who">Fast canvas/WebGL. The fintech default.</div>
+          <div class="tags"><span class="tag ok">fast at 100k+</span><span class="tag no">no keyboard</span><span class="tag no">no screen reader</span></div>
+        </div>
+        <div class="quad">
+          <h3>Highcharts Stock</h3>
+          <div class="who">SVG with a real accessibility module.</div>
+          <div class="tags"><span class="tag ok">accessible</span><span class="tag no">slows at scale</span><span class="tag no">heavy DOM</span></div>
+        </div>
+        <div class="quad">
+          <h3>Roll your own (D3 / visx)</h3>
+          <div class="who">Total control, total cost.</div>
+          <div class="tags"><span class="tag no">months of work</span><span class="tag no">a11y is on you</span></div>
+        </div>
+        <div class="quad win">
+          <h3>Sightline</h3>
+          <div class="who">Both, by default — no trade-off.</div>
+          <div class="tags"><span class="tag ok">fast at 100k+</span><span class="tag ok">keyboard + SR</span><span class="tag ok">audit-ready</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="proof">
+    <div class="wrap">
+      <div class="lead">Proof, not promises</div>
+      <h2>Measured head-to-head, in three browsers.</h2>
+      <p class="desc">Same 100k-point × 3-series dataset, a 5-second automated pan/zoom,
+        axe-core scoped to each chart, real keyboard + find-in-page assertions. Numbers
+        from the committed benchmark (Chromium).</p>
+      <div class="stats">
+        <div class="stat"><div class="v mono">120<span style="font-size:16px"> fps</span></div><div class="k">sustained pan/zoom</div></div>
+        <div class="stat"><div class="v mono">0.07<span style="font-size:16px"> ms</span></div><div class="k">per frame at 100k pts</div></div>
+        <div class="stat"><div class="v mono">1.2×</div><div class="k">cost, 10k → 250k points</div></div>
+        <div class="stat"><div class="v mono">0</div><div class="k">serious axe violations</div></div>
+      </div>
+      <div class="scroll-x">
+      <table class="cmp">
+        <thead><tr><th>Library</th><th>Render</th><th>100k+ pts</th><th>Keyboard</th><th>Screen reader</th><th>Find-in-page</th></tr></thead>
+        <tbody>
+          <tr><td>TradingView</td><td>canvas</td><td class="yes">fast</td><td class="no">no</td><td class="no">no</td><td class="no">no</td></tr>
+          <tr><td>uPlot</td><td>canvas</td><td class="yes">fast</td><td class="no">no</td><td class="no">no</td><td class="no">no</td></tr>
+          <tr><td>Highcharts Stock</td><td>SVG</td><td class="mid">slows</td><td class="yes">yes</td><td class="yes">yes</td><td class="yes">yes</td></tr>
+          <tr><td>ECharts</td><td>canvas</td><td class="yes">fast</td><td class="mid">partial</td><td class="mid">partial</td><td class="no">no</td></tr>
+          <tr class="me"><td>Sightline</td><td>canvas + DOM</td><td class="yes">fast</td><td class="yes">yes</td><td class="yes">yes</td><td class="yes">yes</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="why">
+    <div class="wrap">
+      <div class="lead">Why now</div>
+      <h2>Accessible finance stopped being optional.</h2>
+      <p class="desc">The EU Accessibility Act took effect in June 2025 and names
+        <b style="color:var(--ink)">banking and financial services</b> explicitly. ADA web
+        lawsuits keep climbing, and procurement increasingly demands a VPAT. An inaccessible
+        price chart is now a compliance liability — but ripping out your fast canvas charts
+        for slow SVG isn't an option either. Sightline is the way out of that bind.</p>
+      <div class="feat">
+        <div class="fcard"><div class="ic">⌨️</div><h3>Keyboard data cursor</h3><p>Arrow through every sample, switch series, jump to extremes — announced via a polite live region.</p></div>
+        <div class="fcard"><div class="ic">🔍</div><h3>Real text, not pixels</h3><p>Axis ticks and a hidden data table are real DOM — screen-reader-readable and Ctrl+F-findable.</p></div>
+        <div class="fcard"><div class="ic">📄</div><h3>Audit-ready</h3><p>Zero serious axe-core violations out of the box. The conformance evidence comes with it.</p></div>
+        <div class="fcard"><div class="ic">⚡</div><h3>O(viewport) rendering</h3><p>A min/max pyramid keeps frame cost flat from 10k to 250k+ points. No WebGL required.</p></div>
+        <div class="fcard"><div class="ic">🪶</div><h3>~11 KB, zero deps</h3><p>No supply-chain surface, no framework lock-in. Drop it into anything.</p></div>
+        <div class="fcard"><div class="ic">🌐</div><h3>Works today</h3><p>Stock Chrome, Firefox and Safari — no experimental flags, verified in all three.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="final" id="get">
+    <div class="wrap">
+      <div class="lead">Early access</div>
+      <h2>Make your charts fast and compliant — without choosing.</h2>
+      <p>We're working with a handful of regulated fintech and data-platform teams who've
+        failed an accessibility audit on data-heavy views. If that's you, get in.</p>
+      <form class="waitlist" onsubmit="return false">
+        <input type="email" aria-label="Work email" placeholder="you@company.com" />
+        <button class="btn btn-primary" type="submit">Request access</button>
+      </form>
+      <p style="color:var(--faint);font-size:12.5px;margin-top:14px">Demo only — the form isn't wired to a backend yet.</p>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <div>© 2026 Sightline · validation build</div>
+      <div>Fast charts that pass the audit.</div>
+    </div>
+  </footer>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

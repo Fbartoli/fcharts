@@ -7,8 +7,10 @@ const here = import.meta.dirname;
 // `vite build`   → library mode: emits dist/sightline.js (ESM) + dist/sightline.css.
 export default defineConfig(({ command }) => {
   if (command === 'serve') {
+    // Default dev root is the benchmark; `SIGHTLINE_ROOT=landing vite` serves the site.
+    const sub = process.env.SIGHTLINE_ROOT ?? 'bench';
     return {
-      root: resolve(here, 'bench'),
+      root: resolve(here, sub),
       server: { port: 5180 },
     };
   }

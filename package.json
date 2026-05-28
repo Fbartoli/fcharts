@@ -23,6 +23,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "landing": "SIGHTLINE_ROOT=landing vite",
     "build": "tsc -p tsconfig.build.json && vite build",
     "preview": "vite preview",
     "test": "node --test test/*.test.ts",
