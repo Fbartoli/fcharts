@@ -17,7 +17,7 @@ import {
   type SeriesConfig,
   type SightlineData,
 } from './core/model.ts';
-import { linearScale } from './core/scales.ts';
+import { linearScale, type LinearScale } from './core/scales.ts';
 import { niceTicks, formatTick } from './core/ticks.ts';
 import { lowerBound } from './core/downsample.ts';
 import { RenderScheduler } from './core/scheduler.ts';
@@ -69,6 +69,11 @@ export interface SightlineConfig {
 }
 
 const TABLE_THROTTLE_MS = 150;
+// Coalesce live-region announcements: holding an arrow key fires keydowns at the OS repeat
+// rate, which would flood a polite live region. Announce only the settled position.
+const ANNOUNCE_DEBOUNCE_MS = 100;
+
+let instanceSeq = 0;
 
 interface ReadoutEls {
   el: HTMLElement;
@@ -97,6 +102,7 @@ export class Sightline {
 
   private ticksDirty = true;
   private tableTimer = 0;
+  private announceTimer = 0;
 
   private readonly renderer: Renderer;
   private readonly scheduler: RenderScheduler;
@@ -131,7 +137,8 @@ export class Sightline {
       yTickCount: config.options?.yTickCount ?? 6,
       formatX: config.options?.formatX ?? formatTick,
       formatY: config.options?.formatY ?? formatTick,
-      reducedMotion: config.options?.reducedMotion ?? prefers(this.doc, '(prefers-reduced-motion: reduce)'),
+      reducedMotion:
+        config.options?.reducedMotion ?? prefers(this.doc, '(prefers-reduced-motion: reduce)'),
       highContrast: config.options?.highContrast ?? prefers(this.doc, '(prefers-contrast: more)'),
       ariaLabel: config.options?.ariaLabel,
       xLabel: config.options?.xLabel,
@@ -143,10 +150,12 @@ export class Sightline {
     this.data = new ChartData(config.data ?? { x: [], y: config.series.map(() => []) });
 
     // --- DOM ---
+    const tableId = `sl-data-${++instanceSeq}`;
     this.root.classList.add('sl-root');
     this.liveRegion = new LiveRegion(this.doc);
     this.axisTicks = new AxisTicks(this.doc, this.options.xLabel, this.options.yLabel);
     this.tableAlt = new TableAlt(this.doc);
+    this.tableAlt.el.id = tableId;
     this.legend = this.options.legend
       ? new Legend(this.series, (i) => this.toggleSeries(i), this.doc)
       : null;
@@ -163,12 +172,21 @@ export class Sightline {
     this.surface.tabIndex = 0;
     this.surface.setAttribute('role', 'application');
     this.surface.setAttribute('aria-roledescription', 'interactive chart');
+    // Point the focused widget at its data table so screen-reader users can reach it
+    // without leaving application mode and blindly browsing.
+    this.surface.setAttribute('aria-details', tableId);
 
     this.readout = buildReadout(this.doc);
 
     if (this.legend) this.root.append(this.legend.el);
     this.surface.append(this.liveRegion.el);
-    this.plot.append(this.canvas, this.axisTicks.el, this.surface, this.readout.el, this.tableAlt.el);
+    this.plot.append(
+      this.canvas,
+      this.axisTicks.el,
+      this.surface,
+      this.readout.el,
+      this.tableAlt.el,
+    );
     this.root.append(this.plot);
 
     this.renderer = createCanvas2DRenderer(this.canvas);
@@ -213,6 +231,7 @@ export class Sightline {
    */
   renderSync(domain?: readonly [number, number]): Sightline {
     if (domain) this.applyDomain(domain);
+    this.scheduler.cancel(); // honor "bypasses the scheduler": drop any frame already queued
     this.frame();
     return this;
   }
@@ -236,7 +255,9 @@ export class Sightline {
     this.resizeObserver.disconnect();
     this.scheduler.destroy();
     this.renderer.destroy();
-    if (this.tableTimer) clearTimeout(this.tableTimer);
+    const view = this.doc.defaultView;
+    if (this.tableTimer) view?.clearTimeout(this.tableTimer);
+    if (this.announceTimer) view?.clearTimeout(this.announceTimer);
     this.axisTicks.destroy();
     this.tableAlt.destroy();
     this.legend?.destroy();
@@ -279,7 +300,8 @@ export class Sightline {
     return (
       `${name}. ${count} series, ${this.data.n.toLocaleString()} points each. ` +
       'Left and right arrows move between samples; up and down switch series; ' +
-      'Home and End jump to the ends; hold Shift for fine steps.'
+      'Home and End jump to the ends; hold Shift for fine steps. ' +
+      'A sampled data table follows for screen-reader review.'
     );
   }
 
@@ -301,7 +323,7 @@ export class Sightline {
     this.surface.style.inset = `${m.top}px ${m.right}px ${m.bottom}px ${m.left}px`;
   }
 
-  private scales(): { xScale: ReturnType<typeof linearScale>; yScale: ReturnType<typeof linearScale> } {
+  private scales(): { xScale: LinearScale; yScale: LinearScale } {
     const m = this.margins;
     const xScale = linearScale(this.domain, [m.left, this.width - m.right]);
     const yScale = linearScale(this.yDomain, [this.height - m.bottom, m.top]);
@@ -311,7 +333,8 @@ export class Sightline {
   private frame(): void {
     if (this.width <= 0 || this.height <= 0) return;
     const { xScale, yScale } = this.scales();
-    const xTicks = niceTicks(this.domain[0], this.domain[1], this.options.xTickCount, this.options.xInteger ? 1 : 0);
+    const xMinStep = this.options.xInteger ? 1 : 0;
+    const xTicks = niceTicks(this.domain[0], this.domain[1], this.options.xTickCount, xMinStep);
     const yTicks = niceTicks(this.yDomain[0], this.yDomain[1], this.options.yTickCount);
 
     if (this.ticksDirty) {
@@ -354,7 +377,8 @@ export class Sightline {
   // --- accessibility-driven updates ---
 
   private scheduleTableUpdate(): void {
-    if (this.tableTimer) clearTimeout(this.tableTimer);
+    const view = this.doc.defaultView;
+    if (this.tableTimer) view?.clearTimeout(this.tableTimer);
     const run = (): void => {
       this.tableAlt.update({
         data: this.data,
@@ -365,7 +389,6 @@ export class Sightline {
         caption: this.options.ariaLabel ?? 'Chart data',
       });
     };
-    const view = this.doc.defaultView;
     this.tableTimer = view ? view.setTimeout(run, TABLE_THROTTLE_MS) : (run(), 0);
   }
 
@@ -379,17 +402,27 @@ export class Sightline {
     this.requestRender();
   }
 
-  private announceCursor(): void {
+  /** Announce the current cursor position immediately (used on focus — a single event). */
+  private announceNow(): void {
     const s = this.series[this.cursor.series];
     if (!s || this.data.n === 0) return;
     const x = this.data.x[this.cursor.index];
     const v = this.data.y[s.index][this.cursor.index];
     const lx = this.options.xLabel ?? 'x';
     const ly = this.options.yLabel ?? 'value';
-    this.liveRegion.announce(`${s.name} — ${lx} ${this.options.formatX(x)}, ${ly} ${this.options.formatY(v)}`);
+    const xy = `${lx} ${this.options.formatX(x)}, ${ly} ${this.options.formatY(v)}`;
+    this.liveRegion.announce(`${s.name} — ${xy}`);
   }
 
-  private updateReadout(xScale: ReturnType<typeof linearScale>, yScale: ReturnType<typeof linearScale>): void {
+  /** Coalesce announcements during rapid movement (key-repeat, hover) to the settled point. */
+  private queueAnnounce(): void {
+    const view = this.doc.defaultView;
+    if (this.announceTimer) view?.clearTimeout(this.announceTimer);
+    const run = (): void => this.announceNow();
+    this.announceTimer = view ? view.setTimeout(run, ANNOUNCE_DEBOUNCE_MS) : (run(), 0);
+  }
+
+  private updateReadout(xScale: LinearScale, yScale: LinearScale): void {
     const s = this.series[this.cursor.series];
     if (!s || !s.visible || this.data.n === 0) {
       this.readout.el.classList.remove('sl-show');
@@ -429,7 +462,7 @@ export class Sightline {
 
   private onFocus(): void {
     this.cursorActive = true;
-    this.announceCursor();
+    this.announceNow();
     this.requestRender();
   }
 
@@ -458,7 +491,7 @@ export class Sightline {
       this.ticksDirty = true;
       this.scheduleTableUpdate();
     }
-    this.announceCursor();
+    this.queueAnnounce();
     this.requestRender();
   }
 
@@ -494,7 +527,9 @@ export class Sightline {
   private onPointerUp(e: PointerEvent): void {
     if (!this.dragging) return;
     this.dragging = false;
-    if (this.surface.hasPointerCapture(e.pointerId)) this.surface.releasePointerCapture(e.pointerId);
+    if (this.surface.hasPointerCapture(e.pointerId)) {
+      this.surface.releasePointerCapture(e.pointerId);
+    }
   }
 
   private onPointerLeave(): void {
@@ -513,7 +548,7 @@ export class Sightline {
     this.cursor = { series: this.cursor.series, index: idx };
     if (!this.series[this.cursor.series]?.visible) this.cursor.series = this.firstVisibleSeries();
     this.cursorActive = true;
-    this.announceCursor();
+    this.queueAnnounce();
     this.requestRender();
   }
 

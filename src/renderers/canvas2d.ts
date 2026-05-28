@@ -23,7 +23,8 @@ interface ThemeColors {
 
 function readTheme(canvas: HTMLCanvasElement): ThemeColors {
   const cs = getComputedStyle(canvas);
-  const v = (name: string, fallback: string): string => cs.getPropertyValue(name).trim() || fallback;
+  const v = (name: string, fallback: string): string =>
+    cs.getPropertyValue(name).trim() || fallback;
   return {
     grid: v('--sl-grid', 'rgba(128,128,128,0.13)'),
     axis: v('--sl-axis', 'rgba(128,128,128,0.30)'),
@@ -117,7 +118,12 @@ export function createCanvas2DRenderer(canvas: HTMLCanvasElement): Renderer {
     ctx.strokeRect(left + 0.5, top + 0.5, plotW - 1, plotH - 1);
   }
 
-  function drawEnvelope(scene: RenderScene, s: ResolvedSeries, env: ColumnEnvelope, m: Margins): void {
+  function drawEnvelope(
+    scene: RenderScene,
+    s: ResolvedSeries,
+    env: ColumnEnvelope,
+    m: Margins,
+  ): void {
     const y = scene.yScale;
     ctx.beginPath();
     let started = false;
@@ -142,7 +148,13 @@ export function createCanvas2DRenderer(canvas: HTMLCanvasElement): Renderer {
     ctx.globalAlpha = 1;
   }
 
-  function drawArea(scene: RenderScene, s: ResolvedSeries, env: ColumnEnvelope, m: Margins, plotH: number): void {
+  function drawArea(
+    scene: RenderScene,
+    s: ResolvedSeries,
+    env: ColumnEnvelope,
+    m: Margins,
+    plotH: number,
+  ): void {
     const y = scene.yScale;
     const top = m.top;
     const bottom = m.top + plotH;

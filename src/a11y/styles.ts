@@ -28,7 +28,8 @@ const CSS = `
 .sl-readout{position:absolute;z-index:5;pointer-events:none;transform:translate(-50%,-120%);
   background:var(--sl-readout-bg,#111827);color:var(--sl-readout-ink,#f9fafb);
   border:1px solid var(--sl-readout-border,rgba(255,255,255,.15));border-radius:8px;padding:6px 9px;
-  font-size:12px;min-width:118px;box-shadow:0 8px 24px rgba(0,0,0,.35);opacity:0;transition:opacity .08s}
+  font-size:12px;min-width:118px;box-shadow:0 8px 24px rgba(0,0,0,.35);opacity:0;
+  transition:opacity .08s}
 .sl-readout.sl-show{opacity:1}
 .sl-readout-series{display:flex;align-items:center;gap:6px;font-weight:600;margin-bottom:2px}
 .sl-readout-swatch{width:9px;height:9px;border-radius:2px;flex:none}
@@ -38,7 +39,8 @@ const CSS = `
 .sl-legend li{margin:0}
 .sl-legend button{display:inline-flex;align-items:center;gap:7px;cursor:pointer;padding:5px 10px;
   border-radius:7px;border:1px solid var(--sl-legend-border,rgba(0,0,0,.15));
-  background:var(--sl-legend-bg,transparent);color:inherit;font:inherit;font-size:12.5px;font-weight:600}
+  background:var(--sl-legend-bg,transparent);color:inherit;font:inherit;font-size:12.5px;
+  font-weight:600}
 .sl-legend button:hover{border-color:var(--sl-legend-border-hover,rgba(0,0,0,.4))}
 .sl-legend button[aria-pressed="false"]{opacity:.45}
 .sl-swatch{width:11px;height:11px;border-radius:3px;flex:none}
@@ -48,6 +50,12 @@ const CSS = `
 @media (prefers-contrast:more){
   .sl-tick{color:var(--sl-tick-color,#1f2937)}
   .sl-legend button{border-color:var(--sl-legend-border-hover,#000)}
+  .sl-surface:focus-visible{outline:2px solid var(--sl-focus,#2563eb);outline-offset:1px}
+}
+/* Windows High Contrast / forced-colors ignores box-shadow, so the box-shadow focus ring
+   vanishes there. Provide a real outline (which forced-colors honors) using a system color. */
+@media (forced-colors:active){
+  .sl-surface:focus-visible{outline:2px solid Highlight;outline-offset:1px}
 }
 `;
 

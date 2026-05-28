@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-28T21:14:38.995Z",
+  "generatedAt": "2026-05-28T21:40:34.705Z",
   "datasetN": 100000,
   "durationMs": 5000,
   "headline": [
@@ -8,10 +8,11 @@
       "label": "Sightline",
       "kind": "sightline",
       "nodeCount": 257,
-      "frames": 600,
-      "fps": 119.80031683190457,
-      "peakHeapMB": 14.067496299743652,
-      "frameMs": 0.061849999994039534,
+      "frames": 599,
+      "fps": 119.8,
+      "frameMs": 0.0654750000089407,
+      "deferredDraw": false,
+      "peakHeapMB": 17.048938751220703,
       "axe": {
         "serious": 0,
         "ids": []
@@ -27,10 +28,11 @@
       "label": "uPlot",
       "kind": "fast-inaccessible",
       "nodeCount": 35,
-      "frames": 600,
-      "fps": 119.99760004799907,
-      "peakHeapMB": 130.88685703277588,
-      "frameMs": 0.00032500000298023226,
+      "frames": 602,
+      "fps": 120.30135289062967,
+      "frameMs": 0.00027500000596046445,
+      "deferredDraw": true,
+      "peakHeapMB": 14.761662483215332,
       "axe": {
         "serious": 0,
         "ids": []
@@ -46,10 +48,11 @@
       "label": "Naive SVG (50k nodes)",
       "kind": "accessible-slow",
       "nodeCount": 50213,
-      "frames": 84,
-      "fps": 16.77182333679418,
-      "peakHeapMB": 234.45499801635742,
-      "frameMs": 48.84615384615385,
+      "frames": 81,
+      "fps": 16.172829646194398,
+      "frameMs": 51.483333334326744,
+      "deferredDraw": false,
+      "peakHeapMB": 15.778670310974121,
       "axe": {
         "serious": 0,
         "ids": []
@@ -64,15 +67,15 @@
   "scaling": [
     {
       "n": 10000,
-      "frameMs": 0.061650000005960465
+      "frameMs": 0.06655000001192093
     },
     {
       "n": 100000,
-      "frameMs": 0.072125
+      "frameMs": 0.08690000000596046
     },
     {
       "n": 250000,
-      "frameMs": 0.07040000000596046
+      "frameMs": 0.08167499999701977
     }
   ],
   "preciseHeap": true,

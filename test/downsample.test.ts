@@ -130,6 +130,23 @@ test('downsampleColumns (level mode): envelope preserves the visible global extr
   assert.ok(emin <= -999 + 0.5, `lost the -999 spike (got ${emin})`);
 });
 
+test('downsampleColumns: no gaps with non-uniform (clustered) x', () => {
+  // First half packed into x∈[0,1), second half stretched over [1,1000) — the shape that
+  // left ~half the columns empty before bucket spans were filled.
+  const n = 20_000;
+  const x = new Float64Array(n);
+  for (let i = 0; i < n / 2; i++) x[i] = (i / (n / 2)) * 1;
+  for (let i = n / 2; i < n; i++) x[i] = 1 + ((i - n / 2) / (n / 2)) * 999;
+  const y = new Float64Array(n);
+  for (let i = 0; i < n; i++) y[i] = Math.sin(i * 0.01) * 50;
+  const p = buildPyramid(y);
+  const env = downsampleColumns(x, y, p, [x[0], x[n - 1]], 600);
+
+  let gaps = 0;
+  for (let c = env.first; c <= env.last; c++) if (env.min[c] === Infinity) gaps++;
+  assert.equal(gaps, 0, `expected a gap-free envelope, found ${gaps} empty interior columns`);
+});
+
 test('downsampleColumns: reuses provided output buffers (no per-frame allocation)', () => {
   const n = 1000;
   const x = indices(n);

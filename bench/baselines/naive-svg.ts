@@ -109,7 +109,8 @@ function buildTable(data: Dataset, _yMin: number, _yMax: number): HTMLElement {
   wrap.className = 'sr-only';
   const table = document.createElement('table');
   const caption = document.createElement('caption');
-  caption.textContent = `Sensor telemetry data — ${data.y.length} series, ${TABLE_ROWS} sampled rows.`;
+  caption.textContent =
+    `Sensor telemetry data — ${data.y.length} series, ${TABLE_ROWS} sampled rows.`;
   table.append(caption);
 
   const thead = document.createElement('thead');

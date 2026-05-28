@@ -22,7 +22,12 @@ export function createUplot(container: HTMLElement, data: Dataset): ChartAdapter
     cursor: { show: true, drag: { x: false, y: false } },
     series: [
       {},
-      ...SERIES.map((s) => ({ label: s.name, stroke: s.color, width: 1.25, points: { show: false } })),
+      ...SERIES.map((s) => ({
+        label: s.name,
+        stroke: s.color,
+        width: 1.25,
+        points: { show: false },
+      })),
     ],
     axes: [{}, {}],
   };

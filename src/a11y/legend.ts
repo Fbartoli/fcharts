@@ -12,7 +12,11 @@ export class Legend {
   private readonly onToggle: (index: number) => void;
   private buttons: HTMLButtonElement[] = [];
 
-  constructor(series: readonly ResolvedSeries[], onToggle: (index: number) => void, doc: Document = document) {
+  constructor(
+    series: readonly ResolvedSeries[],
+    onToggle: (index: number) => void,
+    doc: Document = document,
+  ) {
     this.doc = doc;
     this.onToggle = onToggle;
     this.el = doc.createElement('div');

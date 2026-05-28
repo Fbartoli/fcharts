@@ -10,7 +10,7 @@
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { chromium, type Browser } from 'playwright';
+import { chromium, type Browser, type Page } from 'playwright';
 import { createServer, type ViteDevServer } from 'vite';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -31,30 +31,39 @@ async function startServer(): Promise<ViteDevServer> {
   return server;
 }
 
-async function keyboardAccessibility(page: import('playwright').Page): Promise<{ changed: boolean }> {
+async function keyboardAccessibility(page: Page): Promise<{ changed: boolean }> {
   const liveSel = `${SIGHTLINE} [aria-live]`;
   await page.focus(`${SIGHTLINE} [role="application"]`);
-  await page.waitForTimeout(40);
+  await page.waitForTimeout(60);
   const before = (await page.locator(liveSel).textContent()) ?? '';
   await page.keyboard.press('End'); // jump — guaranteed to change the announced sample
-  await page.waitForTimeout(40);
+  await page.waitForTimeout(60);
   await page.keyboard.press('ArrowLeft');
-  await page.waitForTimeout(40);
+  // Announcements are debounced (~100ms) to avoid flooding; wait past the window.
+  await page.waitForTimeout(260);
   const after = (await page.locator(liveSel).textContent()) ?? '';
   return { changed: before !== after && after.trim().length > 0 };
 }
 
-async function findability(page: import('playwright').Page): Promise<{ tick: boolean; value: boolean }> {
-  return page.evaluate((sel) => {
+/** Test REAL find-in-page (window.find) for a tick label and a data value, not DOM presence. */
+async function findability(page: Page): Promise<{ tick: boolean; value: boolean }> {
+  const targets = await page.evaluate((sel) => {
     const root = document.querySelector(sel);
-    const tickText = [...(root?.querySelectorAll('.sl-tick') ?? [])].map((e) => e.textContent ?? '');
-    const tableText = [...(root?.querySelectorAll('.sl-table-alt td') ?? [])].map((e) => e.textContent ?? '');
-    const numeric = (s: string): boolean => /\d/.test(s);
-    return {
-      tick: tickText.some(numeric),
-      value: tableText.some(numeric),
-    };
+    const tick = root?.querySelector('.sl-tick')?.textContent?.trim() ?? '';
+    const value = root?.querySelector('.sl-table-alt td')?.textContent?.trim() ?? '';
+    return { tick, value };
   }, SIGHTLINE);
+  const find = (q: string): Promise<boolean> =>
+    page.evaluate((s) => {
+      if (!s) return false;
+      const w = window as unknown as {
+        find?: (s: string) => boolean;
+        getSelection?: () => Selection | null;
+      };
+      w.getSelection?.()?.removeAllRanges?.();
+      return typeof w.find === 'function' ? w.find(s) : false;
+    }, q);
+  return { tick: await find(targets.tick), value: await find(targets.value) };
 }
 
 function smooth(fps: number, frameMs: number): boolean {
@@ -71,7 +80,8 @@ interface Row {
   a11y: { liveRegion: boolean; keyboardCursor: boolean; textAlternative: boolean };
 }
 function accessible(r: Row): boolean {
-  return r.axe.serious === 0 && r.a11y.liveRegion && r.a11y.keyboardCursor && r.a11y.textAlternative;
+  const a = r.a11y;
+  return r.axe.serious === 0 && a.liveRegion && a.keyboardCursor && a.textAlternative;
 }
 
 async function main(): Promise<void> {
@@ -82,11 +92,18 @@ async function main(): Promise<void> {
 
   let browser: Browser | undefined;
   try {
-    browser = await chromium.launch({ args: ['--enable-precise-memory-info'] });
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
+    browser = await chromium.launch({
+      args: ['--enable-precise-memory-info', '--js-flags=--expose-gc'],
+    });
+    const page = await browser.newPage({
+      viewport: { width: 1440, height: 900 },
+      deviceScaleFactor: 1,
+    });
     page.on('pageerror', (e) => console.error('page error:', e.message));
     await page.goto(url, { waitUntil: 'load' });
-    await page.waitForFunction(() => window.__bench?.ready === true, undefined, { timeout: 30_000 });
+    await page.waitForFunction(() => window.__bench?.ready === true, undefined, {
+      timeout: 30_000,
+    });
 
     console.log('bench: running measurements (this takes ~30s)…');
     const results = await page.evaluate(() => window.__bench!.runAll(5000));
@@ -103,7 +120,9 @@ async function main(): Promise<void> {
         : Infinity;
 
     const slBoth = !!sl && smooth(sl.fps, sl.frameMs) && accessible(sl);
-    const othersBoth = rows.filter((r) => r.id !== 'sightline' && smooth(r.fps, r.frameMs) && accessible(r));
+    const othersBoth = rows.filter(
+      (r) => r.id !== 'sightline' && smooth(r.fps, r.frameMs) && accessible(r),
+    );
 
     const acceptance: Acceptance = {
       liveRegionChangesOnArrow: kbd.changed,
@@ -137,18 +156,22 @@ function printSummary(
     console.log(
       `  ${r.label.padEnd(22)} ${r.fps.toFixed(0).padStart(3)}fps  ` +
         `${r.frameMs.toFixed(3).padStart(8)}ms/frame  axe-serious=${r.axe.serious}  ` +
-        `kbd=${yn(r.a11y.keyboardCursor)} live=${yn(r.a11y.liveRegion)} table=${yn(r.a11y.textAlternative)}  ` +
+        `kbd=${yn(r.a11y.keyboardCursor)} live=${yn(r.a11y.liveRegion)} ` +
+        `table=${yn(r.a11y.textAlternative)}  ` +
         `${smooth(r.fps, r.frameMs) && accessible(r) ? '✓ BOTH' : ''}`,
     );
   }
   console.log('\n=== Sightline frame cost vs N ===');
-  for (const s of scaling) console.log(`  ${String(s.n).padStart(7)} pts  ${s.frameMs.toFixed(3)}ms/frame`);
+  for (const s of scaling) {
+    console.log(`  ${String(s.n).padStart(7)} pts  ${s.frameMs.toFixed(3)}ms/frame`);
+  }
   console.log(`  250k/10k ratio: ${ratio.toFixed(2)}× (target < 1.5×)`);
 
   console.log('\n=== Acceptance ===');
   for (const [k, v] of Object.entries(a)) console.log(`  ${yn(v)} ${k}`);
   const verdict = a.sightlineUniquelyFastAndAccessible && a.liveRegionChangesOnArrow;
-  console.log(`\n${verdict ? '✓ THESIS HELD' : '✗ THESIS NOT FULLY MET'} — results written to ${outPath}\n`);
+  const tag = verdict ? '✓ THESIS HELD' : '✗ THESIS NOT FULLY MET';
+  console.log(`\n${tag} — results written to ${outPath}\n`);
 }
 
 const yn = (b: boolean): string => (b ? '✓' : '✗');

@@ -15,7 +15,6 @@ import { createNaiveSvg } from './baselines/naive-svg.ts';
 interface PerfResult {
   frames: number;
   fps: number;
-  peakHeapMB: number | null;
 }
 interface AxeResult {
   serious: number;
@@ -34,6 +33,10 @@ interface HeadlineRow extends PerfResult {
   /** Mean synchronous per-frame cost (ms), measured by batched timing to beat the
    *  ~100µs performance.now() clamp. */
   frameMs: number;
+  /** Whether `draw()` defers its real paint to rAF (so frameMs under-reads — see uPlot). */
+  deferredDraw: boolean;
+  /** JS heap (MB) measured with the renderer ALONE in the page, after GC. */
+  peakHeapMB: number | null;
   axe: AxeResult;
   a11y: A11yResult;
 }
@@ -61,6 +64,16 @@ let adapters: ChartAdapter[] = [];
 function heapBytes(): number | null {
   const m = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory;
   return m ? m.usedJSHeapSize : null;
+}
+
+/** Force GC if exposed (Chromium launched with --js-flags=--expose-gc). No-op otherwise. */
+function forceGc(): void {
+  (globalThis as unknown as { gc?: () => void }).gc?.();
+}
+
+/** Resolve after two animation frames — lets layout/paint settle before sampling. */
+function settle(): Promise<void> {
+  return new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
 }
 
 /** Pan + zoom path over t in [0, 1]: a 6–12%-wide window whose center sweeps the domain. */
@@ -91,31 +104,46 @@ function measureRun(adapter: ChartAdapter, n: number, durationMs: number): Promi
 
   return new Promise((resolve) => {
     let frames = 0;
-    let peakHeap = 0;
     let start: number | undefined;
     const step = (now: number): void => {
       if (start === undefined) start = now;
       const t = (now - start) / durationMs;
       if (t >= 1) {
-        resolve(summarize(frames, peakHeap, now - start));
+        resolve({ frames, fps: frames / ((now - start) / 1000) });
         return;
       }
       adapter.draw(...viewportAt(t, lo, hi));
       frames++;
-      const h = heapBytes();
-      if (h !== null && h > peakHeap) peakHeap = h;
       requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
   });
 }
 
-function summarize(frames: number, peakHeap: number, elapsedMs: number): PerfResult {
-  return {
-    frames,
-    fps: frames / (elapsedMs / 1000),
-    peakHeapMB: peakHeap > 0 ? peakHeap / 1048576 : null,
-  };
+/**
+ * Per-renderer heap, measured honestly: build ONLY this renderer in the page, warm it,
+ * force GC, and sample usedJSHeapSize. Measuring all three together (as a process-global
+ * running max in factory order) would just report a monotonically growing number that
+ * reflects measurement order, not each renderer's footprint.
+ */
+async function measureHeapIsolated(n: number): Promise<Record<string, number | null>> {
+  const out: Record<string, number | null> = {};
+  for (const { factory, cell } of FACTORIES) {
+    teardown();
+    forceGc();
+    const container = document.getElementById(cell);
+    if (!container) continue;
+    const adapter = factory(container, makeDataset(n));
+    for (let i = 0; i < 5; i++) adapter.draw(...viewportAt(i / 5, 0, n - 1));
+    await settle();
+    forceGc();
+    forceGc();
+    await settle();
+    const h = heapBytes();
+    out[adapter.id] = h === null ? null : h / 1048576;
+    adapter.destroy();
+  }
+  return out;
 }
 
 /**
@@ -124,7 +152,12 @@ function summarize(frames: number, peakHeap: number, elapsedMs: number): PerfRes
  * measurement spans many ms and is immune to the browser's ~100µs timer clamp that pins
  * single-frame samples to the floor.
  */
-function measureDrawCostMs(adapter: ChartAdapter, n: number, budgetMs = 600, maxIters = 4000): number {
+function measureDrawCostMs(
+  adapter: ChartAdapter,
+  n: number,
+  budgetMs = 600,
+  maxIters = 4000,
+): number {
   const lo = 0;
   const hi = Math.max(1, n - 1);
   for (let i = 0; i < 3; i++) adapter.draw(...viewportAt(i / 3, lo, hi)); // warm up
@@ -141,7 +174,9 @@ function measureDrawCostMs(adapter: ChartAdapter, n: number, budgetMs = 600, max
 
 async function runAxe(el: HTMLElement): Promise<AxeResult> {
   const results = await axe.run(el, { resultTypes: ['violations'] });
-  const serious = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
+  const serious = results.violations.filter(
+    (v) => v.impact === 'serious' || v.impact === 'critical',
+  );
   return { serious: serious.length, ids: serious.map((v) => `${v.id} (${v.impact})`) };
 }
 
@@ -149,7 +184,9 @@ function functionalA11y(adapter: ChartAdapter): A11yResult {
   const el = adapter.el;
   const surface = el.querySelector('[role="application"]');
   // A real data text-alternative — not, e.g., uPlot's 1-row legend, which is also a <table>.
-  const dataTable = [...el.querySelectorAll('table')].some((t) => t.querySelectorAll('tr').length >= 10);
+  const dataTable = [...el.querySelectorAll('table')].some(
+    (t) => t.querySelectorAll('tr').length >= 10,
+  );
   return {
     liveRegion: !!el.querySelector('[aria-live]'),
     keyboardCursor: !!surface && surface.getAttribute('tabindex') === '0',
@@ -192,10 +229,11 @@ async function sightlineScaling(ns: number[], durationMs: number): Promise<Scali
 
 async function runAll(durationMs = 5000): Promise<BenchResults> {
   if (adapters.length === 0) buildAdapters(100_000);
+  const n = dataset.n;
   const headline: HeadlineRow[] = [];
   for (const adapter of adapters) {
-    const perf = await measureRun(adapter, dataset.n, durationMs);
-    const frameMs = measureDrawCostMs(adapter, dataset.n);
+    const perf = await measureRun(adapter, n, durationMs);
+    const frameMs = measureDrawCostMs(adapter, n);
     const axeResult = await runAxe(adapter.el);
     headline.push({
       id: adapter.id,
@@ -204,13 +242,23 @@ async function runAll(durationMs = 5000): Promise<BenchResults> {
       nodeCount: adapter.nodeCount(),
       ...perf,
       frameMs,
+      // A near-zero synchronous cost while clearly rendering means the draw deferred its
+      // real paint to rAF (uPlot); FPS is the honest speed metric for that renderer.
+      deferredDraw: frameMs < 0.005,
+      peakHeapMB: null,
       axe: axeResult,
       a11y: functionalA11y(adapter),
     });
   }
+
+  // Heap, measured per-renderer in isolation (rebuilds the page charts afterwards).
+  const heap = await measureHeapIsolated(n);
+  buildAdapters(n);
+  for (const row of headline) row.peakHeapMB = heap[row.id] ?? null;
+
   const scaling = await sightlineScaling([10_000, 100_000, 250_000], 3000);
   const results: BenchResults = {
-    datasetN: dataset.n,
+    datasetN: n,
     durationMs,
     headline,
     scaling,
@@ -226,7 +274,8 @@ function smooth(fps: number, frameMs: number): boolean {
   return fps >= 50 && frameMs < 16;
 }
 function accessible(row: HeadlineRow): boolean {
-  return row.axe.serious === 0 && row.a11y.liveRegion && row.a11y.keyboardCursor && row.a11y.textAlternative;
+  const a = row.a11y;
+  return row.axe.serious === 0 && a.liveRegion && a.keyboardCursor && a.textAlternative;
 }
 function mark(ok: boolean): string {
   return ok ? '<span class="yes">✓</span>' : '<span class="no">✗</span>';
@@ -240,10 +289,12 @@ function renderTable(r: BenchResults): void {
     .map((row) => {
       const both = smooth(row.fps, row.frameMs) && accessible(row);
       const cls = row.id === 'sightline' ? ' class="me"' : '';
+      const frameCell = row.deferredDraw ? '~0 (deferred)†' : `${row.frameMs.toFixed(3)} ms`;
+      const heapCell = row.peakHeapMB === null ? 'n/a' : `${row.peakHeapMB.toFixed(1)} MB`;
       return `<tr${cls}><td>${row.label}</td>
         <td class="mono">${row.fps.toFixed(0)}</td>
-        <td class="mono">${row.frameMs.toFixed(3)} ms</td>
-        <td class="mono">${row.peakHeapMB === null ? 'n/a' : `${row.peakHeapMB.toFixed(1)} MB`}</td>
+        <td class="mono">${frameCell}</td>
+        <td class="mono">${heapCell}</td>
         <td class="mono">${row.nodeCount.toLocaleString()}</td>
         <td class="mono">${row.axe.serious}</td>
         <td>${mark(row.a11y.keyboardCursor)}</td>
@@ -256,16 +307,18 @@ function renderTable(r: BenchResults): void {
     .map((s) => `<tr><td class="mono">${s.n.toLocaleString()}</td>
       <td class="mono">${s.frameMs.toFixed(3)} ms</td></tr>`)
     .join('');
-  const ratio =
-    r.scaling.length >= 2
-      ? (r.scaling[r.scaling.length - 1].frameMs / Math.max(1e-6, r.scaling[0].frameMs)).toFixed(2)
-      : '—';
+  const first = r.scaling[0]?.frameMs ?? 0;
+  const last = r.scaling[r.scaling.length - 1]?.frameMs ?? 0;
+  const ratio = r.scaling.length >= 2 ? (last / Math.max(1e-6, first)).toFixed(2) : '—';
 
   const el = document.getElementById('results');
   if (el) {
     el.innerHTML = `
       <h2>Headline — 100k points × 3 series, 5s pan/zoom</h2>
       <table>${head}${rows}</table>
+      <p class="note">† uPlot defers its redraw to requestAnimationFrame, so the synchronous
+        frame-cost timer reads ~0; its sustained FPS is the honest speed metric. Heap is
+        measured per renderer in isolation (after GC), not as a process-global running max.</p>
       <h2>Sightline frame-cost vs N (proves cost is decoupled from point count)</h2>
       <table><tr><th>Points/series</th><th>Frame cost (avg)</th></tr>${scaling}</table>
       <p class="note">250k / 10k frame-cost ratio: <b>${ratio}×</b> (target &lt; 1.5×).</p>`;

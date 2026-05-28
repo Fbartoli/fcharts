@@ -201,16 +201,26 @@ function accumulateLevel(
   min: Float32Array,
   max: Float32Array,
 ): void {
+  // Each bucket is written across the full column span its x-range covers (from the x of
+  // its first sample to its last), not just its center column. With uniform x a bucket
+  // spans one column (same as a center map); with non-uniform x a sparse bucket spans many
+  // columns and fills them — so there are no gaps regardless of x distribution. Buckets
+  // tile the index space contiguously, so total writes stay O(width + buckets) ≈ O(width).
   const bs = level.bucketSize;
-  const half = bs >> 1;
+  const n = x.length;
   const b0 = Math.floor(i0 / bs);
   const b1 = Math.min(level.min.length - 1, Math.floor(i1 / bs));
-  const lastX = x.length - 1;
   for (let b = b0; b <= b1; b++) {
-    const center = b * bs + half;
-    const c = colOf(x[center < x.length ? center : lastX]);
-    if (level.min[b] < min[c]) min[c] = level.min[b];
-    if (level.max[b] > max[c]) max[c] = level.max[b];
+    const start = b * bs;
+    const end = start + bs - 1 < n ? start + bs - 1 : n - 1;
+    const cL = colOf(x[start]);
+    const cR = colOf(x[end]);
+    const bmin = level.min[b];
+    const bmax = level.max[b];
+    for (let c = cL; c <= cR; c++) {
+      if (bmin < min[c]) min[c] = bmin;
+      if (bmax > max[c]) max[c] = bmax;
+    }
   }
 }
 

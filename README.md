@@ -59,8 +59,9 @@ injected automatically — no CSS import required.
 | `Shift` + arrow | Fine (single-sample) step |
 | Legend buttons | Toggle series visibility |
 
-Every cursor move is announced through a polite live region, and both axis ticks and the
-hidden data table are findable with Ctrl+F.
+Every cursor move is announced through a polite live region (coalesced so holding a key
+doesn't flood it). Axis ticks are real visible text — always Ctrl+F-findable — and the
+hidden data table is in the accessibility tree (and find-in-page-able in Chromium).
 
 ## API
 

@@ -54,6 +54,13 @@ export class RenderScheduler {
     return this.dirty;
   }
 
+  /** Drop any pending frame without disposing the scheduler (e.g. before a sync render). */
+  cancel(): void {
+    if (this.handle) this.clock.cancel(this.handle);
+    this.handle = 0;
+    this.dirty = false;
+  }
+
   private readonly tick = (now: number): void => {
     this.handle = 0;
     this.dirty = false;
