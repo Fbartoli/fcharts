@@ -71,6 +71,15 @@ function forceGc(): void {
   (globalThis as unknown as { gc?: () => void }).gc?.();
 }
 
+/**
+ * Heap is only meaningful with forced GC. Without `--js-flags=--expose-gc`, `gc()` is a
+ * no-op and `usedJSHeapSize` reflects uncollected garbage (a process-wide high-water mark
+ * that looks the same for every renderer), so we report n/a rather than a misleading number.
+ */
+function gcAvailable(): boolean {
+  return typeof (globalThis as { gc?: () => void }).gc === 'function';
+}
+
 /** Resolve after two animation frames — lets layout/paint settle before sampling. */
 function settle(): Promise<void> {
   return new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
@@ -128,6 +137,9 @@ function measureRun(adapter: ChartAdapter, n: number, durationMs: number): Promi
  */
 async function measureHeapIsolated(n: number): Promise<Record<string, number | null>> {
   const out: Record<string, number | null> = {};
+  // Without forced GC the number is meaningless (see gcAvailable). Return {} → every row
+  // falls back to n/a in runAll rather than showing a misleading process-wide figure.
+  if (!gcAvailable()) return out;
   for (const { factory, cell } of FACTORIES) {
     teardown();
     forceGc();
@@ -262,7 +274,7 @@ async function runAll(durationMs = 5000): Promise<BenchResults> {
     durationMs,
     headline,
     scaling,
-    preciseHeap: heapBytes() !== null,
+    preciseHeap: gcAvailable() && heapBytes() !== null,
   };
   renderTable(results);
   return results;
@@ -321,7 +333,10 @@ function renderTable(r: BenchResults): void {
       <table>${head}${rows}</table>
       <p class="note">† uPlot defers its redraw to requestAnimationFrame, so the synchronous
         frame-cost timer reads ~0; its sustained FPS is the honest speed metric. Heap is
-        measured per renderer in isolation (after GC), not as a process-global running max.</p>
+        measured per renderer in isolation and only when the browser exposes GC
+        (run with <span class="mono">--js-flags=--expose-gc</span>); otherwise it shows n/a,
+        because <span class="mono">usedJSHeapSize</span> without forced GC is process-wide
+        noise (and never captures the SVG's native DOM nodes anyway).</p>
       <h2>Sightline frame-cost vs N (proves cost is decoupled from point count)</h2>
       <table><tr><th>Points/series</th><th>Frame cost (avg)</th></tr>${scaling}</table>
       <p class="note">250k / 10k frame-cost ratio: <b>${ratio}×</b> (target &lt; 1.5×).</p>`;

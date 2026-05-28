@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-28T22:26:02.333Z",
+  "generatedAt": "2026-05-28T22:36:46.649Z",
   "browser": "chromium",
   "datasetN": 100000,
   "durationMs": 5000,
@@ -9,11 +9,11 @@
       "label": "Sightline",
       "kind": "sightline",
       "nodeCount": 259,
-      "frames": 598,
-      "fps": 119.6,
-      "frameMs": 0.066625,
+      "frames": 612,
+      "fps": 122.4,
+      "frameMs": 0.0655,
       "deferredDraw": false,
-      "peakHeapMB": 17.082398414611816,
+      "peakHeapMB": 17.297385215759277,
       "axe": {
         "serious": 0,
         "ids": []
@@ -29,11 +29,11 @@
       "label": "uPlot",
       "kind": "fast-inaccessible",
       "nodeCount": 35,
-      "frames": 600,
-      "fps": 119.99760004799903,
-      "frameMs": 0.00027500000596046445,
+      "frames": 595,
+      "fps": 118.98572171339438,
+      "frameMs": 0.0002749999910593033,
       "deferredDraw": true,
-      "peakHeapMB": 14.794488906860352,
+      "peakHeapMB": 15.00948715209961,
       "axe": {
         "serious": 0,
         "ids": []
@@ -50,10 +50,10 @@
       "kind": "accessible-slow",
       "nodeCount": 50213,
       "frames": 81,
-      "fps": 16.2,
-      "frameMs": 50.09166666865349,
+      "fps": 16.092502086065082,
+      "frameMs": 50.375,
       "deferredDraw": false,
-      "peakHeapMB": 15.81093978881836,
+      "peakHeapMB": 16.02592658996582,
       "axe": {
         "serious": 0,
         "ids": []
@@ -68,15 +68,15 @@
   "scaling": [
     {
       "n": 10000,
-      "frameMs": 0.06567499999701977
+      "frameMs": 0.06707500000298024
     },
     {
       "n": 100000,
-      "frameMs": 0.08647499999403954
+      "frameMs": 0.08934999999403953
     },
     {
       "n": 250000,
-      "frameMs": 0.08140000000596047
+      "frameMs": 0.08327500000596047
     }
   ],
   "preciseHeap": true,
