@@ -19,6 +19,22 @@ independent of point count) plus a **real-DOM accessibility layer** overlaid on 
 > This is a **validation MVP**, not a product. See [`FINDINGS.md`](./FINDINGS.md) for the
 > benchmark numbers and an honest verdict on the thesis.
 
+## Install
+
+```sh
+npm install sightline          # ESM, for bundlers (Vite, webpack, esbuild…)
+```
+
+```html
+<!-- Zero build: drop in the UMD bundle (global namespace `Sightline`) -->
+<script src="https://unpkg.com/sightline/dist/sightline.umd.cjs"></script>
+<script>const { Sightline } = window.Sightline;</script>
+```
+
+Evaluating without publishing? Build a local, installable tarball: `pnpm pack:sdk` →
+`sightline-0.1.0.tgz`, then `npm install ./sightline-0.1.0.tgz`. Or open
+[`examples/quickstart.html`](./examples/quickstart.html) directly (no server, no build).
+
 ## Quickstart
 
 ```ts

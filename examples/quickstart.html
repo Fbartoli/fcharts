@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sightline — quickstart</title>
+  <style>
+    :root {
+      --sl-ink: #cfd8e3; --sl-tick-color: #8794a3; --sl-grid: rgba(110,231,168,.07);
+      --sl-axis: rgba(255,255,255,.14); --sl-cursor: rgba(255,255,255,.4); --sl-ring: #0b0f14;
+      --sl-focus: #6ee7a8; --sl-legend-border: rgba(255,255,255,.16);
+      --sl-readout-bg: #10151d; --sl-readout-ink: #e8eef4; --sl-readout-border: rgba(255,255,255,.16);
+    }
+    body { margin: 0; background: #0b0f14; color: #cfd8e3; font: 15px system-ui, sans-serif; padding: 24px; }
+    h1 { font-size: 18px; margin: 0 0 4px; } h1 b { color: #6ee7a8; }
+    p { color: #8794a3; margin: 0 0 18px; font-size: 13px; }
+    #chart { width: 100%; height: 440px; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; background: #0c1016; }
+    code { font-family: ui-monospace, monospace; color: #6ee7a8; }
+  </style>
+</head>
+<body>
+  <h1>SIGHT<b>LINE</b> — quickstart</h1>
+  <p>Drag to pan · scroll to zoom · click the chart then use arrow keys (values are announced).
+    Open DevTools and run
+    <code>JSON.parse(document.querySelector('script[data-sightline]').textContent)</code>
+    to see the data an AI agent reads.</p>
+  <div id="chart"></div>
+
+  <!-- Zero build: drop in the UMD bundle. (For bundlers: `import { Sightline } from 'sightline'`.) -->
+  <script src="../dist/sightline.umd.cjs"></script>
+  <script>
+    const { Sightline } = window.Sightline; // UMD global is the namespace
+
+    const N = 50_000;
+    const x = Float64Array.from({ length: N }, (_, i) => i);
+    let a = 100, b = 60;
+    const price = new Float64Array(N);
+    const vwap = new Float64Array(N);
+    for (let i = 0; i < N; i++) {
+      a += (Math.random() - 0.5) * 0.6 + Math.sin(i / 4000) * 0.02;
+      b = b * 0.999 + a * 0.001;
+      price[i] = a;
+      vwap[i] = b;
+    }
+
+    const chart = new Sightline(document.getElementById('chart'), {
+      series: [
+        { name: 'Price', color: '#6ee7a8', type: 'area', fillAlpha: 0.12 },
+        { name: 'VWAP', color: '#fbbf24' },
+      ],
+      data: { x, y: [price, vwap] },
+      options: { ariaLabel: 'Demo price series', xLabel: 'tick', yLabel: 'price' },
+    });
+
+    // The machine-readable summary an agent / screen reader gets:
+    console.log('render path:', chart.renderPath);
+    console.log('summary:', chart.summary());
+  </script>
+</body>
+</html>

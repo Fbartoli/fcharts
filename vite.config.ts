@@ -23,7 +23,8 @@ export default defineConfig(({ command }) => {
         entry: resolve(here, 'src/index.ts'),
         name: 'Sightline',
         fileName: 'sightline',
-        formats: ['es'],
+        // ESM for bundlers; UMD so prospects can drop a <script> tag with zero build.
+        formats: ['es', 'umd'],
       },
     },
   };

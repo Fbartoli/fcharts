@@ -15,16 +15,20 @@
   "main": "./dist/sightline.js",
   "module": "./dist/sightline.js",
   "types": "./dist/index.d.ts",
+  "unpkg": "./dist/sightline.umd.cjs",
+  "jsdelivr": "./dist/sightline.umd.cjs",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/sightline.js"
+      "import": "./dist/sightline.js",
+      "require": "./dist/sightline.umd.cjs"
     }
   },
   "scripts": {
     "dev": "vite",
     "landing": "SIGHTLINE_ROOT=landing vite",
-    "build": "tsc -p tsconfig.build.json && vite build",
+    "build": "vite build && tsc -p tsconfig.build.json && node scripts/fix-dts.mjs",
+    "pack:sdk": "pnpm build && pnpm pack",
     "preview": "vite preview",
     "test": "node --test test/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",

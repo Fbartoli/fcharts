@@ -1,0 +1,162 @@
+# Sightline
+
+> A dependency-free TypeScript charting library that renders 100k+ data points at 60fps on a
+> `<canvas>` while staying fully accessible — keyboard-navigable, screen-reader-announced,
+> find-in-page-able — through a real-DOM overlay. Because the data lives in the DOM (not just
+> canvas pixels), the same layer makes charts **machine-readable to AI agents**. Web platform
+> only (browsers); ~12KB gzip ESM, zero runtime dependencies.
+
+This file is everything an agent needs to build on Sightline. Source of truth: the public
+API below. Chart family today: time-series **line + area**, multiple series.
+
+## Install
+
+```sh
+npm install sightline
+```
+```html
+<script src="https://unpkg.com/sightline/dist/sightline.umd.cjs"></script>
+<script>const { Sightline } = window.Sightline;</script>
+```
+
+## Minimal usage
+
+```ts
+import { Sightline } from 'sightline';
+
+// The container must have a non-zero size (e.g. width:100%; height:420px). Styles auto-inject.
+const chart = new Sightline(document.getElementById('chart'), {
+  series: [
+    { name: 'Price', color: '#16a34a', type: 'area' },
+    { name: 'VWAP', color: '#d97706' },
+  ],
+  options: { ariaLabel: 'Sensor telemetry', xLabel: 'time', yLabel: 'value' },
+});
+
+// x is shared and non-decreasing; one y per series, each the same length as x.
+const N = 100_000;
+const x = Float64Array.from({ length: N }, (_, i) => i);
+chart.setData({ x, y: [seriesA, seriesB] }); // seriesA/B: Float64Array | number[] of length N
+```
+
+## Public API
+
+```ts
+new Sightline(el: HTMLElement, config: SightlineConfig)
+
+interface SightlineConfig {
+  series: SeriesConfig[];
+  data?: SightlineData;          // optional; or call setData later
+  options?: SightlineOptions;
+}
+
+interface SeriesConfig {
+  name: string;                  // announced to SR, shown in legend/tooltip
+  color: string;                 // CSS color
+  type?: 'line' | 'area';        // default 'line'
+  visible?: boolean;             // default true
+  width?: number;                // stroke px, default 1.25
+  fillAlpha?: number;            // area fill 0..1, default 0.15
+}
+
+interface SightlineData {
+  x: Float64Array | readonly number[];        // shared, NON-DECREASING, finite
+  y: (Float64Array | readonly number[])[];    // one per series, each length === x.length, finite
+}
+
+interface SightlineOptions {
+  ariaLabel?: string;            // accessible chart name (also the summary label)
+  xLabel?: string; yLabel?: string;
+  legend?: boolean;              // default true
+  maxDpr?: number;               // device-pixel-ratio cap, default 2
+  yPadding?: number;             // y-extent padding fraction, default 0.06
+  xInteger?: boolean;            // integer-stepped x ticks, default false
+  xTickCount?: number;           // default 8
+  yTickCount?: number;           // default 6
+  formatX?: (v: number) => string;  // tick + readout x formatter
+  formatY?: (v: number) => string;  // tick + readout y formatter
+  reducedMotion?: boolean;       // else auto from prefers-reduced-motion
+  highContrast?: boolean;        // else auto from prefers-contrast
+}
+
+// Methods (setData/update/renderSync return `this` for chaining)
+chart.setData(data: SightlineData): Sightline      // replace data, reset view to full x-domain
+chart.update(patch: Partial<SightlineConfig>): Sightline  // patch series/options/data in place
+chart.renderSync(domain?: readonly [number, number]): Sightline  // synchronous render / programmatic zoom
+chart.summary(): ChartSummary                      // structured machine-readable summary (see below)
+chart.destroy(): void                              // remove DOM, listeners, observers, timers
+chart.renderPath: 'dom-overlay' | 'html-in-canvas' // getter; DOM-overlay is the default, no-flags path
+chart.htmlInCanvas: { supported: boolean; via: string | null } // getter
+
+interface ChartSummary {
+  label: string; points: number; xStart: number; xEnd: number;
+  series: SeriesSummary[];
+}
+interface SeriesSummary {
+  name: string; visible: boolean;
+  min: number; max: number; first: number; last: number; mean: number;
+  changeAbs: number;   // last - first
+  changePct: number;   // percent change vs first (range-relative when first is 0)
+  trend: 'up' | 'down' | 'flat';  // derived from changePct; <1% is flat
+}
+```
+
+## Agent-readable: how an AI agent reads the data
+
+A canvas chart is opaque pixels. Sightline puts the data in the DOM, so an agent can read it
+three ways (all inside the chart container):
+
+1. **JS, if you hold the instance:** `chart.summary()` → `ChartSummary`.
+2. **Embedded JSON, from the DOM:** `JSON.parse(container.querySelector('script[data-sightline]').textContent)` → the same `ChartSummary`.
+3. **Accessibility tree:** the focusable `[role="application"]` surface has `aria-describedby`
+   pointing to a one-line natural-language summary (values + trend), `aria-details` pointing to
+   a hidden `<table class="sl-table-alt">` of downsampled rows, and an `[aria-live="polite"]`
+   region that announces the focused sample. Axis ticks are real `.sl-tick` text.
+
+To navigate values programmatically: focus the surface, dispatch ArrowLeft/Right/Up/Down/Home/End,
+and read the `[aria-live]` element's textContent after each step.
+
+## Interaction model
+
+- Wheel = zoom x around the pointer · drag = pan.
+- Focus the `[role="application"]` surface, then: `ArrowLeft`/`ArrowRight` move between samples,
+  `ArrowUp`/`ArrowDown` switch series, `Home`/`End` jump to ends, hold `Shift` for fine (1-sample) steps.
+- Legend buttons (`aria-pressed`) toggle series visibility.
+
+## Theming
+
+CSS custom properties on the container or `:root` (a few examples; all have sensible defaults):
+`--sl-ink` (DOM text), `--sl-tick-color`, `--sl-grid`, `--sl-axis`, `--sl-cursor`, `--sl-ring`
+(cursor-dot outline), `--sl-focus` (focus ring), `--sl-readout-bg/-ink/-border` (tooltip).
+
+## Data contract & gotchas
+
+- `x` must be non-decreasing; `x` and every `y` must be the same length; values should be finite
+  (non-finite y is skipped from stats and renders as a gap).
+- One shared `x` across all series (columnar). For irregular/clustered x the renderer still draws
+  a gap-free envelope.
+- The container needs an explicit size. Styles are injected once per document — no CSS import.
+- HTML-in-Canvas is feature-detected; the DOM-overlay path is the default and works in stock
+  Chrome/Firefox/Safari with no flags.
+
+## Performance
+
+- Render cost is O(viewport width), independent of point count: a precomputed min/max pyramid is
+  picked per frame so per-frame work tracks pixels, not N. Frame cost is ~flat from 10k to 250k
+  points (measured ratio ~1.2x; <16ms budget with large headroom).
+- `setData` is O(N) once (builds the pyramid + stats); rendering never iterates raw N.
+
+## Scope (today) and what's NOT included
+
+- IN: time-series line + area, multiple series; wheel-zoom/drag-pan; keyboard cursor; legend;
+  the accessibility + agent-readable layer.
+- NOT YET: candlestick/OHLC/bars/heatmap, real-time streaming appends, framework adapters
+  (React/Vue/Svelte), SSR. The renderer-agnostic `core/` (scales, ticks, pyramid, scheduler)
+  is platform-agnostic, so a WebGL backend or a React Native (Skia) renderer can slot in later,
+  but they are not built. This is a web library — it does not run natively in React Native as-is.
+
+## Links
+
+- Quickstart + theming: README.md
+- Live demo + benchmark vs uPlot/SVG: bench/ (run `pnpm bench`), landing/ (run `pnpm landing`)
+- Honest validation results: FINDINGS.md
