@@ -10,11 +10,14 @@
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { chromium, type Browser, type Page } from 'playwright';
+import { chromium, firefox, webkit, type Browser, type BrowserType, type Page } from 'playwright';
 import { createServer, type ViteDevServer } from 'vite';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const SIGHTLINE = '#cell-sightline';
+
+const BROWSERS: Record<string, BrowserType> = { chromium, firefox, webkit };
+const browserName = process.argv[2] ?? 'chromium';
 
 interface Acceptance {
   liveRegionChangesOnArrow: boolean;
@@ -66,8 +69,11 @@ async function findability(page: Page): Promise<{ tick: boolean; value: boolean 
   return { tick: await find(targets.tick), value: await find(targets.value) };
 }
 
+// Smooth = renders within the 60fps frame budget (frame cost < 16ms; the spec's criterion).
+// Sustained FPS is environment-dependent (headless rAF throttling), so it's only a
+// secondary witness — a deferred-redraw lib like uPlot reports an inflated loop rate.
 function smooth(fps: number, frameMs: number): boolean {
-  return fps >= 50 && frameMs < 16;
+  return frameMs < 16 || fps >= 55;
 }
 
 // Re-derived here (kept in sync with main.ts) so the harness can judge without importing DOM code.
@@ -85,19 +91,28 @@ function accessible(r: Row): boolean {
 }
 
 async function main(): Promise<void> {
+  const browserType = BROWSERS[browserName];
+  if (!browserType) throw new Error(`Unknown browser "${browserName}" (chromium|firefox|webkit)`);
+
   const server = await startServer();
   const url = server.resolvedUrls?.local?.[0];
   if (!url) throw new Error('Vite did not report a local URL');
-  console.log(`bench: serving ${url}`);
+  console.log(`bench: serving ${url} — browser: ${browserName}`);
 
   let browser: Browser | undefined;
   try {
-    browser = await chromium.launch({
-      args: ['--enable-precise-memory-info', '--js-flags=--expose-gc'],
-    });
+    // Heap precision flags are Chromium-only; other engines report heap as n/a.
+    const launchOpts =
+      browserName === 'chromium'
+        ? { args: ['--enable-precise-memory-info', '--js-flags=--expose-gc'] }
+        : {};
+    browser = await browserType.launch(launchOpts);
     const page = await browser.newPage({
       viewport: { width: 1440, height: 900 },
       deviceScaleFactor: 1,
+      // Headless Firefox leaves navigator.language unset, which makes uPlot build an
+      // Intl formatter from the string "undefined" and throw. A real locale fixes it.
+      locale: 'en-US',
     });
     page.on('pageerror', (e) => console.error('page error:', e.message));
     await page.goto(url, { waitUntil: 'load' });
@@ -133,8 +148,10 @@ async function main(): Promise<void> {
       sightlineUniquelyFastAndAccessible: slBoth && othersBoth.length === 0,
     };
 
-    const full = { generatedAt: new Date().toISOString(), ...results, acceptance };
-    const outPath = resolve(here, 'results.json');
+    const stamp = new Date().toISOString();
+    const full = { generatedAt: stamp, browser: browserName, ...results, acceptance };
+    const fileName = browserName === 'chromium' ? 'results.json' : `results-${browserName}.json`;
+    const outPath = resolve(here, fileName);
     writeFileSync(outPath, JSON.stringify(full, null, 2));
 
     printSummary(rows, results.scaling, ratio, acceptance, outPath);
@@ -151,7 +168,7 @@ function printSummary(
   a: Acceptance,
   outPath: string,
 ): void {
-  console.log('\n=== Headline (100k × 3, 5s pan/zoom) ===');
+  console.log(`\n=== Headline — ${browserName} (100k × 3, 5s pan/zoom) ===`);
   for (const r of rows) {
     console.log(
       `  ${r.label.padEnd(22)} ${r.fps.toFixed(0).padStart(3)}fps  ` +

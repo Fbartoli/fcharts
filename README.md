@@ -138,6 +138,7 @@ pnpm test             # unit tests on Node's built-in test runner (no test frame
 pnpm typecheck
 pnpm build            # dist/sightline.js (ESM) + .d.ts
 pnpm dev              # serve the benchmark page
-pnpm bench            # headless FPS + axe-core run → bench/results.json
+pnpm bench            # headless FPS + axe-core run (Chromium) → bench/results.json
+node bench/harness.ts firefox   # or `webkit` — cross-browser run → results-<engine>.json
 pnpm size             # assert the bundle stays under 30 KB gzip
 ```

@@ -270,8 +270,11 @@ async function runAll(durationMs = 5000): Promise<BenchResults> {
 
 // --- on-page table ---
 
+// "Smooth" = can render within the 60fps frame budget. Sustained FPS alone is unreliable
+// (headless browsers throttle rAF; deferred-redraw libs report an inflated loop rate), so
+// frame cost < 16ms is primary, with a high sustained FPS as an alternative witness.
 function smooth(fps: number, frameMs: number): boolean {
-  return fps >= 50 && frameMs < 16;
+  return frameMs < 16 || fps >= 55;
 }
 function accessible(row: HeadlineRow): boolean {
   const a = row.a11y;

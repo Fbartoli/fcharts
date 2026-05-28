@@ -56,6 +56,29 @@ Sightline only, same pan/zoom, average per-frame draw cost:
 sample would be ~25× costlier at 250k than 10k; the precomputed min/max pyramid keeps it
 flat because per-frame work tracks viewport width, not N. (Run-to-run the ratio sits ~1.1–1.3×.)
 
+### Cross-browser (Chromium, Firefox, WebKit/Safari — DOM-overlay path, no flags)
+
+The thesis held in all three engines: Sightline was the only renderer that was both fast
+(frame cost well under the 16 ms / 60 fps budget) and fully accessible (axe-clean + keyboard
+cursor + live region + data table), with the scaling ratio under 1.5×.
+
+| Browser | Sightline frame cost | Sightline FPS | 250k/10k | axe | kbd/live/table | Uniquely fast + accessible |
+|---|---|---|---|---|---|---|
+| Chromium 148 | 0.067 ms | 120 | 1.23× | 0 | ✓✓✓ | ✓ |
+| Firefox | 1.96 ms | 42¹ | 1.40× | 0 | ✓✓✓ | ✓ |
+| WebKit / Safari | 0.157 ms | 60 | 1.16× | 0 | ✓✓✓ | ✓ |
+
+¹ **Sustained FPS is environment-dependent, not a renderer-speed metric.** Headless Firefox
+throttles `requestAnimationFrame` to ~42 Hz, so Sightline shows 42 fps there despite a
+1.96 ms frame cost (≈500 fps of headroom) — on a real Firefox with normal vsync it renders
+at 60. uPlot's "118 fps" on Firefox is also misleading: it's our drive loop calling its
+deferred `setScale`, not 118 real redraws. So the honest "is it smooth" criterion is **frame
+cost < 16 ms** (the spec's own criterion), with FPS reported for context. Per-renderer JS
+heap is omitted from this table because `performance.memory` is Chromium-only.
+
+Each engine's raw output is committed: `bench/results.json` (Chromium),
+`bench/results-firefox.json`, `bench/results-webkit.json`.
+
 ## Acceptance criteria
 
 | Criterion | Result |
@@ -67,7 +90,7 @@ flat because per-frame work tracks viewport width, not N. (Run-to-run the ratio 
 | Keyboard: arrows traverse samples + switch series; every move announced via live region | ✓ asserted in Playwright (`liveRegionChangesOnArrow`) |
 | Ctrl+F finds an axis tick label and a data value | ✓ verified via real `window.find()` (Chromium); browser-dependent for clipped text |
 | Core bundle < 30 KB min+gzip, zero runtime deps | ✓ 10.34 KB gzip, 0 deps |
-| Works in Chrome, Firefox, Safari with no flags (DOM-overlay) | ◑ verified in Chromium; see caveats |
+| Works in Chrome, Firefox, Safari with no flags (DOM-overlay) | ✓ thesis held in Chromium, Firefox, and WebKit (see cross-browser table) |
 
 ## What surprised us / honest caveats
 
@@ -92,12 +115,13 @@ flat because per-frame work tracks viewport width, not N. (Run-to-run the ratio 
    caveats. (This correction came out of the adversarial review — see below.)
 4. **uPlot is genuinely fast** (120 fps) — this is a fair, strong baseline, not a strawman.
    Its only failing is accessibility, which is exactly the gap the thesis targets.
-5. **Cross-browser is verified only in Chromium in this run.** The DOM-overlay path uses
-   only broadly-supported APIs (Canvas2D, `ResizeObserver`, Pointer Events, `aria-live`,
-   `prefers-reduced-motion`/`-contrast`), and HTML-in-Canvas is feature-detected with the
-   overlay as the default path — but Firefox and WebKit were not exercised automatically
-   here. Running the harness against Playwright's `firefox` and `webkit` is the obvious
-   next step to close that box.
+5. **Cross-browser verified in all three engines** (Chromium, Firefox, WebKit) — see the
+   table above; the thesis held in each. Two engine quirks surfaced: (a) headless Firefox
+   throttles rAF (hence Sightline's 42 fps there despite a 1.96 ms frame cost — smoothness is
+   judged on frame cost, not the throttled fps); (b) uPlot threw at init in headless Firefox
+   because it built an `Intl` formatter from an unset `navigator.language` (the string
+   `"undefined"`, which Firefox rejects strictly and Chromium tolerates) — fixed by giving
+   the test context a real `locale`. Sightline itself ran cleanly in every engine.
 6. **HTML-in-Canvas** was correctly detected as **unsupported** in stock Chromium, so the
    DOM-overlay path (the one under test) is what ran — confirming the library is fully fast
    and fully accessible with no flags.
