@@ -149,6 +149,29 @@ key-repeat (now debounced), a `role="application"` discoverability gap (now link
 cross-realm timer-cancel bug. The two most valuable were the heap correction and the gap fix
 — both cases where the original numbers/behavior looked fine but were wrong.
 
+## Profiling (Chrome DevTools / CDP)
+
+A Playwright + CDP pass (Chromium with `--expose-gc`) profiled the hot paths. Verdict: at the
+target scale there is nothing to optimize — and the allocation sample refuted an earlier
+hypothesis (per-frame object churn) outright.
+
+| Measurement | Result | Read |
+|---|---|---|
+| Per-frame draw cost (batched, 100k & 250k × 3) | ~0.12 ms/frame | ~130× under the 16 ms budget; flat with N |
+| rAF-paced 300-frame pan/zoom @ 250k | max frame 0.50 ms, **0 long tasks** | no jank |
+| Allocation sampling over 300 frames @ 250k | **~0.1 KB/frame** | negligible GC pressure — caching scales/ticks is *not* worth it (hypothesis refuted) |
+| Leak: create + destroy ×100 (50k each) | +0.44 MB, **DOM-node delta 0** | GC-noise level; listeners/observers/nodes fully released |
+| Leak: setData ×100 on one chart | ~0 MB | old data/pyramids collected on replace |
+| `setData` one-time build (synchronous) | 100k×3 **5.4 ms** · 250k×3 **5.5 ms** · 1M×3 **31 ms** · 10M **52 ms** | ~5 ms/M points |
+
+**The one real scaling lever:** `setData` is O(N) and synchronous (it builds the min/max
+pyramid + stats once). It's negligible to ~1M total points, crosses a 16 ms frame at ~3M, and
+is a ~52 ms jank at 10M. Rendering never pays this — only the initial load does. If a use case
+needs multi-million-point datasets on load, move the pyramid build to a Web Worker (transfer
+the typed arrays) or chunk it. Deliberately **not** built now: it's beyond the validated
+100k–250k target, and the profile shows zero benefit at that scale (no render bottleneck, no
+leaks, no GC pressure).
+
 ## How to reproduce
 
 ```sh
