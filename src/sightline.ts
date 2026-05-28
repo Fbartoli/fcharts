@@ -35,6 +35,7 @@ import { LiveRegion } from './a11y/live-region.ts';
 import { AxisTicks } from './a11y/ticks.ts';
 import { Legend } from './a11y/legend.ts';
 import { TableAlt } from './a11y/table-alt.ts';
+import { buildSummary, describeSummary, type ChartSummary } from './a11y/summary.ts';
 import { handlesKey, panToInclude, stepCursor } from './a11y/cursor.ts';
 
 type Formatter = (value: number) => string;
@@ -117,6 +118,8 @@ export class Sightline {
   private readonly axisTicks: AxisTicks;
   private readonly legend: Legend | null;
   private readonly tableAlt: TableAlt;
+  private readonly summaryEl: HTMLElement;
+  private readonly dataScript: HTMLElement;
   private readonly readout: ReadoutEls;
   private readonly resizeObserver: ResizeObserver;
   private readonly listeners = new AbortController();
@@ -150,12 +153,23 @@ export class Sightline {
     this.data = new ChartData(config.data ?? { x: [], y: config.series.map(() => []) });
 
     // --- DOM ---
-    const tableId = `sl-data-${++instanceSeq}`;
+    const seq = ++instanceSeq;
+    const tableId = `sl-data-${seq}`;
+    const summaryId = `sl-summary-${seq}`;
     this.root.classList.add('sl-root');
     this.liveRegion = new LiveRegion(this.doc);
     this.axisTicks = new AxisTicks(this.doc, this.options.xLabel, this.options.yLabel);
     this.tableAlt = new TableAlt(this.doc);
     this.tableAlt.el.id = tableId;
+
+    // Machine-readable layer: a one-line natural-language summary (aria-describedby, so it
+    // is announced and agent-readable) plus a structured JSON block for DOM scrapers.
+    this.summaryEl = this.doc.createElement('p');
+    this.summaryEl.className = 'sl-sr-only';
+    this.summaryEl.id = summaryId;
+    this.dataScript = this.doc.createElement('script');
+    this.dataScript.setAttribute('type', 'application/json');
+    this.dataScript.setAttribute('data-sightline', 'summary');
     this.legend = this.options.legend
       ? new Legend(this.series, (i) => this.toggleSeries(i), this.doc)
       : null;
@@ -175,6 +189,8 @@ export class Sightline {
     // Point the focused widget at its data table so screen-reader users can reach it
     // without leaving application mode and blindly browsing.
     this.surface.setAttribute('aria-details', tableId);
+    // Describe the data (values + trend) so SR users and AI agents get it on focus.
+    this.surface.setAttribute('aria-describedby', summaryId);
 
     this.readout = buildReadout(this.doc);
 
@@ -186,6 +202,8 @@ export class Sightline {
       this.surface,
       this.readout.el,
       this.tableAlt.el,
+      this.summaryEl,
+      this.dataScript,
     );
     this.root.append(this.plot);
 
@@ -201,7 +219,9 @@ export class Sightline {
 
     this.measure();
     this.resetView();
-    if (config.data) this.refreshDerived();
+    // Always run, even without initial data, so the surface has an accessible name and a
+    // populated (non-empty) aria-describedby target before any setData().
+    this.refreshDerived();
     this.requestRender();
   }
 
@@ -213,6 +233,16 @@ export class Sightline {
   /** HTML-in-Canvas support details (for diagnostics/badges). */
   get htmlInCanvas(): HtmlInCanvasSupport {
     return this.support;
+  }
+
+  /**
+   * Structured, machine-readable summary of the current data — per-series min/max/first/
+   * last/mean, change, and trend. The same object is embedded as JSON in the DOM and
+   * distilled into the chart's accessible description, so screen readers and AI agents get
+   * the values a bare `<canvas>` chart hides.
+   */
+  summary(): ChartSummary {
+    return buildSummary(this.data, this.series, this.options.ariaLabel ?? 'Chart');
   }
 
   /** Replace the dataset. Resets the view to the full x-domain. */
@@ -290,8 +320,16 @@ export class Sightline {
     const pad = (yMax - yMin) * this.options.yPadding;
     this.yDomain = [yMin - pad, yMax + pad];
     this.surface.setAttribute('aria-label', this.describeChart());
+    this.updateSummary();
     this.ticksDirty = true;
     this.scheduleTableUpdate();
+  }
+
+  /** Refresh the natural-language description and embedded JSON. Off the frame path. */
+  private updateSummary(): void {
+    const s = this.summary();
+    this.summaryEl.textContent = describeSummary(s, this.options.formatX, this.options.formatY);
+    this.dataScript.textContent = JSON.stringify(s);
   }
 
   private describeChart(): string {

@@ -30,9 +30,13 @@ export interface SightlineData {
   y: NumberArray[];
 }
 
-export interface Extent {
+/** Per-series summary statistics over the full dataset (computed once at setData). */
+export interface SeriesStats {
   min: number;
   max: number;
+  first: number;
+  last: number;
+  mean: number;
 }
 
 /** A series with all optional fields resolved to concrete defaults. */
@@ -82,15 +86,30 @@ function toF64(a: NumberArray): Float64Array {
   return a instanceof Float64Array ? a : Float64Array.from(a);
 }
 
-function extentOf(y: Float64Array): Extent {
+/**
+ * Per-series stats over the finite samples. Non-finite values (NaN/±Infinity) are skipped
+ * so the stats — and the machine-readable JSON built from them — are always real numbers
+ * rather than the `null` that `JSON.stringify` would emit for NaN/Infinity.
+ */
+function statsOf(y: Float64Array): SeriesStats {
   let min = Infinity;
   let max = -Infinity;
+  let sum = 0;
+  let count = 0;
+  let first = 0;
+  let last = 0;
   for (let i = 0; i < y.length; i++) {
     const v = y[i];
+    if (!Number.isFinite(v)) continue;
+    if (count === 0) first = v;
+    last = v;
     if (v < min) min = v;
     if (v > max) max = v;
+    sum += v;
+    count++;
   }
-  return { min, max };
+  if (count === 0) return { min: 0, max: 0, first: 0, last: 0, mean: 0 };
+  return { min, max, first, last, mean: sum / count };
 }
 
 /**
@@ -104,7 +123,7 @@ export class ChartData {
   readonly y: readonly Float64Array[];
   readonly n: number;
   readonly pyramids: readonly MinMaxPyramid[];
-  readonly extents: readonly Extent[];
+  readonly stats: readonly SeriesStats[];
 
   constructor(data: SightlineData) {
     this.x = toF64(data.x);
@@ -119,7 +138,7 @@ export class ChartData {
       }
       return arr;
     });
-    this.extents = this.y.map(extentOf);
+    this.stats = this.y.map(statsOf);
     this.pyramids = this.y.map(buildPyramid);
   }
 
@@ -137,11 +156,12 @@ export class ChartData {
    * @returns [min, max], widened to a unit span when degenerate so scales never collapse.
    */
   yExtent(visible: readonly boolean[]): [number, number] {
+    if (this.n === 0) return [0, 1];
     let min = Infinity;
     let max = -Infinity;
-    for (let s = 0; s < this.extents.length; s++) {
+    for (let s = 0; s < this.stats.length; s++) {
       if (visible[s] === false) continue;
-      const e = this.extents[s];
+      const e = this.stats[s];
       if (e.min < min) min = e.min;
       if (e.max > max) max = e.max;
     }

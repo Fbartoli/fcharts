@@ -70,10 +70,24 @@ new Sightline(el: HTMLElement, config: SightlineConfig)
 
 chart.setData({ x, y })          // replace data, reset the view
 chart.update({ series, options }) // patch series/options in place
+chart.renderSync(domain?)         // synchronous render (programmatic zoom / capture)
+chart.summary()                   // structured ChartSummary (see "Agent-readable")
 chart.destroy()                   // remove DOM, listeners, observers
 chart.renderPath                  // 'dom-overlay' | 'html-in-canvas'
 chart.htmlInCanvas                // { supported, via }
 ```
+
+### Agent-readable
+
+The accessibility layer is the same substrate AI agents and crawlers read. Beyond the live
+region and data table, each chart distills its data into a structured summary — exposed
+three ways:
+
+- `chart.summary()` → `ChartSummary` (per-series min/max/first/last/mean, change, trend).
+- a one-line natural-language description on the focusable surface (`aria-describedby`), so
+  screen readers and agents get the values and trend on focus.
+- an embedded `<script type="application/json" data-sightline>` block any DOM scraper can
+  parse — where a `<canvas>` chart is an opaque bitmap.
 
 ### Config
 

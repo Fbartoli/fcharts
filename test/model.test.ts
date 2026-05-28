@@ -13,9 +13,16 @@ test('ChartData: normalizes arrays and exposes n, extents, pyramids', () => {
   assert.equal(d.n, 4);
   assert.equal(d.y.length, 2);
   assert.ok(d.x instanceof Float64Array);
-  assert.deepEqual(d.extents[0], { min: 10, max: 40 });
-  assert.deepEqual(d.extents[1], { min: -5, max: 5 });
+  assert.deepEqual(d.stats[0], { min: 10, max: 40, first: 10, last: 40, mean: 25 });
+  assert.deepEqual(d.stats[1], { min: -5, max: 5, first: -5, last: 2, mean: 0.5 });
   assert.equal(d.pyramids.length, 2);
+});
+
+test('ChartData: stats skip non-finite y (NaN/Infinity) so summaries stay real numbers', () => {
+  const d = new ChartData({ x: [0, 1, 2, 3], y: [[10, NaN, 30, Infinity]] });
+  // Only the finite samples (10, 30) count.
+  assert.deepEqual(d.stats[0], { min: 10, max: 30, first: 10, last: 30, mean: 20 });
+  for (const v of Object.values(d.stats[0])) assert.ok(Number.isFinite(v));
 });
 
 test('ChartData: keeps a Float64Array x without copying', () => {

@@ -120,6 +120,30 @@
     .fcard p{color:var(--muted);font-size:14px;margin:0}
     .fcard .ic{font-size:20px}
 
+    /* agent-readable */
+    .agent-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:36px;align-items:start}
+    @media(max-width:820px){.agent-grid{grid-template-columns:1fr}}
+    .agent-card{border:1px solid var(--line);border-radius:14px;padding:20px;background:var(--panel)}
+    .agent-card.win{border-color:var(--accent);background:linear-gradient(180deg,var(--accent-dim),transparent)}
+    .ac-h{font-weight:600;font-size:15px;display:flex;align-items:baseline;gap:8px;margin-bottom:14px}
+    .ac-h span{color:var(--faint);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+    .canvas-blank{height:96px;border-radius:10px;border:1px dashed var(--line-2);
+      background:repeating-linear-gradient(45deg,rgba(255,255,255,.02),rgba(255,255,255,.02) 8px,transparent 8px,transparent 16px);
+      display:flex;align-items:center;justify-content:center;color:var(--faint);
+      font-family:ui-monospace,monospace;font-size:13px}
+    .agent-sentence{font-size:13.5px;color:var(--ink);margin:0 0 12px;line-height:1.5}
+    .agent-series{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+    .as-row{display:flex;align-items:center;gap:10px;font-size:13px}
+    .as-row .sw{width:9px;height:9px;border-radius:2px;flex:none}
+    .as-row .nm{font-weight:600;min-width:84px}
+    .as-row .rng{color:var(--muted);font-variant-numeric:tabular-nums}
+    .as-row .tr{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:600}
+    .as-row .tr.up{color:var(--accent)} .as-row .tr.down{color:var(--danger)} .as-row .tr.flat{color:var(--muted)}
+    .agent-json{margin:0;padding:12px;border-radius:10px;background:#05070a;border:1px solid var(--line);
+      font-family:ui-monospace,monospace;font-size:11px;color:#a7b6c4;overflow:auto;max-height:168px;line-height:1.5}
+    .ac-note{font-size:12.5px;color:var(--muted);margin:14px 0 0}
+    .ac-note .yes{color:var(--accent);font-weight:700} .ac-note .no{color:var(--danger);font-weight:700}
+
     /* cta */
     .final{text-align:center;padding:80px 0}
     .final h2{margin:0 auto;max-width:24ch}
@@ -228,6 +252,34 @@
           <tr class="me"><td>Sightline</td><td>canvas + DOM</td><td class="yes">fast</td><td class="yes">yes</td><td class="yes">yes</td><td class="yes">yes</td></tr>
         </tbody>
       </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="agents">
+    <div class="wrap">
+      <div class="lead">Accessible = agent-readable</div>
+      <h2>Charts your AI agents can actually read.</h2>
+      <p class="desc">The same real-DOM layer that serves screen readers makes the data legible
+        to LLM agents and crawlers. A canvas chart is an opaque bitmap; Sightline exposes exact
+        values and trend in the accessibility tree and as embedded JSON. Below is live data
+        pulled straight from the chart at the top of this page.</p>
+      <div class="agent-grid">
+        <div class="agent-card">
+          <div class="ac-h">A canvas chart <span>TradingView · uPlot</span></div>
+          <div class="canvas-blank">&lt;canvas&gt;</div>
+          <p class="ac-note">What an agent (or screen reader) extracts: <b class="no">nothing</b>.
+            It's a bitmap — the agent must screenshot and guess. No values, no trend, not findable.</p>
+        </div>
+        <div class="agent-card win">
+          <div class="ac-h">Sightline <span>read live from the DOM</span></div>
+          <p class="agent-sentence" id="agent-sentence">…</p>
+          <div class="agent-series" id="agent-series"></div>
+          <pre class="agent-json" id="agent-json">…</pre>
+          <p class="ac-note"><b class="yes">Exact values</b>, no vision model required — embedded as
+            <span class="mono">&lt;script type="application/json" data-sightline&gt;</span> and in the
+            accessibility tree.</p>
+        </div>
       </div>
     </div>
   </section>
