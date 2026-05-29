@@ -20,4 +20,7 @@ export {
   AA_NON_TEXT,
 } from './contrast.ts';
 export type { Rgba } from './contrast.ts';
+export { EDITIONS, buildSections } from './editions.ts';
+export { buildModel, renderAcr, tally, LEGAL } from './acr.ts';
+export type { BuildModelInput, AcrFormat } from './acr.ts';
 export type * from './types.ts';
