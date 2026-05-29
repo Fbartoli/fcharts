@@ -4,25 +4,31 @@
  * correct screen-reader state come for free.
  */
 import type { ResolvedSeries } from '../core/model.ts';
+import type { SightlineStrings } from './strings.ts';
+
+type LegendStrings = Pick<SightlineStrings, 'legendGroup' | 'shown' | 'hidden'>;
 
 export class Legend {
   readonly el: HTMLElement;
   private readonly list: HTMLUListElement;
   private readonly doc: Document;
   private readonly onToggle: (index: number) => void;
+  private readonly strings: LegendStrings;
   private buttons: HTMLButtonElement[] = [];
 
   constructor(
     series: readonly ResolvedSeries[],
     onToggle: (index: number) => void,
+    strings: LegendStrings,
     doc: Document = document,
   ) {
     this.doc = doc;
     this.onToggle = onToggle;
+    this.strings = strings;
     this.el = doc.createElement('div');
     this.el.className = 'sl-legend';
     this.el.setAttribute('role', 'group');
-    this.el.setAttribute('aria-label', 'Series — activate to show or hide');
+    this.el.setAttribute('aria-label', strings.legendGroup);
     this.list = doc.createElement('ul');
     this.el.append(this.list);
     this.build(series);
@@ -48,6 +54,9 @@ export class Legend {
 
       const state = this.doc.createElement('span');
       state.className = 'sl-legend-state';
+      // Visible-only state cue: aria-pressed already conveys shown/hidden to AT, so keeping
+      // this out of the accessible name leaves the button's name as the stable series name.
+      state.setAttribute('aria-hidden', 'true');
 
       button.append(swatch, name, state);
       li.append(button);
@@ -71,7 +80,7 @@ export class Legend {
       const button = this.buttons[i];
       button.setAttribute('aria-pressed', String(s.visible));
       const state = button.querySelector('.sl-legend-state');
-      if (state) state.textContent = s.visible ? 'shown' : 'hidden';
+      if (state) state.textContent = s.visible ? this.strings.shown : this.strings.hidden;
     });
   }
 

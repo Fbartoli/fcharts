@@ -36,7 +36,8 @@ import { AxisTicks } from './a11y/ticks.ts';
 import { Legend } from './a11y/legend.ts';
 import { TableAlt } from './a11y/table-alt.ts';
 import { buildSummary, describeSummary, type ChartSummary } from './a11y/summary.ts';
-import { handlesKey, panToInclude, stepCursor } from './a11y/cursor.ts';
+import { handlesKey, panToInclude, stepCursor, zoomFactor } from './a11y/cursor.ts';
+import { format, resolveStrings, type SightlineStrings } from './a11y/strings.ts';
 
 type Formatter = (value: number) => string;
 
@@ -61,6 +62,8 @@ export interface SightlineOptions {
   reducedMotion?: boolean;
   /** Force high-contrast behavior (otherwise auto-detected). */
   highContrast?: boolean;
+  /** Localize the library's fixed UI strings (legend, keyboard help, summary, caption). */
+  strings?: Partial<SightlineStrings>;
 }
 
 export interface SightlineConfig {
@@ -86,8 +89,11 @@ interface ReadoutEls {
 export class Sightline {
   private readonly root: HTMLElement;
   private readonly doc: Document;
-  private readonly options: Required<Omit<SightlineOptions, 'ariaLabel' | 'xLabel' | 'yLabel'>> &
+  private readonly options: Required<
+    Omit<SightlineOptions, 'ariaLabel' | 'xLabel' | 'yLabel' | 'strings'>
+  > &
     Pick<SightlineOptions, 'ariaLabel' | 'xLabel' | 'yLabel'>;
+  private readonly strings: SightlineStrings;
 
   private series: ResolvedSeries[];
   private data: ChartData;
@@ -119,6 +125,7 @@ export class Sightline {
   private readonly legend: Legend | null;
   private readonly tableAlt: TableAlt;
   private readonly summaryEl: HTMLElement;
+  private readonly activeSample: HTMLElement;
   private readonly dataScript: HTMLElement;
   private readonly readout: ReadoutEls;
   private readonly resizeObserver: ResizeObserver;
@@ -147,6 +154,7 @@ export class Sightline {
       xLabel: config.options?.xLabel,
       yLabel: config.options?.yLabel,
     };
+    this.strings = resolveStrings(config.options?.strings);
 
     injectStyles(this.doc);
     this.series = resolveSeries(config.series);
@@ -156,6 +164,7 @@ export class Sightline {
     const seq = ++instanceSeq;
     const tableId = `sl-data-${seq}`;
     const summaryId = `sl-summary-${seq}`;
+    const activeId = `sl-active-${seq}`;
     this.root.classList.add('sl-root');
     this.liveRegion = new LiveRegion(this.doc);
     this.axisTicks = new AxisTicks(this.doc, this.options.xLabel, this.options.yLabel);
@@ -167,11 +176,17 @@ export class Sightline {
     this.summaryEl = this.doc.createElement('p');
     this.summaryEl.className = 'sl-sr-only';
     this.summaryEl.id = summaryId;
+    // The focused sample as a programmatically-determinable value: an aria-describedby target
+    // updated in lockstep with the cursor (vs. the live region, which is a transient
+    // announcement). Lets AT/automation *query* the current point, not just hear it announced.
+    this.activeSample = this.doc.createElement('span');
+    this.activeSample.className = 'sl-sr-only';
+    this.activeSample.id = activeId;
     this.dataScript = this.doc.createElement('script');
     this.dataScript.setAttribute('type', 'application/json');
     this.dataScript.setAttribute('data-sightline', 'summary');
     this.legend = this.options.legend
-      ? new Legend(this.series, (i) => this.toggleSeries(i), this.doc)
+      ? new Legend(this.series, (i) => this.toggleSeries(i), this.strings, this.doc)
       : null;
 
     this.canvas = this.doc.createElement('canvas');
@@ -189,13 +204,14 @@ export class Sightline {
     // Point the focused widget at its data table so screen-reader users can reach it
     // without leaving application mode and blindly browsing.
     this.surface.setAttribute('aria-details', tableId);
-    // Describe the data (values + trend) so SR users and AI agents get it on focus.
-    this.surface.setAttribute('aria-describedby', summaryId);
+    // Describe the data (values + trend) plus the focused sample (updated live) so SR users
+    // and AI agents get the overview on focus and can query the current point.
+    this.surface.setAttribute('aria-describedby', `${summaryId} ${activeId}`);
 
     this.readout = buildReadout(this.doc);
 
     if (this.legend) this.root.append(this.legend.el);
-    this.surface.append(this.liveRegion.el);
+    this.surface.append(this.liveRegion.el, this.activeSample);
     this.plot.append(
       this.canvas,
       this.axisTicks.el,
@@ -321,6 +337,7 @@ export class Sightline {
     this.yDomain = [yMin - pad, yMax + pad];
     this.surface.setAttribute('aria-label', this.describeChart());
     this.updateSummary();
+    this.updateActiveSample();
     this.ticksDirty = true;
     this.scheduleTableUpdate();
   }
@@ -328,19 +345,22 @@ export class Sightline {
   /** Refresh the natural-language description and embedded JSON. Off the frame path. */
   private updateSummary(): void {
     const s = this.summary();
-    this.summaryEl.textContent = describeSummary(s, this.options.formatX, this.options.formatY);
+    this.summaryEl.textContent = describeSummary(
+      s,
+      this.options.formatX,
+      this.options.formatY,
+      this.strings,
+    );
     this.dataScript.textContent = JSON.stringify(s);
   }
 
   private describeChart(): string {
-    const name = this.options.ariaLabel ?? 'Chart';
-    const count = this.series.length;
-    return (
-      `${name}. ${count} series, ${this.data.n.toLocaleString()} points each. ` +
-      'Left and right arrows move between samples; up and down switch series; ' +
-      'Home and End jump to the ends; hold Shift for fine steps. ' +
-      'A sampled data table follows for screen-reader review.'
-    );
+    return format(this.strings.chartName, {
+      name: this.options.ariaLabel ?? 'Chart',
+      series: this.series.length,
+      points: this.data.n.toLocaleString(),
+      help: this.strings.keyboardHelp,
+    });
   }
 
   private measure(): void {
@@ -425,6 +445,8 @@ export class Sightline {
         formatX: this.options.formatX,
         formatY: this.options.formatY,
         caption: this.options.ariaLabel ?? 'Chart data',
+        captionTemplate: this.strings.tableCaption,
+        xLabel: this.options.xLabel,
       });
     };
     this.tableTimer = view ? view.setTimeout(run, TABLE_THROTTLE_MS) : (run(), 0);
@@ -441,15 +463,29 @@ export class Sightline {
   }
 
   /** Announce the current cursor position immediately (used on focus — a single event). */
-  private announceNow(): void {
+  /** Natural-language text for the focused sample, or null when there's nothing to describe. */
+  private currentSampleText(): string | null {
     const s = this.series[this.cursor.series];
-    if (!s || this.data.n === 0) return;
+    if (!s || this.data.n === 0) return null;
     const x = this.data.x[this.cursor.index];
     const v = this.data.y[s.index][this.cursor.index];
     const lx = this.options.xLabel ?? 'x';
     const ly = this.options.yLabel ?? 'value';
-    const xy = `${lx} ${this.options.formatX(x)}, ${ly} ${this.options.formatY(v)}`;
-    this.liveRegion.announce(`${s.name} — ${xy}`);
+    return `${s.name} — ${lx} ${this.options.formatX(x)}, ${ly} ${this.options.formatY(v)}`;
+  }
+
+  private announceNow(): void {
+    const text = this.currentSampleText();
+    if (text) this.liveRegion.announce(text);
+  }
+
+  /**
+   * Mirror the focused sample into the aria-describedby target so it is a programmatically
+   * queryable value (4.1.2), not only a transient live announcement. Updated synchronously
+   * with the cursor (unlike the debounced live region); cleared when the cursor is inactive.
+   */
+  private updateActiveSample(): void {
+    this.activeSample.textContent = this.cursorActive ? (this.currentSampleText() ?? '') : '';
   }
 
   /** Coalesce announcements during rapid movement (key-repeat, hover) to the settled point. */
@@ -500,6 +536,7 @@ export class Sightline {
 
   private onFocus(): void {
     this.cursorActive = true;
+    this.updateActiveSample();
     this.announceNow();
     this.requestRender();
   }
@@ -507,6 +544,7 @@ export class Sightline {
   private onBlur(): void {
     if (this.dragging) return;
     this.cursorActive = false;
+    this.updateActiveSample();
     this.readout.el.classList.remove('sl-show');
     this.requestRender();
   }
@@ -514,6 +552,15 @@ export class Sightline {
   private onKeyDown(e: KeyboardEvent): void {
     if (!handlesKey(e.key)) return;
     e.preventDefault();
+    if (e.key === 'Escape') {
+      this.dismissCursor();
+      return;
+    }
+    const factor = zoomFactor(e.key);
+    if (factor !== null) {
+      this.zoomAroundCursor(factor);
+      return;
+    }
     const next = stepCursor(this.cursor, e.key, {
       n: this.data.n,
       visibleCount: this.visibleCount(),
@@ -523,6 +570,7 @@ export class Sightline {
     if (!next) return;
     this.cursor = next;
     this.cursorActive = true;
+    this.updateActiveSample();
     const [b0, b1] = this.domain;
     this.domain = panToInclude(this.domain, this.data.x[this.cursor.index]);
     if (this.domain[0] !== b0 || this.domain[1] !== b1) {
@@ -531,6 +579,23 @@ export class Sightline {
     }
     this.queueAnnounce();
     this.requestRender();
+  }
+
+  /** Dismiss the cursor/readout (Escape) without moving focus, so a later arrow re-activates it. */
+  private dismissCursor(): void {
+    this.cursorActive = false;
+    this.updateActiveSample();
+    this.readout.el.classList.remove('sl-show');
+    this.requestRender();
+  }
+
+  /** Zoom the x-domain around the current cursor sample (keyboard equivalent of wheel-zoom). */
+  private zoomAroundCursor(factor: number): void {
+    const [d0, d1] = this.domain;
+    const cx = this.data.n > 0 ? this.data.x[this.cursor.index] : (d0 + d1) / 2;
+    this.cursorActive = true;
+    this.updateActiveSample();
+    this.setDomain([cx - (cx - d0) * factor, cx + (d1 - cx) * factor]);
   }
 
   private onWheel(e: WheelEvent): void {
@@ -573,6 +638,7 @@ export class Sightline {
   private onPointerLeave(): void {
     if (this.dragging || this.doc.activeElement === this.surface) return;
     this.cursorActive = false;
+    this.updateActiveSample();
     this.readout.el.classList.remove('sl-show');
     this.requestRender();
   }
@@ -586,6 +652,7 @@ export class Sightline {
     this.cursor = { series: this.cursor.series, index: idx };
     if (!this.series[this.cursor.series]?.visible) this.cursor.series = this.firstVisibleSeries();
     this.cursorActive = true;
+    this.updateActiveSample();
     this.queueAnnounce();
     this.requestRender();
   }

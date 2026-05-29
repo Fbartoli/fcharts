@@ -8,6 +8,7 @@
  */
 import { lowerBound } from '../core/downsample.ts';
 import type { ChartData, ResolvedSeries } from '../core/model.ts';
+import { DEFAULT_STRINGS, format } from './strings.ts';
 
 export interface TableUpdate {
   data: ChartData;
@@ -16,6 +17,10 @@ export interface TableUpdate {
   formatX: (v: number) => string;
   formatY: (v: number) => string;
   caption: string;
+  /** Caption template with `{caption}` `{series}` `{rows}` tokens. Defaults to the English string. */
+  captionTemplate?: string;
+  /** Header for the x (independent-variable) column. Defaults to 'x' when unset. */
+  xLabel?: string;
   /** Max sampled rows (the table summarizes, it does not dump all N). Default 40. */
   maxRows?: number;
 }
@@ -59,7 +64,7 @@ export class TableAlt {
 
     const frag = this.doc.createDocumentFragment();
     frag.append(this.buildCaption(u, visible.length, rows.length));
-    frag.append(this.buildHead(visible));
+    frag.append(this.buildHead(visible, u.xLabel ?? 'x'));
     frag.append(this.buildBody(u, visible, rows));
 
     this.table.replaceChildren(frag);
@@ -67,15 +72,18 @@ export class TableAlt {
 
   private buildCaption(u: TableUpdate, seriesCount: number, rowCount: number): HTMLElement {
     const caption = this.doc.createElement('caption');
-    caption.textContent =
-      `${u.caption} — ${seriesCount} series, ${rowCount} sampled rows across the visible range.`;
+    caption.textContent = format(u.captionTemplate ?? DEFAULT_STRINGS.tableCaption, {
+      caption: u.caption,
+      series: seriesCount,
+      rows: rowCount,
+    });
     return caption;
   }
 
-  private buildHead(visible: readonly ResolvedSeries[]): HTMLElement {
+  private buildHead(visible: readonly ResolvedSeries[], xHeader: string): HTMLElement {
     const thead = this.doc.createElement('thead');
     const tr = this.doc.createElement('tr');
-    tr.append(this.th('x'));
+    tr.append(this.th(xHeader));
     for (const s of visible) tr.append(this.th(s.name));
     thead.append(tr);
     return thead;

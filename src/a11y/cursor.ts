@@ -20,9 +20,28 @@ export interface CursorStepOptions {
 
 const KEYS = new Set(['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'Home', 'End']);
 
-/** True if this key is one the cursor handles (so callers know to preventDefault). */
+// Keyboard zoom so a pointer-free user can change magnification, not just pan (WCAG 2.1.1):
+// '+'/'=' zoom in, '-'/'_' zoom out.
+const ZOOM_IN = new Set(['+', '=']);
+const ZOOM_OUT = new Set(['-', '_']);
+
+/**
+ * True if this key is one the data surface handles (navigation, zoom, or Escape-to-dismiss),
+ * so callers know to call preventDefault.
+ */
 export function handlesKey(key: string): boolean {
-  return KEYS.has(key);
+  return KEYS.has(key) || ZOOM_IN.has(key) || ZOOM_OUT.has(key) || key === 'Escape';
+}
+
+/**
+ * Domain-scaling factor for a zoom key: `<1` zooms in (narrows the view), `>1` zooms out, or
+ * `null` if the key is not a zoom key. Mirrors the wheel step (1.15×) so keyboard and pointer
+ * zoom behave identically.
+ */
+export function zoomFactor(key: string): number | null {
+  if (ZOOM_IN.has(key)) return 1 / 1.15;
+  if (ZOOM_OUT.has(key)) return 1.15;
+  return null;
 }
 
 function findVisible(start: number, dir: 1 | -1, visible: readonly boolean[]): number {

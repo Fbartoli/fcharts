@@ -38,14 +38,19 @@ const CSS = `
 .sl-legend ul{display:flex;flex-wrap:wrap;gap:6px;list-style:none;margin:0;padding:0}
 .sl-legend li{margin:0}
 .sl-legend button{display:inline-flex;align-items:center;gap:7px;cursor:pointer;padding:5px 10px;
+  min-height:24px;min-width:24px;line-height:1.1;
   border-radius:7px;border:1px solid var(--sl-legend-border,rgba(0,0,0,.15));
   background:var(--sl-legend-bg,transparent);color:inherit;font:inherit;font-size:12.5px;
   font-weight:600}
 .sl-legend button:hover{border-color:var(--sl-legend-border-hover,rgba(0,0,0,.4))}
-.sl-legend button[aria-pressed="false"]{opacity:.45}
+/* "Hidden" state is conveyed by aria-pressed (to AT), a strikethrough name and a dimmed
+   swatch (to sighted users) — never by reducing text opacity, which would drop the label
+   below the 4.5:1 contrast minimum (WCAG 1.4.3). */
+.sl-legend button[aria-pressed="false"] .sl-swatch{opacity:.35}
+.sl-legend button[aria-pressed="false"] .sl-legend-name{text-decoration:line-through}
 .sl-swatch{width:11px;height:11px;border-radius:3px;flex:none}
 .sl-legend-name{white-space:nowrap}
-.sl-legend-state{font-size:10px;opacity:.65;font-weight:500}
+.sl-legend-state{font-size:10px;font-weight:500}
 @media (prefers-reduced-motion:reduce){.sl-readout{transition:none}}
 @media (prefers-contrast:more){
   .sl-tick{color:var(--sl-tick-color,#1f2937)}

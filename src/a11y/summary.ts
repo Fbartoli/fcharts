@@ -8,6 +8,7 @@
  * values and trend — pure functions, no DOM, unit-tested.
  */
 import type { ChartData, ResolvedSeries } from '../core/model.ts';
+import { DEFAULT_STRINGS, format, type SightlineStrings } from './strings.ts';
 
 export type Trend = 'up' | 'down' | 'flat';
 
@@ -89,17 +90,30 @@ export function describeSummary(
   summary: ChartSummary,
   fmtX: (v: number) => string,
   fmtY: (v: number) => string,
+  strings: SightlineStrings = DEFAULT_STRINGS,
 ): string {
-  if (summary.points === 0 || summary.series.length === 0) return `${summary.label}: no data.`;
+  const label = summary.label;
+  if (summary.points === 0 || summary.series.length === 0) {
+    return format(strings.summaryNoData, { label });
+  }
   const shown = summary.series.filter((s) => s.visible);
   const points = summary.points.toLocaleString();
-  if (shown.length === 0) {
-    return `${summary.label}: ${points} points per series, all series hidden.`;
-  }
+  if (shown.length === 0) return format(strings.summaryAllHidden, { label, points });
   const parts = shown.map((s) => {
-    const dir = s.trend === 'flat' ? 'flat' : `${s.trend} ${Math.abs(s.changePct).toFixed(1)}%`;
-    return `${s.name} ranges ${fmtY(s.min)} to ${fmtY(s.max)}, now ${fmtY(s.last)} (${dir})`;
+    const dir =
+      s.trend === 'flat'
+        ? strings.trendFlat
+        : format(s.trend === 'up' ? strings.trendUp : strings.trendDown, {
+            pct: Math.abs(s.changePct).toFixed(1),
+          });
+    return format(strings.summaryPart, {
+      name: s.name,
+      min: fmtY(s.min),
+      max: fmtY(s.max),
+      last: fmtY(s.last),
+      dir,
+    });
   });
-  const span = `${fmtX(summary.xStart)} to ${fmtX(summary.xEnd)}`;
-  return `${summary.label}: ${points} points per series from ${span}. ${parts.join('; ')}.`;
+  const span = format(strings.summarySpan, { start: fmtX(summary.xStart), end: fmtX(summary.xEnd) });
+  return format(strings.summaryLine, { label, points, span, parts: parts.join('; ') });
 }

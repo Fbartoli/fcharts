@@ -1,16 +1,27 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { handlesKey, panToInclude, stepCursor } from '../src/a11y/cursor.ts';
+import { handlesKey, panToInclude, stepCursor, zoomFactor } from '../src/a11y/cursor.ts';
 
 const ALL_VISIBLE = [true, true, true];
 
-test('handlesKey: recognizes navigation keys only', () => {
-  for (const k of ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End']) {
+test('handlesKey: recognizes navigation, zoom, and Escape keys', () => {
+  for (const k of ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End',
+                   '+', '=', '-', '_', 'Escape']) {
     assert.equal(handlesKey(k), true, k);
   }
   for (const k of ['a', 'Enter', 'Tab', ' ', 'PageUp']) {
     assert.equal(handlesKey(k), false, k);
   }
+});
+
+test('zoomFactor: + zooms in (<1), - zooms out (>1), other keys null', () => {
+  assert.ok((zoomFactor('+') ?? 0) < 1);
+  assert.equal(zoomFactor('='), zoomFactor('+')); // unshifted + on most layouts
+  assert.ok((zoomFactor('-') ?? 0) > 1);
+  assert.equal(zoomFactor('_'), zoomFactor('-'));
+  // zoom-in then zoom-out is an exact round trip
+  assert.ok(Math.abs(zoomFactor('+')! * zoomFactor('-')! - 1) < 1e-12);
+  for (const k of ['ArrowLeft', 'Home', 'Escape', 'a']) assert.equal(zoomFactor(k), null, k);
 });
 
 test('stepCursor: returns null for unhandled keys', () => {
