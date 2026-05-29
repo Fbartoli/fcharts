@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-29T08:12:10.922Z",
+  "generatedAt": "2026-05-29T08:20:39.110Z",
   "browser": "chromium",
   "datasetN": 100000,
   "durationMs": 5000,
@@ -10,10 +10,10 @@
       "kind": "sightline",
       "nodeCount": 260,
       "frames": 600,
-      "fps": 119.90139309431923,
-      "frameMs": 0.0662749999910593,
+      "fps": 119.98560172779266,
+      "frameMs": 0.07309999999403953,
       "deferredDraw": false,
-      "peakHeapMB": 16.52035903930664,
+      "peakHeapMB": 17.26634693145752,
       "axe": {
         "serious": 0,
         "ids": []
@@ -30,10 +30,10 @@
       "kind": "fast-inaccessible",
       "nodeCount": 35,
       "frames": 600,
-      "fps": 119.79634621144056,
+      "fps": 120,
       "frameMs": 0.00025,
       "deferredDraw": true,
-      "peakHeapMB": 14.23250675201416,
+      "peakHeapMB": 14.978826522827148,
       "axe": {
         "serious": 0,
         "ids": []
@@ -49,11 +49,11 @@
       "label": "Naive SVG (50k nodes)",
       "kind": "accessible-slow",
       "nodeCount": 50213,
-      "frames": 78,
-      "fps": 15.599376024959,
-      "frameMs": 50.28333333134651,
+      "frames": 83,
+      "fps": 16.43596902908968,
+      "frameMs": 52.65833333134651,
       "deferredDraw": false,
-      "peakHeapMB": 15.24845027923584,
+      "peakHeapMB": 15.995208740234375,
       "axe": {
         "serious": 0,
         "ids": []
@@ -68,15 +68,15 @@
   "scaling": [
     {
       "n": 10000,
-      "frameMs": 0.06670000000298024
+      "frameMs": 0.07052499999105931
     },
     {
       "n": 100000,
-      "frameMs": 0.08627499999105931
+      "frameMs": 0.087625
     },
     {
       "n": 250000,
-      "frameMs": 0.08120000000298024
+      "frameMs": 0.08340000000596047
     }
   ],
   "preciseHeap": true,
