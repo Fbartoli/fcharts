@@ -4,3 +4,7 @@ dist/
 *.local
 .DS_Store
 .gstack/
+# sightline-audit working output + temp entry (the committed sample ACR lives in compliance/samples/)
+compliance-out/
+compliance-out-regression/
+.sl-audit-entry.html

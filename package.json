@@ -33,6 +33,7 @@
     "test": "node --test test/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "bench": "node bench/harness.ts",
+    "a11y-audit": "node src/compliance/cli.ts --fixture ./a11y/fixture.ts --edition en301549 --out ./compliance-out",
     "size": "node scripts/size.mjs"
   },
   "devDependencies": {

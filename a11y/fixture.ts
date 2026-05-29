@@ -1,0 +1,24 @@
+/**
+ * Audit fixture — the chart `sightline-audit` builds and tests. An integrator points the gate at
+ * their own real configured chart (their colors, labels, data); this is Sightline's demo fixture.
+ *
+ * Contract: export `mountChart(el) => teardown`. The audit harness mounts it, runs the
+ * conformance engine against it, and tears it down.
+ */
+import { Sightline } from '../src/index.ts';
+
+export function mountChart(el: HTMLElement): () => void {
+  const N = 2000;
+  const x = Float64Array.from({ length: N }, (_, i) => i);
+  const pressure = Float64Array.from(x, (i) => 40 + Math.sin(i * 9e-4) * 26);
+  const temperature = Float64Array.from(x, (i) => 5 + Math.sin(i * 2.1e-3) * 18);
+  const chart = new Sightline(el, {
+    series: [
+      { name: 'Pressure', color: '#16a34a' },
+      { name: 'Temperature', color: '#d97706', type: 'area' },
+    ],
+    options: { ariaLabel: 'Sensor telemetry', xLabel: 'sample', yLabel: 'value' },
+  });
+  chart.setData({ x, y: [pressure, temperature] });
+  return () => chart.destroy();
+}

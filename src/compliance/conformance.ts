@@ -49,6 +49,13 @@ export async function runConformance(
   const results: CheckResult[] = [];
   const axeViolations: AxeViolation[] = [];
 
+  // Let the first render + the (debounced, ~150ms) data-table build settle before asserting,
+  // so steady-state DOM is checked regardless of how soon the caller invokes the engine.
+  await page
+    .waitForFunction((s) => !!document.querySelector(`${s} .sl-table-alt caption`), sel, { timeout: 3000 })
+    .catch(() => undefined);
+  await page.waitForTimeout(60);
+
   // --- axe (necessary baseline) ---
   if (opts.axeSource) {
     await page.addScriptTag({ content: opts.axeSource });
