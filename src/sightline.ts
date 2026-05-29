@@ -110,12 +110,15 @@ export class Sightline {
   private ticksDirty = true;
   private tableTimer = 0;
   private announceTimer = 0;
+  /** Consecutive HTML-in-Canvas composite misses before falling back to the visible overlay. */
+  private hicMisses = 0;
 
   private readonly renderer: Renderer;
   private readonly scheduler: RenderScheduler;
   private readonly compositor: Compositor;
   private readonly support: HtmlInCanvasSupport;
-  private readonly path: RenderPath;
+  /** Mutable: the html-in-canvas path can fall back to 'dom-overlay' if compositing fails. */
+  private path: RenderPath;
 
   private readonly canvas: HTMLCanvasElement;
   private readonly plot: HTMLElement;
@@ -210,11 +213,24 @@ export class Sightline {
 
     this.readout = buildReadout(this.doc);
 
+    this.renderer = createCanvas2DRenderer(this.canvas);
+    this.compositor = createCompositor(this.canvas);
+    this.support = detectHtmlInCanvas();
+    this.path = resolveRenderPath(this.support);
+
     if (this.legend) this.root.append(this.legend.el);
     this.surface.append(this.liveRegion.el, this.activeSample);
+    // The axis-tick text layer is a plot sibling (a visible CSS overlay) on the DOM-overlay
+    // path; on the HTML-in-Canvas path it becomes an immediate <canvas> child that is drawn
+    // into the bitmap each frame (frame() → compositeTicks) while staying accessible.
+    const ticksAsCanvasChild = this.path === 'html-in-canvas';
+    if (ticksAsCanvasChild) {
+      this.compositor.enable();
+      this.canvas.append(this.axisTicks.el);
+    }
     this.plot.append(
       this.canvas,
-      this.axisTicks.el,
+      ...(ticksAsCanvasChild ? [] : [this.axisTicks.el]),
       this.surface,
       this.readout.el,
       this.tableAlt.el,
@@ -223,10 +239,6 @@ export class Sightline {
     );
     this.root.append(this.plot);
 
-    this.renderer = createCanvas2DRenderer(this.canvas);
-    this.compositor = createCompositor(this.canvas);
-    this.support = detectHtmlInCanvas();
-    this.path = resolveRenderPath(this.support);
     this.scheduler = new RenderScheduler(() => this.frame());
 
     this.attachEvents();
@@ -427,9 +439,37 @@ export class Sightline {
       highContrast: this.options.highContrast,
     };
     this.renderer.render(scene);
-    if (this.path === 'html-in-canvas') this.compositor.composite(this.axisTicks.el);
+    if (this.path === 'html-in-canvas') this.compositeTicks();
 
     if (this.cursorActive) this.updateReadout(xScale, yScale);
+  }
+
+  /**
+   * Draw the canvas-placed tick layer into the bitmap via HTML-in-Canvas. The first frames
+   * legitimately miss (no paint snapshot exists yet); if compositing never succeeds we fall
+   * back to a visible DOM overlay so the ticks can never vanish on an unexpected API change.
+   */
+  private compositeTicks(): void {
+    if (this.compositor.composite(this.axisTicks.el)) {
+      this.hicMisses = 0;
+    } else if (++this.hicMisses > 8) {
+      this.fallbackToOverlay();
+    } else {
+      // The paint snapshot for the canvas-placed children isn't ready until the browser has
+      // painted them at least once. Under render-on-demand the loop would otherwise stop before
+      // that happens, so nudge another frame until the first draw lands (then it's cached).
+      this.requestRender();
+    }
+  }
+
+  /** Re-show the tick layer as a normal CSS overlay and stop using the HTML-in-Canvas path. */
+  private fallbackToOverlay(): void {
+    this.path = 'dom-overlay';
+    this.canvas.removeAttribute('layoutsubtree');
+    this.axisTicks.el.style.transform = '';
+    this.plot.insertBefore(this.axisTicks.el, this.surface);
+    this.ticksDirty = true;
+    this.requestRender();
   }
 
   // --- accessibility-driven updates ---

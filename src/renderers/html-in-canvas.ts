@@ -1,35 +1,64 @@
 /**
- * HTML-in-Canvas compositor — progressive enhancement only.
+ * HTML-in-Canvas compositor — progressive enhancement (Chrome dev-trial only).
  *
- * When (and only when) the browser exposes the experimental `drawElement` API, we can
- * paint the real DOM accessibility layer into the canvas so it visually composites with
- * the marks. This is never required: the DOM overlay remains the source of truth for
- * accessibility and visual layout. No browser ships `drawElement` un-flagged today, so in
- * practice `composite()` is a guarded no-op and the overlay path is what runs.
+ * When the browser exposes the HTML-in-Canvas API (`ctx.drawElementImage`), Sightline can draw
+ * its real-DOM text layer *into* the canvas so the chart is one composited surface, while the
+ * element stays the live, accessible, hit-testable, find-in-page-able source of truth.
+ *
+ * Contract (per the WICG explainer, verified empirically in Chrome 148):
+ *  - the layer MUST be an *immediate child* of the `<canvas>`;
+ *  - the canvas must carry the boolean `layoutsubtree` attribute (which opts its children into
+ *    layout + hit-testing — note they are NOT painted to screen on their own, only via a draw);
+ *  - a paint snapshot of the children must already exist, so the very first draw (before any
+ *    paint) throws "no cached paint record" — we treat that as a miss and retry next frame;
+ *  - `drawElementImage(el, dx, dy)` returns the `DOMMatrix` mapping the live element onto the
+ *    drawn pixels; assigning it to `el.style.transform` keeps hit-testing/focus aligned with
+ *    what's painted.
+ *
+ * No browser ships this un-flagged, so `composite()` is a no-op in production today. Because a
+ * `layoutsubtree` child only becomes visible via `drawElementImage`, the caller MUST keep a
+ * fallback (re-show the layer as a normal overlay) if `composite()` never succeeds — see
+ * `Sightline`'s html-in-canvas handling.
  */
 
-interface DrawElementContext extends CanvasRenderingContext2D {
-  drawElement(element: Element, x: number, y: number): void;
+interface HtmlInCanvasContext extends CanvasRenderingContext2D {
+  drawElementImage(element: Element, dx: number, dy: number): DOMMatrix;
 }
 
-function hasDrawElement(ctx: CanvasRenderingContext2D): ctx is DrawElementContext {
-  return typeof (ctx as { drawElement?: unknown }).drawElement === 'function';
+function hasDrawElementImage(ctx: CanvasRenderingContext2D): ctx is HtmlInCanvasContext {
+  return typeof (ctx as { drawElementImage?: unknown }).drawElementImage === 'function';
 }
 
 export interface Compositor {
-  /** Paint the DOM layer into the canvas if the API is available. Returns true if it did. */
-  composite(domLayer: Element): boolean;
+  /** Whether this browser actually exposes the API (so callers can branch DOM structure). */
+  readonly supported: boolean;
+  /** Opt the canvas into laying out its element children. Idempotent; no-op if unsupported. */
+  enable(): void;
+  /**
+   * Draw a canvas-child `layer` into the bitmap at (dx, dy) and sync its transform.
+   * @returns true if it composited this frame; false if unsupported or no snapshot yet.
+   */
+  composite(layer: HTMLElement, dx?: number, dy?: number): boolean;
 }
 
 export function createCompositor(canvas: HTMLCanvasElement): Compositor {
   const ctx = canvas.getContext('2d');
+  const supported = !!ctx && hasDrawElementImage(ctx);
   return {
-    composite(domLayer: Element): boolean {
-      if (!ctx || !hasDrawElement(ctx)) return false;
+    supported,
+    enable(): void {
+      if (supported && !canvas.hasAttribute('layoutsubtree')) canvas.setAttribute('layoutsubtree', '');
+    },
+    composite(layer: HTMLElement, dx = 0, dy = 0): boolean {
+      if (!supported || !ctx) return false;
       try {
-        ctx.drawElement(domLayer, 0, 0);
+        const matrix = (ctx as HtmlInCanvasContext).drawElementImage(layer, dx, dy);
+        // Keep the live (canvas-placed) element aligned with the drawn pixels so focus and
+        // hit-testing land where the text appears.
+        layer.style.transform = matrix.toString();
         return true;
       } catch {
+        // No paint snapshot yet (first frame) or a transient failure — retry next frame.
         return false;
       }
     },

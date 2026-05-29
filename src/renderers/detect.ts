@@ -1,10 +1,15 @@
 /**
  * HTML-in-Canvas feature detection.
  *
- * The (experimental, flag-gated) HTML-in-Canvas proposal would let us composite the real
- * DOM accessibility layer *into* the canvas. We feature-detect it but never depend on it:
- * the library is fully functional and fully accessible via the DOM overlay regardless.
- * `activePath` reports which path is in use; the overlay path is the one under test.
+ * The experimental "HTML-in-Canvas" API (Chrome dev-trial; Origin Trial M148–M150, behind
+ * `chrome://flags/#canvas-draw-element`) lets a `<canvas>` draw its own element children into
+ * the bitmap while they stay the live, accessible, hit-testable source of truth. We feature-
+ * detect the shipped 2D entry point and fall back to the DOM-overlay path everywhere else —
+ * the library is fully functional and fully accessible via the overlay regardless.
+ *
+ * The 2D method was renamed `drawElement` → `drawHTMLElement` → `drawHTML` → `drawElementImage`,
+ * and the older aliases were removed at Chrome M145. We detect the current name only; detecting
+ * a removed alias (or the incidental WebGL `texElementImage2D`) would falsely report support.
  */
 
 export type RenderPath = 'dom-overlay' | 'html-in-canvas';
@@ -16,21 +21,14 @@ export interface HtmlInCanvasSupport {
 }
 
 /**
- * Detect whether any HTML-in-Canvas API is present. Pure detection — touches no global
- * state and never throws.
+ * Detect the HTML-in-Canvas 2D drawing entry point. Pure detection — touches no global state
+ * and never throws.
  */
 export function detectHtmlInCanvas(): HtmlInCanvasSupport {
   try {
     const ctxProto =
       typeof CanvasRenderingContext2D !== 'undefined' ? CanvasRenderingContext2D.prototype : null;
-    if (ctxProto && 'drawElement' in ctxProto) return { supported: true, via: 'drawElement' };
-
-    if (typeof document !== 'undefined') {
-      const canvas = document.createElement('canvas');
-      if ('layoutsubtree' in canvas) return { supported: true, via: 'layoutsubtree' };
-      const gl = canvas.getContext('webgl2') ?? canvas.getContext('webgl');
-      if (gl && 'texElementImage2D' in gl) return { supported: true, via: 'texElementImage2D' };
-    }
+    if (ctxProto && 'drawElementImage' in ctxProto) return { supported: true, via: 'drawElementImage' };
   } catch {
     // Any detection error → treat as unsupported and fall back to the DOM overlay.
   }
