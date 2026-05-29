@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-29T06:22:13.551Z",
+  "generatedAt": "2026-05-29T08:12:10.922Z",
   "browser": "chromium",
   "datasetN": 100000,
   "durationMs": 5000,
@@ -10,10 +10,10 @@
       "kind": "sightline",
       "nodeCount": 260,
       "frames": 600,
-      "fps": 119.81069909542924,
-      "frameMs": 0.0664750000089407,
+      "fps": 119.90139309431923,
+      "frameMs": 0.0662749999910593,
       "deferredDraw": false,
-      "peakHeapMB": 17.129453659057617,
+      "peakHeapMB": 16.52035903930664,
       "axe": {
         "serious": 0,
         "ids": []
@@ -30,10 +30,10 @@
       "kind": "fast-inaccessible",
       "nodeCount": 35,
       "frames": 600,
-      "fps": 120,
-      "frameMs": 0.000375,
+      "fps": 119.79634621144056,
+      "frameMs": 0.00025,
       "deferredDraw": true,
-      "peakHeapMB": 14.84177303314209,
+      "peakHeapMB": 14.23250675201416,
       "axe": {
         "serious": 0,
         "ids": []
@@ -49,11 +49,11 @@
       "label": "Naive SVG (50k nodes)",
       "kind": "accessible-slow",
       "nodeCount": 50213,
-      "frames": 84,
-      "fps": 16.66104686911161,
-      "frameMs": 48.89230768955671,
+      "frames": 78,
+      "fps": 15.599376024959,
+      "frameMs": 50.28333333134651,
       "deferredDraw": false,
-      "peakHeapMB": 15.858864784240723,
+      "peakHeapMB": 15.24845027923584,
       "axe": {
         "serious": 0,
         "ids": []
@@ -68,15 +68,15 @@
   "scaling": [
     {
       "n": 10000,
-      "frameMs": 0.066125
+      "frameMs": 0.06670000000298024
     },
     {
       "n": 100000,
-      "frameMs": 0.08797499999403953
+      "frameMs": 0.08627499999105931
     },
     {
       "n": 250000,
-      "frameMs": 0.08132500000298024
+      "frameMs": 0.08120000000298024
     }
   ],
   "preciseHeap": true,
@@ -110,7 +110,8 @@
         "status": "pass",
         "sc": [
           "1.1.1",
-          "1.3.1"
+          "1.3.1",
+          "1.4.1"
         ],
         "detail": ""
       },
@@ -128,7 +129,25 @@
         "status": "pass",
         "sc": [
           "1.1.1",
-          "4.1.2"
+          "4.1.2",
+          "3.3.2"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "instructions-named-keys",
+        "status": "pass",
+        "sc": [
+          "1.3.3",
+          "3.3.2"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "focus-order",
+        "status": "pass",
+        "sc": [
+          "2.4.3"
         ],
         "detail": ""
       },
@@ -137,7 +156,10 @@
         "status": "pass",
         "sc": [
           "1.3.1",
-          "4.1.2"
+          "4.1.2",
+          "1.4.1",
+          "3.2.4",
+          "2.5.2"
         ],
         "detail": ""
       },
@@ -179,7 +201,8 @@
         "status": "pass",
         "sc": [
           "2.4.7",
-          "forced-colors"
+          "forced-colors",
+          "1.4.11"
         ],
         "detail": ""
       },
@@ -187,7 +210,48 @@
         "id": "focus-visible",
         "status": "pass",
         "sc": [
-          "2.4.7"
+          "2.4.7",
+          "1.4.11"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "meaningful-sequence",
+        "status": "pass",
+        "sc": [
+          "1.3.2"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "orientation",
+        "status": "pass",
+        "sc": [
+          "1.3.4"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "resize-text",
+        "status": "pass",
+        "sc": [
+          "1.4.4"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "reflow",
+        "status": "pass",
+        "sc": [
+          "1.4.10"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "text-spacing",
+        "status": "pass",
+        "sc": [
+          "1.4.12"
         ],
         "detail": ""
       },
@@ -197,6 +261,15 @@
         "sc": [
           "2.1.1",
           "4.1.3"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "context-stability",
+        "status": "pass",
+        "sc": [
+          "3.2.1",
+          "3.2.2"
         ],
         "detail": ""
       },
