@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-29T05:56:10.843Z",
+  "generatedAt": "2026-05-29T06:22:13.551Z",
   "browser": "chromium",
   "datasetN": 100000,
   "durationMs": 5000,
@@ -9,11 +9,11 @@
       "label": "Sightline",
       "kind": "sightline",
       "nodeCount": 260,
-      "frames": 601,
-      "fps": 119.9912152854034,
-      "frameMs": 0.06645000000298024,
+      "frames": 600,
+      "fps": 119.81069909542924,
+      "frameMs": 0.0664750000089407,
       "deferredDraw": false,
-      "peakHeapMB": 17.133089065551758,
+      "peakHeapMB": 17.129453659057617,
       "axe": {
         "serious": 0,
         "ids": []
@@ -29,11 +29,11 @@
       "label": "uPlot",
       "kind": "fast-inaccessible",
       "nodeCount": 35,
-      "frames": 601,
-      "fps": 120.00319476059262,
-      "frameMs": 0.00032500000298023226,
+      "frames": 600,
+      "fps": 120,
+      "frameMs": 0.000375,
       "deferredDraw": true,
-      "peakHeapMB": 14.84540843963623,
+      "peakHeapMB": 14.84177303314209,
       "axe": {
         "serious": 0,
         "ids": []
@@ -49,11 +49,11 @@
       "label": "Naive SVG (50k nodes)",
       "kind": "accessible-slow",
       "nodeCount": 50213,
-      "frames": 83,
-      "fps": 16.430112635350476,
-      "frameMs": 50.300000001986824,
+      "frames": 84,
+      "fps": 16.66104686911161,
+      "frameMs": 48.89230768955671,
       "deferredDraw": false,
-      "peakHeapMB": 15.861573219299316,
+      "peakHeapMB": 15.858864784240723,
       "axe": {
         "serious": 0,
         "ids": []
@@ -68,15 +68,15 @@
   "scaling": [
     {
       "n": 10000,
-      "frameMs": 0.0667749999910593
+      "frameMs": 0.066125
     },
     {
       "n": 100000,
-      "frameMs": 0.08729999999701976
+      "frameMs": 0.08797499999403953
     },
     {
       "n": 250000,
-      "frameMs": 0.0813500000089407
+      "frameMs": 0.08132500000298024
     }
   ],
   "preciseHeap": true,
@@ -87,5 +87,193 @@
     "sightlineFrameUnder16ms": true,
     "scalingRatioUnder1_5x": true,
     "sightlineUniquelyFastAndAccessible": true
+  },
+  "conformance": {
+    "results": [
+      {
+        "id": "axe-serious",
+        "status": "na",
+        "sc": [],
+        "detail": "no axe source supplied"
+      },
+      {
+        "id": "canvas-hidden",
+        "status": "pass",
+        "sc": [
+          "1.1.1",
+          "4.1.2"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "text-alternative",
+        "status": "pass",
+        "sc": [
+          "1.1.1",
+          "1.3.1"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "table-x-header",
+        "status": "pass",
+        "sc": [
+          "1.3.1",
+          "2.4.6"
+        ],
+        "detail": "x-header = \"sample\""
+      },
+      {
+        "id": "surface-semantics",
+        "status": "pass",
+        "sc": [
+          "1.1.1",
+          "4.1.2"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "legend-semantics",
+        "status": "pass",
+        "sc": [
+          "1.3.1",
+          "4.1.2"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "live-region-present",
+        "status": "pass",
+        "sc": [
+          "4.1.3"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "target-size",
+        "status": "pass",
+        "sc": [
+          "2.5.8"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "label-in-name",
+        "status": "pass",
+        "sc": [
+          "2.5.3"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "reduced-motion-rule",
+        "status": "pass",
+        "sc": [
+          "2.2.2",
+          "reduced-motion"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "forced-colors-rule",
+        "status": "pass",
+        "sc": [
+          "2.4.7",
+          "forced-colors"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "focus-visible",
+        "status": "pass",
+        "sc": [
+          "2.4.7"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "keyboard-announce",
+        "status": "pass",
+        "sc": [
+          "2.1.1",
+          "4.1.3"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "active-value",
+        "status": "pass",
+        "sc": [
+          "4.1.2"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "keyboard-zoom",
+        "status": "pass",
+        "sc": [
+          "2.1.1"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "escape-dismiss",
+        "status": "pass",
+        "sc": [
+          "1.4.13"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "no-keyboard-trap",
+        "status": "pass",
+        "sc": [
+          "2.1.2"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "tick-findable",
+        "status": "pass",
+        "sc": [
+          "1.4.5",
+          "1.3.1"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "contrast-readout",
+        "status": "pass",
+        "sc": [
+          "1.4.3"
+        ],
+        "detail": "16.17:1"
+      },
+      {
+        "id": "contrast-default-text",
+        "status": "pass",
+        "sc": [
+          "1.4.3"
+        ],
+        "detail": "6.42:1 vs rgb(12, 16, 22)"
+      },
+      {
+        "id": "no-canvas-text",
+        "status": "na",
+        "sc": [
+          "1.4.5"
+        ],
+        "detail": "static source check (no fillText/strokeText); covered by baseline"
+      },
+      {
+        "id": "i18n-strings",
+        "status": "na",
+        "sc": [
+          "3.1.2"
+        ],
+        "detail": "localization flow covered by unit tests (strings.test.ts)"
+      }
+    ],
+    "axeViolations": []
   }
 }

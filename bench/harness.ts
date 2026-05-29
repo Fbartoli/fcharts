@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { chromium, firefox, webkit, type Browser, type BrowserType, type Page } from 'playwright';
 import { createServer, type ViteDevServer } from 'vite';
+import { runConformance, countStatuses } from '../src/compliance/conformance.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const SIGHTLINE = '#cell-sightline';
@@ -126,6 +127,26 @@ async function main(): Promise<void> {
     const kbd = await keyboardAccessibility(page);
     const find = await findability(page);
 
+    // Run the extracted conformance engine against the live Sightline cell — the same checks the
+    // audit CLI uses (no drift between "the benchmark says accessible" and "the ACR says so").
+    // Informational here (axe runs per-renderer above); contrast uses the cell's effective bg.
+    const pageBg = await page.evaluate((sel) => {
+      let el: Element | null = document.querySelector(sel);
+      while (el) {
+        const bg = getComputedStyle(el).backgroundColor;
+        if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') return bg;
+        el = el.parentElement;
+      }
+      return 'rgb(255, 255, 255)';
+    }, SIGHTLINE);
+    const conformance = await runConformance(page, SIGHTLINE, { background: pageBg });
+    const conf = countStatuses(conformance);
+    console.log(`\n=== Conformance engine (Sightline @ bg ${pageBg}) ===`);
+    console.log(`  ${conf.pass} pass · ${conf.fail} fail · ${conf.na} n/a`);
+    for (const r of conformance.results.filter((r) => r.status === 'fail')) {
+      console.log(`  ✗ ${r.id}: ${r.detail}`);
+    }
+
     const rows = results.headline as Row[];
     const sl = rows.find((r) => r.id === 'sightline');
     const ratio =
@@ -149,7 +170,7 @@ async function main(): Promise<void> {
     };
 
     const stamp = new Date().toISOString();
-    const full = { generatedAt: stamp, browser: browserName, ...results, acceptance };
+    const full = { generatedAt: stamp, browser: browserName, ...results, acceptance, conformance };
     const fileName = browserName === 'chromium' ? 'results.json' : `results-${browserName}.json`;
     const outPath = resolve(here, fileName);
     writeFileSync(outPath, JSON.stringify(full, null, 2));
