@@ -149,6 +149,24 @@ key-repeat (now debounced), a `role="application"` discoverability gap (now link
 cross-realm timer-cancel bug. The two most valuable were the heap correction and the gap fix
 — both cases where the original numbers/behavior looked fine but were wrong.
 
+## WCAG 2.2 AA conformance scope (Compliance Pack)
+
+A full per-criterion scoping of the chart layer against all 55 WCAG 2.2 Level A + AA success
+criteria — adversarially verified, with `file:line` evidence — lives in
+[`compliance/scope-and-evidence-map.md`](./compliance/scope-and-evidence-map.md). It is a sharper
+test of "fully accessible" than the benchmark's axe + functional checks, and it **reinforces
+caveat #1 directly**: even with axe at 0 *and* the keyboard/live-region/data-table checks passing,
+the criterion-level pass found **real gaps those checks don't catch** — no keyboard zoom (2.1.1),
+no Escape-to-dismiss (1.4.13), a hardcoded data-table `x` column header (1.3.1/2.4.6), legend
+targets under 24px (2.5.8), the focused cursor value exposed only as a transient announcement and
+not a queryable property (4.1.2), and untagged/un-localizable English UI strings (3.1.2). All
+eight library-closable gaps were then fixed in the MIT renderer (each verified end-to-end; axe
+still 0, thesis still held). Honest baseline after remediation: **28 Supports / 7 Partially
+Supports / 20 Not Applicable** — the 7 partials are integrator-dependent (host background, author
+colors, host layout) or deferred renderer features, and are reported as remarks + attestation
+lines rather than overclaimed. The lesson is the project's recurring one: automated a11y signals
+are necessary, not sufficient.
+
 ## Profiling (Chrome DevTools / CDP)
 
 A Playwright + CDP pass (Chromium with `--expose-gc`) profiled the hot paths. Verdict: at the

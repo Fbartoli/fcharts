@@ -9,6 +9,15 @@
 > applicable claim (each verifier tried to *downgrade* the claim and confirmed the cited
 > `file:line` evidence), then a completeness critic checked coverage and consistency.
 
+> **Update (remediation applied).** After this map was first written (baseline: 21 Supports /
+> 14 Partially / 20 N/A), the 8 library-closable gaps in the backlog (§11) were fixed in the MIT
+> renderer and verified end-to-end (axe stays 0, thesis holds, all unit tests pass). Seven
+> criteria moved **Partially → Supports** — 1.3.1, 1.4.13, 2.1.1, 2.4.6, 2.5.8, 3.1.2, 4.1.2 —
+> and 1.4.3's legend-opacity sub-gap was closed (it stays Partially because host background and
+> author colors remain integrator-dependent). **The tables and per-criterion detail below
+> reflect the current, post-remediation source.** New baseline: **28 Supports / 7 Partially /
+> 20 N/A.**
+
 This is **document 1 of 4** in the Compliance Pack design:
 
 1. **Scope & evidence map** (this file)
@@ -140,17 +149,19 @@ Across the **55** WCAG 2.2 Level A + AA success criteria, scoped to the chart co
 
 | Conformance | Count | Criteria |
 |---|---|---|
-| **Supports** | 21 | 1.1.1, 1.3.2, 1.3.3, 1.3.4, 1.4.5, 1.4.12, 2.1.2, 2.1.4, 2.2.1, 2.2.2, 2.3.1, 2.4.3, 2.4.7, 2.5.1, 2.5.2, 2.5.3, 3.2.1, 3.2.2, 3.2.4, 3.3.2, 4.1.3 |
-| **Partially Supports** | 14 | 1.3.1, 1.4.1, 1.4.3, 1.4.4, 1.4.10, 1.4.11, 1.4.13, 2.1.1, 2.4.6, 2.4.11, 2.5.7, 2.5.8, 3.1.2, 4.1.2 |
+| **Supports** | 28 | 1.1.1, 1.3.1, 1.3.2, 1.3.3, 1.3.4, 1.4.5, 1.4.12, 1.4.13, 2.1.1, 2.1.2, 2.1.4, 2.2.1, 2.2.2, 2.3.1, 2.4.3, 2.4.6, 2.4.7, 2.5.1, 2.5.2, 2.5.3, 2.5.8, 3.1.2, 3.2.1, 3.2.2, 3.2.4, 3.3.2, 4.1.2, 4.1.3 |
+| **Partially Supports** | 7 | 1.4.1, 1.4.3, 1.4.4, 1.4.10, 1.4.11, 2.4.11, 2.5.7 |
 | **Not Applicable** | 20 | 1.2.1–1.2.5, 1.3.5, 1.4.2, 2.4.1, 2.4.2, 2.4.4, 2.4.5, 2.5.4, 3.1.1, 3.2.3, 3.2.6, 3.3.1, 3.3.3, 3.3.4, 3.3.7, 3.3.8 |
 
 Plus two **user-preference adaptations** (beyond strict A/AA, reported as good practice):
 **reduced-motion = Supports**, **forced-colors = Partially Supports** (the canvas bitmap cannot
 participate in forced-colors; the DOM overlay and data alternatives do — see §10).
 
-**Of the 14 Partially Supports, 8 are closable by small library changes** (§11 backlog); the
-remaining 6 are inherently integrator-dependent (author colors, host background, host page
-layout) and are reported as remarks + attestation lines. No applicable criterion is rated
+**The 8 library-closable gaps are now fixed** (§11). The remaining 7 Partially Supports are
+either inherently integrator-dependent (host background, author series colors, host page layout)
+or need larger renderer work deferred from the cheap-fix batch (per-series dash/marker, a
+default palette, adaptive tick thinning, a single-pointer pan affordance — backlog R4–R7, R12).
+They are reported as remarks + attestation lines. No applicable criterion is rated
 "Does Not Support".
 
 ---
@@ -165,44 +176,44 @@ Detailed rationale + `file:line` evidence per criterion follows in §7–§8.
 | SC | Lvl | Name | Claim | V | One-line basis |
 |---|---|---|---|---|---|
 | 1.1.1 | A | Non-text Content | Supports | A | Canvas `aria-hidden`; text alternative always present (data table + summary + JSON). |
-| 1.3.1 | A | Info and Relationships | **Partially** | A | Table/legend/surface relationships are programmatic, **but the data-table x-column header is hardcoded `"x"`** — the integrator's `xLabel` never reaches it. |
+| 1.3.1 | A | Info and Relationships | Supports | A | Table/legend/surface relationships are programmatic; the data-table x-column header now carries the configured `xLabel` (R1). |
 | 1.3.2 | A | Meaningful Sequence | Supports | A | DOM appended in reading order; no CSS reorder; table reads x-then-series in ascending order. |
 | 1.3.3 | A | Sensory Characteristics | Supports | H | Instructions name keys (not shape/position); series identified by name, not color/location. |
 | 1.3.4 | AA | Orientation | Supports | A | No orientation lock; fluid 100% layout re-measured by `ResizeObserver`. |
 | 1.4.1 | A | Use of Color | **Partially** | A | Legend/table/readout give color-free identity, **but on the canvas series are distinguished by color only** (no dash/marker). |
-| 1.4.3 | AA | Contrast (Minimum) | **Partially** | H | Library-default DOM text passes on a light background; **canvas series colors (author-supplied) and the effective host background are not library-controlled**. |
+| 1.4.3 | AA | Contrast (Minimum) | **Partially** | H | Library-default DOM text passes on a light background and the legend "hidden" state no longer dims text (R8); **canvas series colors (author-supplied) and the effective host background remain integrator-controlled**. |
 | 1.4.4 | AA | Resize Text | **Partially** | H | Container is fluid (page-zoom works); **label fonts are fixed px**, so text-only zoom does not enlarge them. |
 | 1.4.5 | AA | Images of Text | Supports | A | All readable text is real DOM text; the canvas renders **no** `fillText`/`strokeText`. |
 | 1.4.10 | AA | Reflow | **Partially** | H | Fluid canvas + reflowing legend; 2-D chart geometry is exempt; **fixed-px tick labels can overlap at narrow widths**. |
 | 1.4.11 | AA | Non-text Contrast | **Partially** | H | Focus ring is 5.17:1 on white; **default grid/axis/cursor are below 3:1 and series-mark contrast is author-determined**. |
 | 1.4.12 | AA | Text Spacing | Supports | A | No fixed line-height/letter/word-spacing on text; no `overflow:hidden` clip on visible text. |
-| 1.4.13 | AA | Content on Hover or Focus | **Partially** | A | Readout is Hoverable + Persistent; **not Dismissible — no Escape handler**. |
+| 1.4.13 | AA | Content on Hover or Focus | Supports | A | Readout is Hoverable + Persistent, and now Dismissible — Escape clears it without moving focus (R3). |
 
 ### Operable
 
 | SC | Lvl | Name | Claim | V | One-line basis |
 |---|---|---|---|---|---|
-| 2.1.1 | A | Keyboard | **Partially** | A | Cursor nav + legend toggle are fully keyboard-operable; **wheel-zoom magnification has no keyboard equivalent**. |
+| 2.1.1 | A | Keyboard | Supports | A | Cursor nav + legend toggle + zoom (`+`/`-`) are all keyboard-operable (R2); every pointer function has a keyboard path. |
 | 2.1.2 | A | No Keyboard Trap | Supports | A | Tab/Shift+Tab never intercepted; no `focus()` trap, modal, or `inert`. |
 | 2.1.4 | A | Character Key Shortcuts | Supports | A | Only non-printable keys (arrows/Home/End) + Shift; no single-character shortcuts to remap. |
 | 2.2.1 | A | Timing Adjustable | Supports | H | No time limits; the two internal timers are output coalescers, not user deadlines. |
 | 2.2.2 | A | Pause, Stop, Hide | Supports | H | Render-on-demand; no auto-motion/auto-update; the only transition is a 0.08s fade (off under reduced-motion). |
 | 2.3.1 | A | Three Flashes | Supports | H | Nothing flashes; single clear+repaint per user-driven frame. |
 | 2.4.3 | A | Focus Order | Supports | A | Legend-then-surface DOM order; only `tabIndex 0`, no positive tabindex/reorder. |
-| 2.4.6 | AA | Headings and Labels | **Partially** | A | Surface/legend/caption labels are descriptive, **but the table x-column header is the hardcoded `"x"`** (same root cause as 1.3.1). |
+| 2.4.6 | AA | Headings and Labels | Supports | A | Surface/legend/caption labels are descriptive; the table x-column header now uses the configured `xLabel` (R1). |
 | 2.4.7 | AA | Focus Visible | Supports | A | `:focus-visible` ring + `prefers-contrast` outline + `forced-colors` `Highlight` outline; native button rings preserved. |
 | 2.4.11 | AA | Focus Not Obscured (Min) | **Partially** | H | The component never fully obscures its own focus; **host sticky/overlay UI could** (integrator concern). |
 | 2.5.1 | A | Pointer Gestures | Supports | M | Drag-pan is single-pointer, not path-based; zoom is wheel; no multipoint gesture. |
 | 2.5.2 | A | Pointer Cancellation | Supports | A | No action on down-event; pan is reversible before release; legend activates on up-event. |
 | 2.5.3 | A | Label in Name | Supports | A | Legend button's accessible name contains its visible label text. |
 | 2.5.7 | AA | Dragging Movements | **Partially** | H | **Drag-pan has no single-pointer non-dragging alternative** (keyboard does not satisfy 2.5.7; wheel zooms, it does not pan). |
-| 2.5.8 | AA | Target Size (Minimum) | **Partially** | H | Surface is large; **legend buttons (~24–27px) have no enforced `min-height`** and depend on host font/line-height. |
+| 2.5.8 | AA | Target Size (Minimum) | Supports | A | Surface is large; legend buttons now carry `min-height:24px;min-width:24px;line-height:1.1` (R9), guaranteeing 24×24 regardless of host fonts. |
 
 ### Understandable
 
 | SC | Lvl | Name | Claim | V | One-line basis |
 |---|---|---|---|---|---|
-| 3.1.2 | AA | Language of Parts | **Partially** | M | **Fixed English UI strings carry no `lang` and cannot be localized**, so they are untagged language parts in a non-English host. |
+| 3.1.2 | AA | Language of Parts | Supports | A | Every fixed UI string is now localizable via the `strings` option (R10), so an integrator can match the host page language. |
 | 3.2.1 | A | On Focus | Supports | A | Focus only activates the cursor + polite announcement; no context change. |
 | 3.2.2 | A | On Input | Supports | A | Keys/legend toggles change content in place; no navigation/submission/context change. |
 | 3.2.4 | AA | Consistent Identification | Supports | A | All legend buttons built by one routine with identical structure; stable surface role. |
@@ -212,7 +223,7 @@ Detailed rationale + `file:line` evidence per criterion follows in §7–§8.
 
 | SC | Lvl | Name | Claim | V | One-line basis |
 |---|---|---|---|---|---|
-| 4.1.2 | A | Name, Role, Value | **Partially** | A | Name/Role exposed for every control, **but the cursor's current value is only a live announcement, not a programmatic property** (no `aria-activedescendant`/`aria-valuetext`). |
+| 4.1.2 | A | Name, Role, Value | Supports | A | Name/Role exposed for every control; the focused sample is now a queryable value via an `aria-describedby` target updated in lockstep, and the legend name is stable (R11). |
 | 4.1.3 | AA | Status Messages | Supports | H | Polite, atomic, focus-independent, debounced live region for cursor moves; presence is automatable, real-AT speech is attested. |
 
 ### Adaptations (good practice, beyond strict A/AA)
@@ -246,21 +257,18 @@ alternative is **always** present (constructed before any `setData`, via `refres
 
 **Author responsibility:** supply a meaningful `ariaLabel` and axis labels.
 
-### 1.3.1 Info and Relationships (A) — Partially Supports
+### 1.3.1 Info and Relationships (A) — Supports
 
 Visual relationships are exposed in the DOM: table semantics with `<caption>` and scoped
-headers (`src/a11y/table-alt.ts:68-110`), `role="group"` legend of `aria-pressed` buttons
-(`src/a11y/legend.ts:22-25,69-75`), surface `role="application"` with `aria-roledescription` /
-`aria-details` → table / `aria-describedby` → summary (`src/sightline.ts:184-194`), live
-announcements pairing series name with axis-labeled values (`src/sightline.ts:444-453`,
-*hybrid*), and real-text axis ticks (`src/a11y/ticks.ts:31-33,52-59`).
+headers (`src/a11y/table-alt.ts:68-114`), `role="group"` legend of `aria-pressed` buttons
+(`src/a11y/legend.ts`), surface `role="application"` with `aria-roledescription` / `aria-details`
+→ table / `aria-describedby` → summary + focused-sample value (`src/sightline.ts`), live
+announcements pairing series name with axis-labeled values, and real-text axis ticks. *(automated)*
 
-**Gap (library, automated):** the data table's x-axis column header is the hardcoded literal
-`"x"` (`src/a11y/table-alt.ts:78`). The integrator's `xLabel` reaches the visual ticks and the
-live announcements but is **never forwarded to the table** (`TableUpdate` has no x-label field;
-`scheduleTableUpdate()` at `src/sightline.ts:417-431` passes only data/series/domain/formatters/
-caption). So the independent-variable column — the most important column of the text alternative —
-reads as a context-free `"x"`, and there is no API to override it. → **Remediation R1 (§11)**.
+**Closed by R1:** the data-table x-column header now uses the configured `xLabel`
+(`TableUpdate.xLabel` → `buildHead`, `src/a11y/table-alt.ts`; threaded from `scheduleTableUpdate()`
+in `src/sightline.ts`), so the independent-variable column carries its real name. With no `xLabel`
+set it falls back to `"x"` (an attested integrator-responsibility default).
 
 ### 1.3.2 Meaningful Sequence (A) — Supports
 
@@ -324,14 +332,17 @@ Library-controlled DOM text passes AA **on a light background** (computed vs `#f
   (`:28-32`); *(automated)*
 - `prefers-contrast:more` darkens ticks to `#1f2937` = **14.68:1** (`:50-54`). *(automated)*
 
-**Gaps:** (1) canvas series strokes use `config.color` with **no default palette**
-(`src/core/model.ts:55-65`), so data-mark contrast vs the chart background is the integrator's
-choice and not machine-verifiable *(manual-attestation)*; (2) the DOM text sits on a transparent
-surface, so its real contrast depends on the **host background** the integrator places behind the
-chart *(hybrid — the px color is checkable, the effective background is not)*; (3) the legend
-"hidden" state uses `opacity:.45` (`src/a11y/styles.ts:45`), dropping `--sl-ink` text to **~2.35:1**
-on white — an `aria-pressed` toggle in its off state is an *active* control, so the inactive-text
-exemption is arguable at best. → **Remediation R6, R8 (§11)**.
+**Gaps (remaining, integrator-dependent):** (1) canvas series strokes use `config.color` with
+**no default palette** (`src/core/model.ts:55-65`), so data-mark contrast vs the chart background
+is the integrator's choice and not machine-verifiable *(manual-attestation)*; (2) the DOM text
+sits on a transparent surface, so its real contrast depends on the **host background** the
+integrator places behind the chart *(hybrid — the px color is checkable, the effective background
+is not)*. → remaining backlog **R6**.
+
+**Closed by R8:** the legend "hidden" state no longer reduces text opacity (it previously dropped
+`--sl-ink` to ~2.35:1). The off state is now conveyed by `aria-pressed` + a strikethrough name +
+a dimmed (decorative, `aria-hidden`) swatch, keeping the label text at full contrast
+(`src/a11y/styles.ts`, `src/a11y/legend.ts`).
 
 **Author responsibility:** pick series colors ≥3:1 against the chart background; keep the host
 background above 4.5:1 for the DOM text (or override `--sl-tick-color`/`--sl-ink`).
@@ -390,30 +401,27 @@ user-spacing override, and there is no `overflow:hidden`/fixed-height on visible
 inline style sets text spacing. *(automated)* Confirming no clip under the full spacing
 bookmarklet is a one-time human check. *(manual-attestation)*
 
-### 1.4.13 Content on Hover or Focus (AA) — Partially Supports
+### 1.4.13 Content on Hover or Focus (AA) — Supports
 
 The readout tooltip + crosshair shown on hover/focus satisfy **Hoverable** (readout is
-`pointer-events:none`, `src/a11y/styles.ts:28`) and **Persistent** (hidden only on pointer-leave
-or blur, never on a timer; `src/sightline.ts:463-483,573-578`). *(automated)* **Gap (library,
-automated):** **not Dismissible** — `onKeyDown` handles only arrows/Home/End/Shift
-(`src/sightline.ts:514-534`; `KEYS` in `src/a11y/cursor.ts:21` has no Escape), so a user cannot
-dismiss the overlay without moving the pointer away or blurring. The readout has an opaque
-`#111827` fill, so the Dismissible exception (content that "does not obscure") does not apply.
-→ **Remediation R3 (§11)**.
+`pointer-events:none`, `src/a11y/styles.ts`) and **Persistent** (hidden only on pointer-leave or
+blur, never on a timer). **Closed by R3 — now Dismissible:** `onKeyDown` handles Escape via
+`dismissCursor()`, which clears the readout + crosshair (`cursorActive = false`) **without moving
+focus**, so a later arrow re-activates the cursor (`src/sightline.ts`; `handlesKey` recognizes
+Escape in `src/a11y/cursor.ts`). *(automated)*
 
 ---
 
 ## 8. Per-criterion detail — Operable, Understandable, Robust
 
-### 2.1.1 Keyboard (A) — Partially Supports
+### 2.1.1 Keyboard (A) — Supports
 
-Cursor navigation (`src/sightline.ts:514-534`, `src/a11y/cursor.ts:43-75`) and legend show/hide
-(native `<button>`, `src/a11y/legend.ts:34-38`) are fully keyboard-operable; arrows auto-pan via
-`panToInclude` so any sample is reachable. *(automated)* **Gap (library, automated):**
-**wheel-zoom magnification has no keyboard equivalent** — `onWheel` (`src/sightline.ts:536-544`)
-is the only path to change the domain *span*; the keyboard `panToInclude` is width-preserving
-(`src/a11y/cursor.ts:81-90`) and `handlesKey` recognizes no `+`/`-`/PageUp/PageDown. A
-keyboard-only user can pan and read every value but cannot zoom in/out. → **Remediation R2 (§11)**.
+Cursor navigation (`src/sightline.ts`, `src/a11y/cursor.ts:43-75`) and legend show/hide (native
+`<button>`) are fully keyboard-operable; arrows auto-pan via `panToInclude` so any sample is
+reachable. **Closed by R2:** keyboard zoom now mirrors wheel-zoom — `+`/`=` zoom in, `-`/`_` zoom
+out, centered on the cursor (`zoomFactor` in `src/a11y/cursor.ts`; `zoomAroundCursor` in
+`src/sightline.ts`), and the keyboard-help text documents it. Every pointer function now has a
+keyboard path. *(automated)*
 
 ### 2.1.2 No Keyboard Trap (A) — Supports
 
@@ -462,15 +470,14 @@ order (`src/sightline.ts:197-208`); `tabIndex 0` is the only focus-affecting sta
 positive tabindex, no programmatic reorder, no autofocus) (`:186`). Hidden helpers carry no
 tabindex. *(automated)*
 
-### 2.4.6 Headings and Labels (AA) — Partially Supports
+### 2.4.6 Headings and Labels (AA) — Supports
 
 The component emits no section headings (host owns document headings), and its labels are
-descriptive: surface `aria-label` (`src/sightline.ts:322,335-344`), legend group + buttons
-(`src/a11y/legend.ts:24-25,69-75`), table caption + scoped headers
-(`src/a11y/table-alt.ts:68-110`). *(automated)* **Gap:** same root cause as 1.3.1 — the table
-x-column header is the hardcoded `"x"` (`src/a11y/table-alt.ts:78`), a non-descriptive label the
-integrator cannot override. → **Remediation R1 (§11)**. (Generic `ariaLabel`/`xLabel` fallbacks —
-"Chart"/"x"/"value" — are an additional disclosed integrator-responsibility weakness.)
+descriptive: surface `aria-label` (`src/sightline.ts`), legend group + buttons
+(`src/a11y/legend.ts`), table caption + scoped headers (`src/a11y/table-alt.ts`). **Closed by R1:**
+the table x-column header now uses the configured `xLabel` rather than the hardcoded `"x"`.
+*(automated)* (Generic `ariaLabel`/`xLabel` fallbacks — "Chart"/"x"/"value" when unset — remain a
+disclosed integrator-responsibility item.)
 
 ### 2.4.7 Focus Visible (AA) — Supports
 
@@ -529,29 +536,25 @@ alternative; the keyboard `panToInclude` path (`:526-534`) satisfies 2.1.1, not 
 wheel-zoom changes magnification, not lateral position. Dragging is not "essential" here (panning
 is expressible as taps/clicks). → **Remediation R4 (§11)**.
 
-### 2.5.8 Target Size (Minimum) (AA) — Partially Supports
+### 2.5.8 Target Size (Minimum) (AA) — Supports
 
-The data surface fills the plot inset and far exceeds 24×24 (`src/sightline.ts:359-362`). **Gap
-(library, hybrid):** legend buttons have `padding:5px 10px;font-size:12.5px` with **no
-`min-height`/`min-width`** (`src/a11y/styles.ts:40-43`); with shipped defaults they render
-~24–27px, but because `line-height` is inherited (`font:inherit`), a host line-height reset or
-smaller `--sl-font` can drop them below 24px. The `flex` gap (6px) is too small to invoke the
-spacing exception. → **Remediation R9 (§11)**.
+The data surface fills the plot inset and far exceeds 24×24 (`src/sightline.ts:359-362`).
+**Closed by R9:** legend buttons now set `min-height:24px;min-width:24px;line-height:1.1`
+(`src/a11y/styles.ts`), so they meet the 24×24 minimum independent of inherited host font metrics
+— now assertable by a computed-box check (`getBoundingClientRect() ≥ 24`). *(automated)*
 
-**Author responsibility:** if overriding font/line-height/padding, keep legend buttons ≥24×24.
+### 3.1.2 Language of Parts (AA) — Supports
 
-### 3.1.2 Language of Parts (AA) — Partially Supports
+Author-supplied strings and numeric tick/value text are the integrator's (they own their
+language). **Closed by R10:** every fixed UI string the library emits — keyboard help, legend
+group label, per-series state words, table caption, and the full data-summary sentence — is now
+overridable via the `strings` option (`SightlineStrings` + token-template defaults in
+`src/a11y/strings.ts`, threaded through legend/table/summary/`describeChart`). An integrator on a
+non-English page supplies translations so the parts match the page language. *(automated — the
+strings flow is unit-tested; defaults remain English.)*
 
-Author-supplied strings and numeric tick/value text are out of scope (the integrator owns their
-language). **Gap (library, manual-attestation):** the library ships **hard-coded English UI
-strings with no `lang` attribute and no localization hook** — the keyboard-help description
-(`describeChart`, `src/sightline.ts:335-344`), the legend group label "Series — activate to show
-or hide" (`src/a11y/legend.ts:25`), the table caption phrasing (`src/a11y/table-alt.ts:70-71`),
-and the summary phrasing (`src/a11y/summary.ts:97-104`). In a non-English host document these
-become untagged language parts. → **Remediation R10 (§11)**.
-
-**Author responsibility:** today, an integrator in a non-English page cannot localize these
-strings; the remediation adds that capability.
+**Author responsibility:** on a non-English page, pass localized `strings` (and series names /
+axis labels) so the rendered text matches the document language.
 
 ### 3.2.1 On Focus (A) — Supports
 
@@ -581,25 +584,21 @@ surface `aria-label` embeds the full keyboard model + a pointer to the data tabl
 (`src/sightline.ts:335-344`), the legend group is labeled "activate to show or hide", and each
 button has a name + "shown"/"hidden" state (`src/a11y/legend.ts:25,69-75`). *(automated)*
 
-### 4.1.2 Name, Role, Value (A) — Partially Supports
+### 4.1.2 Name, Role, Value (A) — Supports
 
 **Name** and **Role** are correctly exposed for every interactive object: surface
 `role="application"` + `aria-roledescription` + `aria-label` + `aria-details`/`aria-describedby`
-(`src/sightline.ts:184-194,322`); native legend `<button>` with `aria-pressed`
-(`src/a11y/legend.ts:33-57,69-76`); canvas + readout `aria-hidden` (`src/sightline.ts:179,650`);
-native table with scoped headers (`src/a11y/table-alt.ts:75-110`). *(automated)*
+(`src/sightline.ts`); native legend `<button>` with `aria-pressed` (`src/a11y/legend.ts`); canvas
++ readout `aria-hidden`; native table with scoped headers (`src/a11y/table-alt.ts`). *(automated)*
 
-**Gap (library, automated):** the **value** half is weak for the primary widget. The data
-surface's whole function is a user-settable cursor, but the current cursor position is conveyed
-**only** through a transient polite announcement (`announceNow`, `src/sightline.ts:444-453`) —
-there is no `aria-activedescendant`, `aria-valuenow`, `aria-valuetext`, or `aria-current`
-anywhere, and `role="application"` suppresses browse-mode, so a query of the element yields only
-the static keyboard-help label, not the live point. A polite announcement satisfies 4.1.3, not
-4.1.2's requirement that a user-settable value be programmatically determinable. Secondary: the
-legend button's accessible name is polluted by the "shown"/"hidden" state text (it should be
-`aria-hidden`, since `aria-pressed` already conveys state). → **Remediation R11 (§11)**.
-*(manual-attestation: `role="application"` is a deliberate trade-off — confirm with NVDA/JAWS/
-VoiceOver that focus announces name + instructions and the table is reachable.)*
+**Closed by R11 — the Value half:** the focused sample is now a programmatically-determinable
+value. A dedicated `aria-describedby` target (`sl-active-{n}`) is updated **in lockstep** with
+every cursor move (`updateActiveSample`, `src/sightline.ts`), so AT/automation can *query* the
+current point (not only hear the transient live announcement, which still serves 4.1.3). The
+legend "shown"/"hidden" state span is now `aria-hidden`, so each button's accessible name stays
+the stable series name while `aria-pressed` carries state. *(automated for the attribute wiring;
+manual-attestation that `role="application"` + the value target read correctly in NVDA/JAWS/
+VoiceOver, since `role="application"` is a deliberate browse-mode trade-off.)*
 
 ### 4.1.3 Status Messages (AA) — Supports
 
@@ -682,39 +681,38 @@ in adapting DOM (`src/a11y/table-alt.ts:75-110`, `legend.ts:69-76`, `live-region
 
 ## 11. Remediation backlog
 
-The 14 Partially Supports + forced-colors split into **library-closable** (small changes to the
-MIT renderer that would raise the conformance level and are CI-checkable afterward) and
-**inherently integrator-dependent / out-of-scope-for-now** (reported as remarks + attestation).
+The original backlog split into **library-closable** (small changes to the MIT renderer that raise
+the conformance level and are CI-checkable) and **deferred / inherently integrator-dependent**
+(reported as remarks + attestation). The 7 cheap library-closable items are **done** (commit
+`7bf4fcd`, verified end-to-end); R4 and R6 were deferred as larger renderer work.
 
-### Library-closable (candidates for the implementation phase)
+### Library-closable — done (✅) and deferred
 
-| ID | Closes | Fix |
-|---|---|---|
-| **R1** | 1.3.1, 2.4.6 | Thread `xLabel`/`yLabel` into the data-table headers: add fields to `TableUpdate`, pass `this.options.xLabel` through `scheduleTableUpdate()`, and use `this.th(u.xHeader ?? 'x')` in `buildHead`. Add a DOM-structure test that the first `<th>` equals the configured `xLabel`. |
-| **R2** | 2.1.1 | Add keyboard zoom (`+`/`=`/`-`, optionally PageUp/Down): extend the handled-key set + `stepCursor` to return a span-scaling intent; in `onKeyDown` call `setDomain` with a factor-scaled span centered on the cursor x (mirroring `onWheel`). Update `describeChart` + tests. |
-| **R3** | 1.4.13 | Add an Escape branch to `onKeyDown` that clears `cursorActive` + the `sl-show` readout + crosshair **without** blurring the surface. |
-| **R4** | 2.5.7 | Add a single-pointer non-dragging pan affordance (e.g. on-overlay prev/next page buttons, or click-the-margin-to-page) that translates the domain. |
-| **R6** | 1.4.3, 1.4.11 | Ship a contrast-checked default series palette and raise default `--sl-grid`/`--sl-axis` alpha to clear 3:1 against the documented background (and/or auto-derive DOM text color from a configured background). |
-| **R8** | 1.4.3 | Stop using `opacity:.45` alone for the legend "hidden" state (drops text to ~2.35:1); convey hidden-ness via the existing state label / strikethrough, or keep text contrast ≥4.5:1. |
-| **R9** | 2.5.8 | Add `min-height:24px;min-width:24px;line-height:1.1` to `.sl-legend button` (removes host-line-height sensitivity; becomes a computed-box test). |
-| **R10** | 3.1.2 | Mark the library's fixed strings as English (`lang`) and/or expose a `strings`/i18n option so integrators can localize the keyboard-help, legend label, caption, and summary phrasing. |
-| **R11** | 4.1.2 | Expose the cursor's current value programmatically — `aria-activedescendant` on the surface pointing at the current sample, or an `aria-describedby`/`aria-valuetext` updated in lockstep with each move — and `aria-hidden` the legend "shown"/"hidden" state span so the button name stays the stable series name. |
+| ID | Closes | Status | Fix |
+|---|---|---|---|
+| **R1** | 1.3.1, 2.4.6 | ✅ done | `TableUpdate.xLabel` threaded from `scheduleTableUpdate()` into `buildHead`, so the x-column header uses the configured label (falls back to `"x"`). |
+| **R2** | 2.1.1 | ✅ done | Keyboard zoom: `zoomFactor()` (`+`/`=`/`-`/`_`) + `zoomAroundCursor()` mirror wheel-zoom centered on the cursor; help text + unit tests added. |
+| **R3** | 1.4.13 | ✅ done | Escape branch in `onKeyDown` → `dismissCursor()` clears readout + crosshair without blurring. |
+| **R8** | 1.4.3 | ✅ done | Legend "hidden" state no longer reduces text opacity; uses `aria-pressed` + strikethrough + dimmed (decorative) swatch. |
+| **R9** | 2.5.8 | ✅ done | `min-height:24px;min-width:24px;line-height:1.1` on `.sl-legend button`. |
+| **R10** | 3.1.2 | ✅ done | `strings` option (`SightlineStrings` token-templates) localizes every fixed UI string. |
+| **R11** | 4.1.2 | ✅ done | Focused sample exposed as a queryable value via a lockstep `aria-describedby` target; legend state span `aria-hidden`. |
+| **R4** | 2.5.7 | ⏸ deferred | Single-pointer non-dragging pan affordance (overlay prev/next buttons or click-margin-to-page) — a UI feature, not a one-liner. |
+| **R6** | 1.4.3, 1.4.11 | ⏸ deferred | Contrast-checked default series palette + higher default `--sl-grid`/`--sl-axis` alpha — a design decision (the library ships no palette today). |
 
-### Inherently integrator-dependent / out of immediate scope (remarks + attestation)
+### Deferred / inherently integrator-dependent (remarks + attestation)
 
 | ID | SC(s) | Why it stays a remark |
 |---|---|---|
-| **R5** | 1.4.1 | Per-series dash/marker channel would close color-only differentiation on the canvas — a real feature add (a design decision), not a one-line fix. |
+| **R5** | 1.4.1 | Per-series dash/marker channel would close color-only differentiation on the canvas — a feature add (design decision), not a one-line fix. |
 | **R7** | 1.4.4, 1.4.10 | Adaptive tick thinning/rotation at narrow widths; partially mitigated by px→rem fonts, but full reflow-at-200% needs design work. |
 | **R12** | forced-colors | Re-painting canvas marks from `getComputedStyle` system colors (or the R5 dash channel) is a meaningful renderer change; today the DOM data alternatives carry the user through. |
-| — | 1.4.3, 1.4.11, 2.4.11 | The host background, author-supplied series colors, and host-page sticky/overlay layout are outside the component boundary by definition — always remarks + attestation, never automated passes. |
+| — | 1.4.3, 1.4.11, 2.4.11 | Host background, author-supplied series colors, and host-page sticky/overlay layout are outside the component boundary by definition — always remarks + attestation, never automated passes. |
 
-> **Sequencing note for the implementation phase:** R1, R3, R9 are one-to-a-few lines each and
-> directly raise the auto-generated VPAT (the lead magnet). R2, R8, R10, R11 are small and
-> high-value. Closing R1/R2/R3/R8/R9/R10/R11 would move 1.3.1, 2.1.1, 1.4.13, 2.4.6, 2.5.8, 3.1.2,
-> 4.1.2 (and tighten 1.4.3) from Partially Supports toward Supports — i.e. **21 → ~28 Supports**.
-> Whether to close these in the MIT core *before* the VPAT generator ships, or to ship the honest
-> baseline first, is a product decision for the start of implementation.
+> **Outcome:** closing R1/R2/R3/R8/R9/R10/R11 moved 1.3.1, 1.4.13, 2.1.1, 2.4.6, 2.5.8, 3.1.2,
+> 4.1.2 from Partially Supports → **Supports** and closed 1.4.3's legend sub-gap — **21 → 28
+> Supports**. The 7 remaining Partially Supports depend on integrator choices (host background,
+> author colors, host layout) or the deferred renderer features R4–R7/R12.
 
 ---
 
@@ -737,8 +735,12 @@ Derived from the verification tags above; formalized in documents 3 and 4.
   tabindex (2.4.3).
 - Computed contrast for **fully library-controlled** pairs only: the readout (`#f9fafb` on
   `#111827`), and the default DOM text **against a documented test background**.
-- After remediation: the R1 table-header test, R9 legend `getBoundingClientRect() ≥ 24`, R3
-  Escape-dismiss probe, R2 zoom-key probe, the 4.1.3 live-region functional test.
+- Post-remediation checks (verified once, now in the gate's scope): table x-header equals the
+  configured `xLabel` (R1); legend `getBoundingClientRect() ≥ 24` (R9); Escape clears the
+  readout and keeps focus (R3); `+`/`-` change the visible domain (R2); the focused-sample
+  `aria-describedby` target is populated on focus and cleared on Escape (R11); the localized
+  `strings` flow (R10). These are exercised today by the one-off harness used to verify the
+  fixes and will be folded into the conformance engine (document 3 / task 17).
 
 **Human attestation (the VPAT carries these as signed lines, not automated passes):**
 
