@@ -466,7 +466,9 @@ export class Sightline {
   /** Natural-language text for the focused sample, or null when there's nothing to describe. */
   private currentSampleText(): string | null {
     const s = this.series[this.cursor.series];
-    if (!s || this.data.n === 0) return null;
+    // Guard visibility too: when every series is hidden, the cursor falls back to series 0
+    // (which is hidden), and neither the announcement nor the value target should leak it.
+    if (!s || !s.visible || this.data.n === 0) return null;
     const x = this.data.x[this.cursor.index];
     const v = this.data.y[s.index][this.cursor.index];
     const lx = this.options.xLabel ?? 'x';

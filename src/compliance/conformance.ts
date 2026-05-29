@@ -35,6 +35,12 @@ function scFromAxeTags(tags: string[]): string[] {
     const m = t.match(/^wcag(\d)(\d)(\d{1,2})$/);
     if (m) out.push(`${m[1]}.${m[2]}.${Number(m[3])}`);
   }
+  // A serious/critical violation whose tags don't resolve to a numeric SC still fails the
+  // `axe-serious` check (which the gate honors directly) — but warn so per-SC attribution gaps
+  // are visible rather than silent.
+  if (out.length === 0 && tags.length > 0) {
+    console.warn(`sightline-audit: axe violation tags did not map to an SC: ${tags.join(', ')}`);
+  }
   return out;
 }
 
@@ -123,13 +129,21 @@ export async function runConformance(
       },
       hasLive: !!live,
       css,
+      noPositiveTabindex: ![...(root?.querySelectorAll('[tabindex]') ?? [])].some(
+        (e) => Number(e.getAttribute('tabindex')) > 0,
+      ),
+      legendBeforeSurface: (() => {
+        const lg = root?.querySelector('.sl-legend');
+        if (!lg || !surface) return true;
+        return (lg.compareDocumentPosition(surface) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+      })(),
     };
   }, sel);
 
   results.push(status(dom.canvasHidden, 'canvas-hidden', ['1.1.1', '4.1.2'], 'canvas missing aria-hidden=true'));
   results.push(
     status(dom.hasDataTable && dom.tableHasCaption && dom.tableHasScopedHeaders, 'text-alternative',
-      ['1.1.1', '1.3.1'], 'no data <table> with caption + scoped headers (>=10 rows)'),
+      ['1.1.1', '1.3.1', '1.4.1'], 'no data <table> with caption + scoped headers (>=10 rows)'),
   );
   // R1: the x-column header reflects the configured xLabel (its axis title), else is non-empty.
   results.push(
@@ -143,13 +157,19 @@ export async function runConformance(
     status(
       !!sf && sf.role === 'application' && sf.roledesc.length > 0 && sf.label.length > 0 &&
         sf.details.length > 0 && sf.describedby.length > 0,
-      'surface-semantics', ['1.1.1', '4.1.2'], 'surface missing role/roledescription/label/details/describedby'),
+      'surface-semantics', ['1.1.1', '4.1.2', '3.3.2'], 'surface missing role/roledescription/label/details/describedby'),
   );
+  // 1.3.3 / 3.3.2: the surface's accessible name names navigation keys (not sensory cues).
+  results.push(status(/arrow/i.test(sf?.label ?? ''), 'instructions-named-keys', ['1.3.3', '3.3.2'],
+    'surface aria-label does not name the navigation keys'));
+  // 2.4.3: no positive tabindex, and the legend precedes the surface in DOM (meaningful order).
+  results.push(status(dom.noPositiveTabindex && dom.legendBeforeSurface, 'focus-order', ['2.4.3'],
+    'positive tabindex present, or legend is not before the surface in DOM order'));
   results.push(
     dom.legend.count === 0
-      ? na('legend-semantics', ['1.3.1', '4.1.2'], 'no legend rendered')
+      ? na('legend-semantics', ['1.3.1', '4.1.2', '1.4.1', '3.2.4', '2.5.2'], 'no legend rendered')
       : status(dom.legend.allButtons && dom.legend.allPressed && dom.legend.stateHidden,
-          'legend-semantics', ['1.3.1', '4.1.2'], 'legend buttons missing type=button / aria-pressed / aria-hidden state'),
+          'legend-semantics', ['1.3.1', '4.1.2', '1.4.1', '3.2.4', '2.5.2'], 'legend buttons missing type=button / aria-pressed / aria-hidden state'),
   );
   results.push(status(dom.hasLive, 'live-region-present', ['4.1.3'], 'no aria-live=polite aria-atomic region'));
   results.push(
@@ -167,11 +187,25 @@ export async function runConformance(
   results.push(status(/@media\s*\(prefers-reduced-motion:\s*reduce\)/.test(dom.css), 'reduced-motion-rule',
     ['2.2.2', 'reduced-motion'], 'no prefers-reduced-motion rule in injected CSS'));
   results.push(status(/@media\s*\(forced-colors:\s*active\)/.test(dom.css), 'forced-colors-rule',
-    ['2.4.7', 'forced-colors'], 'no forced-colors rule in injected CSS'));
-  results.push(status(dom.css.includes(':focus-visible'), 'focus-visible', ['2.4.7'],
+    ['2.4.7', 'forced-colors', '1.4.11'], 'no forced-colors rule in injected CSS'));
+  results.push(status(dom.css.includes(':focus-visible'), 'focus-visible', ['2.4.7', '1.4.11'],
     'no :focus-visible indicator in injected CSS'));
+  // Structural CSS-source checks (serve the criteria whose automatable portion is "the library
+  // ships no anti-pattern"). Author/host-dependent aspects remain attestation in the ACR.
+  results.push(status(!/[\s;{]order\s*:|row-reverse|column-reverse|[\s;{]float\s*:/.test(dom.css),
+    'meaningful-sequence', ['1.3.2'], 'injected CSS reorders content (order / *-reverse / float)'));
+  results.push(status(!/@media[^{]*orientation/i.test(dom.css) && !/transform:\s*rotate/i.test(dom.css),
+    'orientation', ['1.3.4'], 'injected CSS locks orientation (orientation media query or rotate)'));
+  results.push(status(/\.sl-root\{[^}]*width:\s*100%[^}]*height:\s*100%/.test(dom.css),
+    'resize-text', ['1.4.4'], 'chart container is not fluid (100% width/height)'));
+  results.push(status(/\.sl-legend ul\{[^}]*flex-wrap:\s*wrap/.test(dom.css),
+    'reflow', ['1.4.10'], 'legend does not wrap (flex-wrap:wrap) — reflow at narrow widths at risk'));
+  results.push(status(
+    dom.css.split('}').filter((r) => /overflow:\s*hidden/.test(r)).every((r) => /\.sl-sr-only/.test(r)),
+    'text-spacing', ['1.4.12'], 'visible text may be clipped (overflow:hidden outside .sl-sr-only)'));
 
   // --- functional keyboard checks ---
+  const startUrl = page.url();
   await page.focus(`${sel} [role="application"]`);
   await page.waitForTimeout(80);
   const liveSel = `${sel} [aria-live]`;
@@ -184,6 +218,14 @@ export async function runConformance(
   const after = await liveText();
   results.push(status(before !== after && after.trim().length > 0, 'keyboard-announce', ['2.1.1', '4.1.3'],
     'live region did not change on End/ArrowLeft'));
+
+  // 3.2.1 / 3.2.2: focusing + key input must not change context (focus stays put, no navigation).
+  const focusStable = await page.evaluate(
+    (s) => document.activeElement === document.querySelector(`${s} [role="application"]`),
+    sel,
+  );
+  results.push(status(focusStable && page.url() === startUrl, 'context-stability', ['3.2.1', '3.2.2'],
+    'focus moved off the surface or the page navigated after focus/key input'));
 
   // active-value (R11): the focused sample is a queryable value (2nd describedby target populated).
   const activeText = async (): Promise<string> =>

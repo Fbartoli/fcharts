@@ -186,10 +186,10 @@ export const CRITERIA: CriterionRow[] = [
     remarks:
       'Legend, table, and readout give color-free series identity, but on the canvas series are ' +
       'distinguished by color only (no per-series dash/marker), so two close lines cannot be told ' +
-      'apart by a color-blind user (deferred R5). Distinguishability is a perceptual ' +
-      'attestation. (verified: automated)',
-    verification: 'automated',
-    attestationRequired: false,
+      'apart by a color-blind user (deferred R5). The non-color identity channels are checked ' +
+      'automatically; on-canvas distinguishability is a perceptual attestation. (verified: hybrid)',
+    verification: 'hybrid',
+    attestationRequired: true,
     evidence: [
       { detail: 'Color-free identity in legend (swatch + name + state)', ref: 'src/a11y/legend.ts:40-52' },
       { detail: 'Envelope stroke uses s.color only, no setLineDash', ref: 'src/renderers/canvas2d.ts:143-147' },

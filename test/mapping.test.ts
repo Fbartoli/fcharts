@@ -81,3 +81,34 @@ test('SC_CHECKS / CHECK_CATALOG: every catalog SC is indexed and ids are unique'
   assert.equal(new Set(ids).size, ids.length, 'duplicate check ids');
   for (const c of CHECK_CATALOG) for (const sc of c.sc) assert.ok(SC_CHECKS[sc].includes(c.id));
 });
+
+// Applicable automated/hybrid criteria NOT covered by a live-gate check — each is instead
+// verified by a unit test or source review, or is an inherent host-dependent attestation.
+// Anything else automated/hybrid MUST have a serving check (review finding #1: a "Supports"
+// row with no check can silently regress, since the reducer only ever downgrades on a fail).
+const GATE_EXEMPT: Record<string, string> = {
+  '2.1.4': 'unit-tested: cursor.test.ts asserts handlesKey accepts only non-character keys',
+  '2.2.1': 'source: no time limits — the only timers are output coalescers (no setInterval/deadline)',
+  '2.3.1': 'source: no flashing/animation mechanism (render-on-demand, single clear+repaint)',
+  '2.4.11': 'hybrid/host: not entirely obscuring its own focus is geometry/host-dependent (attested)',
+  '2.5.7': 'hybrid: the deferred single-pointer non-drag pan gap (R4) — no positive auto-check',
+};
+
+test('coverage: every applicable automated/hybrid criterion has a serving check or is exempt', () => {
+  const uncovered = CRITERIA.filter(
+    (c) =>
+      c.applicability === 'applicable' &&
+      c.verification !== 'manual-attestation' &&
+      !(SC_CHECKS[c.num] && SC_CHECKS[c.num].length > 0) &&
+      !(c.num in GATE_EXEMPT),
+  ).map((c) => c.num);
+  assert.deepEqual(uncovered, [], `automated/hybrid criteria with neither a serving check nor an exemption: ${uncovered.join(', ')}`);
+});
+
+test('coverage: the gate-exempt list has no stale entries (all still uncovered + applicable)', () => {
+  for (const num of Object.keys(GATE_EXEMPT)) {
+    const c = CRITERIA.find((x) => x.num === num);
+    assert.ok(c && c.applicability === 'applicable', `exempt ${num} missing/not-applicable`);
+    assert.ok(!(SC_CHECKS[num] && SC_CHECKS[num].length), `exempt ${num} now HAS a check — remove from exempt list`);
+  }
+});

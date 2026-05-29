@@ -16,7 +16,7 @@ import { execSync } from 'node:child_process';
 import { chromium, type Browser } from 'playwright';
 import { createServer, type ViteDevServer } from 'vite';
 import { runConformance, countStatuses } from './conformance.ts';
-import { reduceToVerdicts, hasRegression } from './mapping.ts';
+import { reduceToVerdicts } from './mapping.ts';
 import { CRITERIA } from './criteria.ts';
 import { buildModel, renderAcr, type AcrFormat } from './acr.ts';
 import type { EditionKey, EvaluationInfo, ProductInfo } from './types.ts';
@@ -170,6 +170,10 @@ async function main(): Promise<number> {
     const verdicts = reduceToVerdicts(report, CRITERIA);
     const regressed = verdicts.filter((v) => v.regression);
     const counts = countStatuses(report);
+    // A serious/critical axe violation fails the gate even if its tags don't map to a baseline SC
+    // (so it never downgrades a criterion) — otherwise a brand-new violation could slip through.
+    const axeFailed = report.results.some((r) => r.id === 'axe-serious' && r.status === 'fail');
+    const failed = regressed.length > 0 || axeFailed;
 
     // Generate + write the ACR(s).
     mkdirSync(resolve(args.out), { recursive: true });
@@ -201,15 +205,16 @@ async function main(): Promise<number> {
         observed: v.observed,
         failingChecks: v.checks.filter((c) => c.status === 'fail').map((c) => `${c.id}: ${c.detail}`),
       })),
-      pass: !hasRegression(verdicts),
+      pass: !failed,
+      axeSeriousFailed: axeFailed,
       report,
     };
     writeFileSync(resolve(args.out, 'audit-report.json'), JSON.stringify(auditReport, null, 2));
 
     if (args.json) console.log(JSON.stringify(auditReport, null, 2));
-    else if (!args.quiet) printSummary(verdicts, regressed, counts, args.out);
+    else if (!args.quiet) printSummary(verdicts, regressed, counts, args.out, axeFailed);
 
-    return regressed.length === 0 ? 0 : 1;
+    return failed ? 1 : 0;
   } catch (err) {
     console.error('sightline-audit: harness error —', err instanceof Error ? err.message : err);
     return 2;
@@ -225,9 +230,8 @@ function printSummary(
   regressed: ReturnType<typeof reduceToVerdicts>,
   counts: Record<string, number>,
   out: string,
+  axeFailed: boolean,
 ): void {
-  const t: Record<string, number> = {};
-  for (const v of verdicts) t[v.observed] = (t[v.observed] ?? 0) + 1;
   const wcag = verdicts.filter((v) => /^\d/.test(v.num));
   const tw: Record<string, number> = {};
   for (const v of wcag) tw[v.observed] = (tw[v.observed] ?? 0) + 1;
@@ -236,14 +240,17 @@ function printSummary(
       `${tw['Not Applicable'] ?? 0} Not Applicable (55 WCAG 2.2 A/AA criteria)`,
   );
   console.log(`checks: ${counts.pass} pass · ${counts.fail} fail · ${counts.na} n/a → ACR written to ${out}`);
-  if (regressed.length === 0) {
+  if (regressed.length === 0 && !axeFailed) {
     console.log('✓ no regressions — gate passes');
     return;
   }
-  console.log(`\n✗ ${regressed.length} REGRESSION(S) — gate fails:`);
-  for (const v of regressed) {
-    console.log(`  ${v.num}: ${v.expected} → ${v.observed}`);
-    for (const c of v.checks.filter((c) => c.status === 'fail')) console.log(`     ✗ ${c.id}: ${c.detail}`);
+  if (axeFailed) console.log('\n✗ axe-core reported serious/critical violations — gate fails');
+  if (regressed.length > 0) {
+    console.log(`\n✗ ${regressed.length} REGRESSION(S) — gate fails:`);
+    for (const v of regressed) {
+      console.log(`  ${v.num}: ${v.expected} → ${v.observed}`);
+      for (const c of v.checks.filter((c) => c.status === 'fail')) console.log(`     ✗ ${c.id}: ${c.detail}`);
+    }
   }
 }
 
