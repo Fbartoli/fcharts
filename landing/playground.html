@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sightline Playground — build a chart live</title>
+  <meta name="description" content="Interactively configure a Sightline chart — series, type, colors, titles, data, options — and copy the config. Fast and accessible by default." />
+  <style>
+    :root{
+      --bg:#06080c; --panel:#0c1016; --panel-2:#10151d; --ink:#e8eef4; --muted:#8794a3;
+      --faint:#5a6675; --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.14);
+      --accent:#6ee7a8; --accent-dim:rgba(110,231,168,.12); --amber:#fbbf24; --danger:#f87171;
+      --sky:#38bdf8;
+      /* Sightline theme (matches the landing site) */
+      --sl-ink:#cfd8e3; --sl-tick-color:#8794a3; --sl-axis-title:#5a6675;
+      --sl-grid:rgba(110,231,168,.06); --sl-axis:rgba(255,255,255,.12);
+      --sl-cursor:rgba(255,255,255,.4); --sl-ring:#06080c; --sl-focus:#6ee7a8;
+      --sl-legend-border:rgba(255,255,255,.16); --sl-legend-border-hover:rgba(255,255,255,.4);
+      --sl-readout-bg:#10151d; --sl-readout-ink:#e8eef4; --sl-readout-border:rgba(255,255,255,.16);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:
+        radial-gradient(1100px 520px at 82% -8%, rgba(110,231,168,.06), transparent 60%),
+        radial-gradient(820px 460px at -8% 8%, rgba(56,189,248,.05), transparent 55%),
+        var(--bg);
+      color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+      -webkit-font-smoothing:antialiased;line-height:1.5}
+    .mono{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-variant-numeric:tabular-nums}
+    a{color:var(--accent);text-decoration:none}
+    h1,h2,h3{letter-spacing:-.02em;line-height:1.15;margin:0}
+
+    header.bar{display:flex;align-items:center;justify-content:space-between;gap:16px;
+      padding:14px 24px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10;
+      background:rgba(6,8,12,.82);backdrop-filter:blur(8px)}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:700}
+    .dot{width:11px;height:11px;border-radius:3px;background:var(--accent);
+      box-shadow:0 0 14px var(--accent)}
+    .bar .meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .badge{font-size:12px;color:var(--muted);border:1px solid var(--line-2);border-radius:999px;
+      padding:4px 10px;white-space:nowrap}
+    .badge b{color:var(--ink)}
+
+    .layout{display:grid;grid-template-columns:340px 1fr;gap:0;min-height:calc(100vh - 56px)}
+    @media (max-width:900px){.layout{grid-template-columns:1fr}}
+
+    /* controls */
+    .controls{border-right:1px solid var(--line);padding:18px;overflow-y:auto;
+      max-height:calc(100vh - 56px)}
+    @media (max-width:900px){.controls{max-height:none;border-right:0;border-bottom:1px solid var(--line)}}
+    .group{margin-bottom:22px}
+    .group > h3{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint);
+      margin-bottom:10px;font-weight:700}
+    .field{margin-bottom:12px}
+    .field label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:5px}
+    .field .row{display:flex;gap:8px;align-items:center}
+    input[type=text],select,input[type=number]{width:100%;background:var(--panel-2);
+      border:1px solid var(--line-2);border-radius:8px;color:var(--ink);padding:8px 10px;
+      font:inherit;font-size:13px}
+    input[type=range]{width:100%;accent-color:var(--accent)}
+    input[type=color]{width:34px;height:34px;padding:0;border:1px solid var(--line-2);
+      border-radius:8px;background:var(--panel-2);cursor:pointer;flex:none}
+    input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
+    .check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink)}
+    .inline{display:flex;gap:10px}.inline .field{flex:1}
+    .hint{font-size:11.5px;color:var(--faint)}
+    .val{color:var(--ink);font-size:12px}
+
+    .series-card{border:1px solid var(--line-2);border-radius:10px;padding:12px;margin-bottom:10px;
+      background:var(--panel)}
+    .series-card .top{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+    .series-card .top input[type=text]{flex:1}
+    .iconbtn{background:transparent;border:1px solid var(--line-2);color:var(--muted);
+      border-radius:8px;cursor:pointer;padding:6px 9px;font-size:13px;line-height:1}
+    .iconbtn:hover{border-color:var(--danger);color:var(--danger)}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;
+      font-size:13px;padding:9px 14px;border-radius:9px;cursor:pointer;border:1px solid var(--line-2);
+      background:var(--panel-2);color:var(--ink);transition:.15s;width:100%}
+    .btn:hover{border-color:var(--faint)}
+    .btn-accent{background:var(--accent);color:#04210f;border-color:var(--accent)}
+    .btn-accent:hover{filter:brightness(1.08)}
+
+    /* stage */
+    .stage{padding:22px 24px;min-width:0}
+    .chart-wrap{position:relative;height:440px;border:1px solid var(--line);border-radius:14px;
+      background:linear-gradient(180deg,var(--panel),#080b10);padding:10px;overflow:hidden}
+    #chart{width:100%;height:100%}
+    .stage .tip{font-size:12.5px;color:var(--muted);margin:10px 2px 0}
+    .stage .tip kbd{font-family:ui-monospace,monospace;font-size:11px;border:1px solid var(--line-2);
+      border-bottom-width:2px;border-radius:5px;padding:1px 5px;color:var(--ink);background:var(--panel-2)}
+
+    .out{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px}
+    @media (max-width:760px){.out{grid-template-columns:1fr}}
+    .card{border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden}
+    .card .head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;
+      border-bottom:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+    .card .head b{color:var(--ink)}
+    .copy{background:transparent;border:1px solid var(--line-2);color:var(--muted);border-radius:7px;
+      cursor:pointer;font-size:11.5px;padding:4px 9px}
+    .copy:hover{border-color:var(--accent);color:var(--accent)}
+    pre{margin:0;padding:14px;overflow:auto;max-height:340px;font-family:ui-monospace,monospace;
+      font-size:12px;color:#cfe0d6;white-space:pre;tab-size:2}
+    .sr-readout{padding:14px;font-size:12.5px;color:var(--muted)}
+    .sr-readout b{color:var(--ink)}
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <div class="brand"><span class="dot"></span> Sightline <span class="badge">Playground</span></div>
+    <div class="meta">
+      <span class="badge" id="badge-points">— points × — series</span>
+      <span class="badge" id="badge-path">render: —</span>
+      <a class="badge" href="/" >← Landing</a>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="controls" aria-label="Chart configuration">
+      <div class="group">
+        <h3>Title &amp; axes</h3>
+        <div class="field"><label for="opt-title">Chart title (accessible name)</label>
+          <input type="text" id="opt-title" value="Sensor telemetry" /></div>
+        <div class="inline">
+          <div class="field"><label for="opt-xlabel">X axis label</label>
+            <input type="text" id="opt-xlabel" value="sample" /></div>
+          <div class="field"><label for="opt-ylabel">Y axis label</label>
+            <input type="text" id="opt-ylabel" value="value" /></div>
+        </div>
+      </div>
+
+      <div class="group">
+        <h3>Data</h3>
+        <div class="field"><label for="opt-gen">Shape</label>
+          <select id="opt-gen">
+            <option value="waves">Sine waves</option>
+            <option value="walk">Random walk</option>
+            <option value="trend">Trend + noise</option>
+            <option value="steps">Stepped</option>
+          </select></div>
+        <div class="field"><label for="opt-points">Points per series: <span class="val" id="points-val">20,000</span></label>
+          <input type="range" id="opt-points" min="500" max="100000" step="500" value="20000" /></div>
+        <div class="hint">Frame cost stays flat as you crank this up — the min/max pyramid renders per pixel, not per point.</div>
+      </div>
+
+      <div class="group">
+        <h3>Series</h3>
+        <div id="series-list"></div>
+        <button class="btn" id="add-series">+ Add series</button>
+      </div>
+
+      <div class="group">
+        <h3>Options</h3>
+        <label class="check field"><input type="checkbox" id="opt-legend" checked /> Show legend</label>
+        <label class="check field"><input type="checkbox" id="opt-xinteger" checked /> Integer x ticks</label>
+        <div class="inline">
+          <div class="field"><label for="opt-xticks">X ticks</label>
+            <input type="number" id="opt-xticks" min="2" max="16" value="8" /></div>
+          <div class="field"><label for="opt-yticks">Y ticks</label>
+            <input type="number" id="opt-yticks" min="2" max="12" value="6" /></div>
+        </div>
+        <label class="check field"><input type="checkbox" id="opt-reduced" /> Reduced motion</label>
+        <label class="check field"><input type="checkbox" id="opt-contrast" /> High contrast</label>
+        <div class="field"><label for="opt-locale">UI language (the <span class="mono">strings</span> option)</label>
+          <select id="opt-locale">
+            <option value="en">English (default)</option>
+            <option value="fr">Français</option>
+          </select></div>
+        <div class="hint">Switch to Français and Tab into the chart — the keyboard help, legend, and
+          screen-reader summary are all localized.</div>
+      </div>
+    </aside>
+
+    <main class="stage">
+      <div class="chart-wrap"><div id="chart"></div></div>
+      <p class="tip">Tab into the chart, then <kbd>←</kbd> <kbd>→</kbd> move · <kbd>↑</kbd> <kbd>↓</kbd>
+        switch series · <kbd>+</kbd> <kbd>−</kbd> zoom · <kbd>Esc</kbd> dismiss · or scroll to zoom,
+        drag to pan. Every move is announced to screen readers.</p>
+
+      <div class="out">
+        <div class="card">
+          <div class="head"><span>Config — <b>copy &amp; paste</b></span>
+            <button class="copy" id="copy-config">Copy</button></div>
+          <pre id="code" class="mono"></pre>
+        </div>
+        <div class="card">
+          <div class="head"><span><b>summary()</b> — what an AI agent reads</span>
+            <button class="copy" id="copy-summary">Copy</button></div>
+          <pre id="summary" class="mono"></pre>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="/playground.ts"></script>
+</body>
+</html>
