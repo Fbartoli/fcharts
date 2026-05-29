@@ -73,6 +73,8 @@ injected automatically — no CSS import required.
 | `↑` `↓` | Switch series |
 | `Home` / `End` | Jump to the first / last sample |
 | `Shift` + arrow | Fine (single-sample) step |
+| `+` / `-` | Zoom in / out (keyboard equivalent of the wheel) |
+| `Esc` | Dismiss the cursor / readout (keeps focus on the chart) |
 | Legend buttons | Toggle series visibility |
 
 Every cursor move is announced through a polite live region (coalesced so holding a key
@@ -129,6 +131,8 @@ interface SightlineOptions {
   formatY?: (v: number) => string;
   reducedMotion?: boolean;  // auto-detected from prefers-reduced-motion
   highContrast?: boolean;   // auto-detected from prefers-contrast
+  strings?: Partial<SightlineStrings>;  // localize the fixed UI text (legend, keyboard help,
+                                        // data summary, table caption) for non-English pages
 }
 ```
 
@@ -147,15 +151,70 @@ A handful of CSS custom properties on the container (or `:root`) cover theming:
 }
 ```
 
+## Accessibility & the Compliance Pack
+
+The MIT renderer is accessible by construction. The **Compliance Pack** is the paid layer on top —
+the *proof*, kept current automatically. (Both live in this repo; the Pack is a separate entry,
+`src/compliance/`, never bundled into the core chart.)
+
+- **A per-criterion WCAG 2.2 AA evidence map** for the chart layer, adversarially verified, with
+  `file:line` evidence: **28 Supports / 7 Partially Supports / 20 Not Applicable** across the 55
+  Level A + AA success criteria. The honest 7 partials are integrator-dependent (host background,
+  author series colors, host page layout). See [`compliance/scope-and-evidence-map.md`](./compliance/scope-and-evidence-map.md).
+- **An auto-generated VPAT/ACR** (Accessibility Conformance Report) — EN 301 549 (EU/EAA), WCAG,
+  and Section 508 editions, as Markdown + HTML + JSON, from one dependency-free generator. Sample:
+  [`compliance/samples/`](./compliance/samples/). Editions, the functional-performance derivation,
+  and the DRAFT/attestation model are in [`compliance/vpat-editions.md`](./compliance/vpat-editions.md).
+- **A CI accessibility gate** (`sightline-audit`) that runs the conformance engine against your
+  real configured chart on every commit and **fails the build on any regression** below the
+  baseline — the thing a whole-site scanner does badly: prove a complex interactive component stays
+  per-point accessible. See [`compliance/conformance-test-plan.md`](./compliance/conformance-test-plan.md)
+  and [`compliance/ci-gate.md`](./compliance/ci-gate.md).
+
+> Why a gate and not just a scan? The benchmark's own finding (see [`FINDINGS.md`](./FINDINGS.md)):
+> a bare inaccessible `<canvas>` scores **0 axe violations** too. Real conformance needs functional
+> checks — keyboard, live region, focus, computed contrast, target size — which is what the engine
+> runs.
+
+### Worked CI example
+
+Point the gate at a fixture that builds your real chart (`export mountChart(el) => teardown`):
+
+```yaml
+# .github/workflows/a11y-gate.yml
+name: a11y gate
+on: [pull_request, push]
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '24' }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium   # dev/peer dep, CI-only
+      - run: npx sightline-audit --fixture ./a11y/fixture.ts --edition en301549 --out ./compliance-out
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: accessibility-conformance-report, path: ./compliance-out }
+```
+
+This repo dogfoods its own gate in [`.github/workflows/a11y-gate.yml`](./.github/workflows/a11y-gate.yml)
+(invoking `node src/compliance/cli.ts` directly). Run it locally with `pnpm a11y-audit`.
+
 ## Architecture
 
 ```
 src/
   core/        scales · ticks · downsample (min/max pyramid) · scheduler · model
-  a11y/        cursor · live-region · legend · table-alt · ticks · styles
+  a11y/        cursor · live-region · legend · table-alt · ticks · summary · strings · styles
   renderers/   canvas2d · html-in-canvas · detect · renderer (interface)
+  compliance/  WCAG baseline · conformance engine · contrast · ACR generator · sightline-audit CLI
   sightline.ts public class — wires core + renderer + a11y
 ```
+
+`core/` and `compliance/` import no rendering API; `compliance/` (the paid Pack) imports Playwright
+as a dev/peer dependency only — the shipped renderer stays zero-runtime-dependency.
 
 The `core/` modules never import a rendering API, so a WebGL backend can implement the
 same `Renderer` interface later without touching the public API.
@@ -170,5 +229,6 @@ pnpm build            # dist/sightline.js (ESM) + .d.ts
 pnpm dev              # serve the benchmark page
 pnpm bench            # headless FPS + axe-core run (Chromium) → bench/results.json
 node bench/harness.ts firefox   # or `webkit` — cross-browser run → results-<engine>.json
+pnpm a11y-audit       # run the WCAG 2.2 AA conformance gate → ACR in ./compliance-out
 pnpm size             # assert the bundle stays under 30 KB gzip
 ```

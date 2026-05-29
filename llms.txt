@@ -77,6 +77,8 @@ interface SightlineOptions {
   formatY?: (v: number) => string;  // tick + readout y formatter
   reducedMotion?: boolean;       // else auto from prefers-reduced-motion
   highContrast?: boolean;        // else auto from prefers-contrast
+  strings?: Partial<SightlineStrings>;  // localize fixed UI text (legend, keyboard help,
+                                        // data summary, table caption) for non-English pages
 }
 
 // Methods (setData/update/renderSync return `this` for chaining)
@@ -120,7 +122,11 @@ and read the `[aria-live]` element's textContent after each step.
 
 - Wheel = zoom x around the pointer · drag = pan.
 - Focus the `[role="application"]` surface, then: `ArrowLeft`/`ArrowRight` move between samples,
-  `ArrowUp`/`ArrowDown` switch series, `Home`/`End` jump to ends, hold `Shift` for fine (1-sample) steps.
+  `ArrowUp`/`ArrowDown` switch series, `Home`/`End` jump to ends, hold `Shift` for fine (1-sample)
+  steps, `+`/`-` zoom in/out (keyboard equivalent of the wheel), `Escape` dismisses the cursor
+  (keeping focus). The focused sample is also exposed as a programmatic value via the surface's
+  `aria-describedby` (updated in lockstep), so agents can read the current point without listening
+  to the live region.
 - Legend buttons (`aria-pressed`) toggle series visibility.
 
 ## Theming
@@ -145,6 +151,25 @@ CSS custom properties on the container or `:root` (a few examples; all have sens
   picked per frame so per-frame work tracks pixels, not N. Frame cost is ~flat from 10k to 250k
   points (measured ratio ~1.2x; <16ms budget with large headroom).
 - `setData` is O(N) once (builds the pyramid + stats); rendering never iterates raw N.
+
+## Compliance Pack (the paid layer; separate entry `src/compliance/`)
+
+The MIT renderer is accessible; the Compliance Pack proves it and keeps the proof current. Never
+bundled into the core chart (it imports Playwright as a dev/peer dep).
+
+- **WCAG 2.2 AA evidence map** for the chart layer: 28 Supports / 7 Partially / 20 Not Applicable
+  across the 55 Level A+AA criteria, with `file:line` evidence (`compliance/scope-and-evidence-map.md`).
+- **`buildModel()` + `renderAcr(model, 'md'|'html'|'json')`** — generate a VPAT/ACR for the
+  `en301549` (EU), `wcag`, or `section508` edition from one dependency-free generator. Functional-
+  performance rows are derived from the WCAG rows (can't contradict them). Unsigned → DRAFT; a
+  real auditor signs the manual-attestation rows. Sample: `compliance/samples/`.
+- **`sightline-audit` CLI** (`runConformance` engine + `reduceToVerdicts`) — runs functional a11y
+  checks (keyboard, zoom, Escape, live region, computed contrast, target size, DOM semantics)
+  against a live chart, fails the build on any regression below the baseline, regenerates the ACR.
+  Wire it in CI per `compliance/ci-gate.md`. Pure helpers (contrast math, the reducer, the
+  baseline) are importable and unit-tested. Entry: `src/compliance/index.ts` (`buildModel`,
+  `renderAcr`, `CRITERIA`, `runConformance`, contrast helpers); it ships as a separate `compliance`
+  export, never folded into the core chart bundle.
 
 ## Scope (today) and what's NOT included
 
