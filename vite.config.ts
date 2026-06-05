@@ -2,10 +2,12 @@ import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 
 const here = import.meta.dirname;
+const coreEntry = resolve(here, 'src/sightline.ts');
 
-// `vite` (serve)                  → serves the benchmark page (bench/ is the only HTML root).
-// `vite build`                    → core library: dist/sightline.js (ESM) + .umd.cjs.
-// `SIGHTLINE_ENTRY=react vite build` → the React adapter: dist/react.js (ESM, react external).
+// `vite` (serve)                       → serves the benchmark page (bench/ is the only HTML root).
+// `vite build`                         → core library: dist/sightline.js (ESM) + .umd.cjs.
+// `SIGHTLINE_ENTRY=react vite build`   → the React adapter: dist/react.js (ESM; react + core external).
+// `SIGHTLINE_ENTRY=compliance vite build` → the Compliance Pack: dist/compliance/{index,cli}.js (Node ESM).
 export default defineConfig(({ command }) => {
   if (command === 'serve') {
     // Default dev root is the benchmark; `SIGHTLINE_ROOT=landing vite` serves the site.
@@ -16,8 +18,9 @@ export default defineConfig(({ command }) => {
     };
   }
   if (process.env.SIGHTLINE_ENTRY === 'react') {
-    // Second build pass (after the core): keep React out of the bundle so consumers use their
-    // own copy. emptyOutDir:false so we don't wipe the core build that ran first.
+    // Second build pass (after the core): keep React AND the core out of the bundle so a consumer
+    // who imports both `sightline` and `sightline/react` ships one copy of the engine, not two.
+    // emptyOutDir:false so we don't wipe the core build that ran first.
     return {
       build: {
         outDir: resolve(here, 'dist'),
@@ -29,7 +32,36 @@ export default defineConfig(({ command }) => {
           fileName: () => 'react.js',
           formats: ['es'],
         },
-        rollupOptions: { external: ['react', 'react/jsx-runtime'] },
+        rollupOptions: {
+          external: ['react', 'react/jsx-runtime', coreEntry],
+          // Rewrite the externalized core import to the sibling built file consumers receive.
+          output: { paths: { [coreEntry]: './sightline.js' } },
+        },
+      },
+    };
+  }
+  if (process.env.SIGHTLINE_ENTRY === 'compliance') {
+    // Third build pass: the Compliance Pack as Node ESM. Node refuses to strip types under
+    // node_modules, so the bin + the `sightline/compliance` subpath must ship compiled JS, not the
+    // raw .ts source. Playwright/Vite/Node builtins stay external (optional peers at the consumer).
+    return {
+      build: {
+        outDir: resolve(here, 'dist/compliance'),
+        emptyOutDir: false,
+        sourcemap: true,
+        minify: false, // a CLI + library; keep it readable and avoid mangling the shebang
+        lib: {
+          entry: {
+            index: resolve(here, 'src/compliance/index.ts'),
+            cli: resolve(here, 'src/compliance/cli.ts'),
+          },
+          formats: ['es'],
+        },
+        rollupOptions: {
+          external: [/^node:/, 'playwright', 'vite'],
+          // The CLI entry keeps its source `#!/usr/bin/env node` shebang through the build.
+          output: { entryFileNames: '[name].js' },
+        },
       },
     };
   }
@@ -39,7 +71,7 @@ export default defineConfig(({ command }) => {
       sourcemap: true,
       minify: 'esbuild',
       lib: {
-        entry: resolve(here, 'src/index.ts'),
+        entry: coreEntry,
         name: 'Sightline',
         fileName: 'sightline',
         // ESM for bundlers; UMD so prospects can drop a <script> tag with zero build.
