@@ -30,6 +30,7 @@ import {
 } from './renderers/detect.ts';
 import { createCompositor, type Compositor } from './renderers/html-in-canvas.ts';
 import type { Renderer, RenderScene } from './renderers/renderer.ts';
+import { buildSVG } from './renderers/svg-export.ts';
 import { injectStyles } from './a11y/styles.ts';
 import { LiveRegion } from './a11y/live-region.ts';
 import { AxisTicks } from './a11y/ticks.ts';
@@ -297,6 +298,41 @@ export class Sightline {
    */
   summary(): ChartSummary {
     return buildSummary(this.data, this.series, this.options.ariaLabel ?? 'Chart');
+  }
+
+  /**
+   * Serialize the current view to a standalone, accessible `<svg>` string — the same
+   * downsampled envelope the canvas draws, plus real `<text>` ticks and a `<title>`/`<desc>`.
+   * Useful for print, embedding, or feeding a tactile-graphics pipeline (a non-visual export
+   * the EU data-viz guide recommends). Falls back to the configured size if not yet measured.
+   */
+  toSVG(): string {
+    const width = this.width || 640;
+    const height = this.height || 360;
+    const m = this.margins;
+    const xScale = linearScale(this.domain, [m.left, width - m.right]);
+    const yScale = linearScale(this.yDomain, [height - m.bottom, m.top]);
+    const xCount = effectiveTickCount(this.options.xTickCount, width - m.left - m.right, 64);
+    const yCount = effectiveTickCount(this.options.yTickCount, height - m.top - m.bottom, 28);
+    const xMinStep = this.options.xInteger ? 1 : 0;
+    return buildSVG({
+      width,
+      height,
+      margins: m,
+      series: this.series,
+      data: this.data,
+      xScale,
+      yScale,
+      domain: this.domain,
+      xTicks: niceTicks(this.domain[0], this.domain[1], xCount, xMinStep),
+      yTicks: niceTicks(this.yDomain[0], this.yDomain[1], yCount),
+      formatX: this.options.formatX,
+      formatY: this.options.formatY,
+      title: this.options.ariaLabel ?? 'Chart',
+      desc: describeSummary(this.summary(), this.options.formatX, this.options.formatY, this.strings),
+      xLabel: this.options.xLabel,
+      yLabel: this.options.yLabel,
+    });
   }
 
   /** Replace the dataset. Resets the view to the full x-domain. */
