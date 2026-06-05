@@ -45,6 +45,15 @@ test('functional performance is DERIVED and never contradicts the SCs', () => {
   assert.equal(by['Usage without perception of color'], 'Supports'); // 1.4.1 now Supports (R5 dash)
   assert.equal(by['Usage with limited manipulation or strength'], 'Supports'); // 2.5.7 now Supports (R4 pagers)
   assert.equal(by['Usage without hearing'], 'Supports'); // no audio
+  // The remark prose must not contradict the derived verdict: a "Supports" row may not carry
+  // "deferred"/"lacks"/"partially supported" language (catches verdict/prose drift, e.g. an SC
+  // upgrade that forgot to update the functional-performance note).
+  for (const r of fp) {
+    if (r.conformance === 'Supports') {
+      assert.doesNotMatch(r.remarks ?? '', /deferred|lacks|partially support/i,
+        `FP row "${r.name}" is Supports but its remark hedges: ${r.remarks}`);
+    }
+  }
 });
 
 test('Section 508 FP omits the statements 508 lacks (photosensitive, privacy)', () => {

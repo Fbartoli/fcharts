@@ -82,6 +82,10 @@ export class Legend {
       rect.setAttribute('fill', s.color);
       rect.setAttribute('fill-opacity', String(Math.max(0.35, s.fillAlpha)));
       rect.setAttribute('stroke', s.color);
+      rect.setAttribute('stroke-width', '1.5');
+      // Dash the border too, so area series carry the non-colour channel just like lines —
+      // otherwise two area series would be distinguishable by colour alone (WCAG 1.4.1).
+      if (s.dash.length) rect.setAttribute('stroke-dasharray', s.dash.join(' '));
       svg.append(rect);
     } else {
       const line = this.doc.createElementNS(NS, 'line');

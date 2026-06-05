@@ -24,7 +24,7 @@
       "Manual attestation for perceptual + real-AT + integration-context criteria"
     ],
     "notes": "Automated/hybrid rows are re-proven on every run by this gate; manual-attestation rows are listed for human sign-off. axe-clean alone is necessary, not sufficient.",
-    "evaluator": "sightline-audit (automated) @ 6cdeddc"
+    "evaluator": "sightline-audit (automated) @ cf145af"
   },
   "criteria": [
     {
@@ -307,8 +307,8 @@
           "ref": "src/a11y/styles.ts:16,20,43,53,31"
         },
         {
-          "detail": "Fluid container re-measures on zoom",
-          "ref": "src/sightline.ts:407-418"
+          "detail": "Fluid container re-measures on resize/zoom (ResizeObserver → measure)",
+          "ref": "src/sightline.ts:272-273,443"
         }
       ]
     },
@@ -1156,7 +1156,7 @@
           "id": "4.2.7",
           "name": "Usage with limited manipulation or strength",
           "conformance": "Supports",
-          "remarks": "Full keyboard operation (including zoom); pointer pan currently lacks a single-pointer non-dragging alternative (deferred), so this is partially supported for pointer-only users. (derived from 2.1.1, 2.5.1, 2.5.7, 2.5.8)",
+          "remarks": "Full keyboard operation (including zoom), and pan pagers give a single-pointer, non-dragging alternative to drag-pan (R4) — so pointer-only and keyboard-only users are both covered. Targets meet 24×24px. (derived from 2.1.1, 2.5.1, 2.5.7, 2.5.8)",
           "derivedFrom": [
             "2.1.1",
             "2.5.1",

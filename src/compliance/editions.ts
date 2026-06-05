@@ -99,8 +99,9 @@ const FP_STATEMENTS: readonly FpStatement[] = [
     note: 'No speech input is required.' },
   { en: '4.2.7', s508: '302.7', name: 'Usage with limited manipulation or strength',
     derivedFrom: ['2.1.1', '2.5.1', '2.5.7', '2.5.8'],
-    note: 'Full keyboard operation (including zoom); pointer pan currently lacks a single-pointer ' +
-      'non-dragging alternative (deferred), so this is partially supported for pointer-only users.' },
+    note: 'Full keyboard operation (including zoom), and pan pagers give a single-pointer, ' +
+      'non-dragging alternative to drag-pan (R4) — so pointer-only and keyboard-only users are both ' +
+      'covered. Targets meet 24×24px.' },
   { en: '4.2.8', s508: '302.8', name: 'Usage with limited reach and strength',
     derivedFrom: ['2.5.8'], note: 'Interactive targets meet the 24×24px minimum.' },
   { en: '4.2.9', s508: '', name: 'Minimize photosensitive seizure triggers',

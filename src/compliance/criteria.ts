@@ -245,7 +245,7 @@ export const CRITERIA: CriterionRow[] = [
     attestationRequired: false,
     evidence: [
       { detail: 'Label fonts in rem (.6875/.625/.78/.625/.75rem)', ref: 'src/a11y/styles.ts:16,20,43,53,31' },
-      { detail: 'Fluid container re-measures on zoom', ref: 'src/sightline.ts:407-418' },
+      { detail: 'Fluid container re-measures on resize/zoom (ResizeObserver → measure)', ref: 'src/sightline.ts:272-273,443' },
     ],
   },
   {
