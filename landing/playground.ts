@@ -191,7 +191,7 @@ function connectLive(): void {
   windowed = false;
 
   liveChart = new FChart(chartEl, {
-    series: [{ name: `${sym} price`, color: PALETTE[0], type: 'area', fillAlpha: 0.12 }],
+    series: [{ name: `${sym} price`, color: PALETTE[0], width: 1.5 }],
     options: {
       ariaLabel: `${sym} live trade price`,
       xLabel: 'time',

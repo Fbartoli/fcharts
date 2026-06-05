@@ -106,8 +106,8 @@
     .tag.no{color:var(--danger);border-color:rgba(248,113,113,.25);background:rgba(248,113,113,.08)}
 
     /* stats */
-    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:36px}
-    @media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}}
+    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:36px}
+    @media(max-width:760px){.stats{grid-template-columns:1fr}}
     .stat{border:1px solid var(--line);border-radius:14px;padding:20px;background:var(--panel)}
     .stat .v{font-size:30px;font-weight:800;letter-spacing:-.02em}
     .stat .v.mono{font-size:26px}
@@ -313,7 +313,6 @@
       <div class="stats">
         <div class="stat"><div class="v mono">120<span style="font-size:16px"> fps</span></div><div class="k">sustained pan/zoom</div></div>
         <div class="stat"><div class="v mono">0.07<span style="font-size:16px"> ms</span></div><div class="k">per frame at 100k pts</div></div>
-        <div class="stat"><div class="v mono">1.2×</div><div class="k">cost, 10k → 250k points</div></div>
         <div class="stat"><div class="v mono">0</div><div class="k">serious axe violations</div></div>
       </div>
       <div class="scroll-x">
