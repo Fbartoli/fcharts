@@ -77,9 +77,10 @@ export function createCanvas2DRenderer(canvas: HTMLCanvasElement): Renderer {
   let cssH = 0;
   let dpr = 0;
   let theme = readTheme(canvas);
-  // System colors, read only when forced-colors toggles on (reading forces layout, so not per-frame).
+  // System colors, read only when forced-colors *toggles* (reading forces layout, so not per-frame).
   let forced: SystemColors | null = null;
   let forcedActive = false;
+  let forcedRead = false; // whether we've already probed for the current forcedActive value
   const buf = { min: new Float32Array(0), max: new Float32Array(0) };
 
   function syncSize(scene: RenderScene): void {
@@ -96,9 +97,13 @@ export function createCanvas2DRenderer(canvas: HTMLCanvasElement): Renderer {
 
   function render(scene: RenderScene): void {
     syncSize(scene);
-    if (scene.forcedColors !== forcedActive || (scene.forcedColors && !forced)) {
+    // Probe only on a genuine toggle. Keying off `!forced` would re-probe every frame when the
+    // option is pinned true but the OS media query is inactive (readForcedColors returns null),
+    // forcing a layout reflow in the render hot path.
+    if (scene.forcedColors !== forcedActive || !forcedRead) {
       forced = scene.forcedColors ? readForcedColors(canvas) : null;
       forcedActive = scene.forcedColors;
+      forcedRead = true;
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, cssW, cssH);
