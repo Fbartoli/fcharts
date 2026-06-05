@@ -3,6 +3,9 @@
 // are UMD and don't compose cleanly under Vite).
 import Highcharts from 'highcharts/es-modules/masters/highcharts.src.js';
 import 'highcharts/es-modules/masters/modules/boost.src.js';
+// boost-canvas gives boost a 2D-canvas path when WebGL is unavailable (e.g. headless CI), so the
+// comparison is fair there too — boost engages instead of silently falling back to slow SVG paths.
+import 'highcharts/es-modules/masters/modules/boost-canvas.src.js';
 import 'highcharts/es-modules/masters/modules/accessibility.src.js';
 import { SERIES, type Dataset } from '../dataset.ts';
 import type { ChartAdapter } from '../adapter.ts';

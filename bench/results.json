@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-29T08:20:39.110Z",
+  "generatedAt": "2026-06-05T15:25:19.932Z",
   "browser": "chromium",
   "datasetN": 100000,
   "durationMs": 5000,
@@ -8,12 +8,12 @@
       "id": "sightline",
       "label": "Sightline",
       "kind": "sightline",
-      "nodeCount": 260,
+      "nodeCount": 262,
       "frames": 600,
-      "fps": 119.98560172779266,
-      "frameMs": 0.07309999999403953,
+      "fps": 119.99040076793854,
+      "frameMs": 0.05625,
       "deferredDraw": false,
-      "peakHeapMB": 17.26634693145752,
+      "peakHeapMB": 24.173133850097656,
       "axe": {
         "serious": 0,
         "ids": []
@@ -31,9 +31,9 @@
       "nodeCount": 35,
       "frames": 600,
       "fps": 120,
-      "frameMs": 0.00025,
+      "frameMs": 0.00030000001192092895,
       "deferredDraw": true,
-      "peakHeapMB": 14.978826522827148,
+      "peakHeapMB": 21.87120246887207,
       "axe": {
         "serious": 0,
         "ids": []
@@ -45,15 +45,35 @@
       }
     },
     {
+      "id": "highcharts",
+      "label": "Highcharts + Boost",
+      "kind": "fast-inaccessible",
+      "nodeCount": 687,
+      "frames": 85,
+      "fps": 16.723066026599515,
+      "frameMs": 82.3999999910593,
+      "deferredDraw": false,
+      "peakHeapMB": 40.98367691040039,
+      "axe": {
+        "serious": 0,
+        "ids": []
+      },
+      "a11y": {
+        "liveRegion": true,
+        "keyboardCursor": false,
+        "textAlternative": false
+      }
+    },
+    {
       "id": "svg",
       "label": "Naive SVG (50k nodes)",
       "kind": "accessible-slow",
       "nodeCount": 50213,
-      "frames": 83,
-      "fps": 16.43596902908968,
-      "frameMs": 52.65833333134651,
+      "frames": 81,
+      "fps": 16.012968527597653,
+      "frameMs": 50.36666667461395,
       "deferredDraw": false,
-      "peakHeapMB": 15.995208740234375,
+      "peakHeapMB": 22.994047164916992,
       "axe": {
         "serious": 0,
         "ids": []
@@ -68,15 +88,15 @@
   "scaling": [
     {
       "n": 10000,
-      "frameMs": 0.07052499999105931
+      "frameMs": 0.06880000001192092
     },
     {
       "n": 100000,
-      "frameMs": 0.087625
+      "frameMs": 0.08827500000596046
     },
     {
       "n": 250000,
-      "frameMs": 0.08340000000596047
+      "frameMs": 0.08364999997615814
     }
   ],
   "preciseHeap": true,
@@ -162,6 +182,14 @@
           "2.5.2"
         ],
         "detail": ""
+      },
+      {
+        "id": "contrast-marks",
+        "status": "pass",
+        "sc": [
+          "1.4.11"
+        ],
+        "detail": "all 3 marks >= 3:1 vs rgb(12, 16, 22)"
       },
       {
         "id": "live-region-present",
@@ -329,6 +357,39 @@
           "1.4.3"
         ],
         "detail": "6.42:1 vs rgb(12, 16, 22)"
+      },
+      {
+        "id": "reflow-adaptive",
+        "status": "pass",
+        "sc": [
+          "1.4.10"
+        ],
+        "detail": "334px→160px: ticks 4→1"
+      },
+      {
+        "id": "resize-text-rem",
+        "status": "pass",
+        "sc": [
+          "1.4.4"
+        ],
+        "detail": "11px -> 22px @ 2x root"
+      },
+      {
+        "id": "single-pointer-pan",
+        "status": "pass",
+        "sc": [
+          "2.5.7"
+        ],
+        "detail": ""
+      },
+      {
+        "id": "forced-colors-canvas",
+        "status": "pass",
+        "sc": [
+          "forced-colors",
+          "1.4.11"
+        ],
+        "detail": "canvas repainted in system colors under forced-colors"
       },
       {
         "id": "no-canvas-text",

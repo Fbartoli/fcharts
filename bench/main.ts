@@ -333,6 +333,11 @@ function renderTable(r: BenchResults): void {
     el.innerHTML = `
       <h2>Headline — 100k points × 3 series, 5s pan/zoom</h2>
       <table>${head}${rows}</table>
+      <p class="note">‡ Highcharts is configured for its best fast-and-accessible shot — the
+        boost module (with the canvas fallback) <em>and</em> the accessibility module. Its frame
+        cost reflects rendering 300k points with the a11y module active; even at its GPU-boost
+        ceiling it exposes no keyboard data cursor and no DOM data table (boost keeps points off
+        the DOM), which is the column that actually decides the thesis.</p>
       <p class="note">† uPlot defers its redraw to requestAnimationFrame, so the synchronous
         frame-cost timer reads ~0; its sustained FPS is the honest speed metric. Heap is
         measured per renderer in isolation and only when the browser exposes GC
