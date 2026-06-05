@@ -41,6 +41,15 @@ function fmtTime(t: number): string {
   return `${hh}:${mm}`;
 }
 
+/** Seconds-granularity time for the live trailing window (where HH:MM would repeat). */
+function fmtTimeSec(t: number): string {
+  const d = new Date(t);
+  const hh = (((d.getUTCHours() - 5) + 24) % 24).toString().padStart(2, '0');
+  const mm = d.getUTCMinutes().toString().padStart(2, '0');
+  const ss = d.getUTCSeconds().toString().padStart(2, '0');
+  return `${hh}:${mm}:${ss}`;
+}
+
 const fmtPrice = (v: number): string => `$${v.toFixed(2)}`;
 const COLORS = ['#6ee7a8', '#fbbf24'];
 const ARROW: Record<string, string> = { up: '▲', down: '▼', flat: '■' };
@@ -98,7 +107,20 @@ function wireLiveStream(
   let n = TICKS;
   let timer = 0;
   let sinceRefresh = 0;
+  let seeded = false;
   const reduced = (): boolean => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Reset to a recent slice (once) so the y-axis fits the live price range instead of the whole
+  // 6.5h session, and switch the x-axis to seconds — a ~2-min window collapses to one HH:MM label.
+  const seed = (): void => {
+    if (seeded) return;
+    seeded = true;
+    const s = TICKS - 600;
+    chart.update({
+      options: { formatX: fmtTimeSec },
+      data: { x: x.slice(s), y: [price.slice(s), vwap.slice(s)] },
+    });
+  };
 
   const step = (): void => {
     t += dt;
@@ -118,7 +140,8 @@ function wireLiveStream(
     populateAgentPanel(el); // settle the panel to the final state
   };
   const start = (): void => {
-    chart.renderSync([t - window_, t]); // zoom to a trailing window before streaming
+    seed();
+    chart.renderSync([t - window_ * 0.85, t]); // a trailing window narrower than the data → slides
     timer = window.setInterval(() => {
       step();
       if (++sinceRefresh >= 6) {
@@ -131,7 +154,8 @@ function wireLiveStream(
   };
   // Reduced motion: no continuous animation — each click appends a batch in a single discrete update.
   const batch = (): void => {
-    chart.renderSync([t - window_, t]);
+    seed();
+    chart.renderSync([t - window_ * 0.85, t]);
     for (let i = 0; i < 40; i++) step();
     populateAgentPanel(el);
     label.textContent = 'Add more';
