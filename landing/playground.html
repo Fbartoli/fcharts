@@ -3,20 +3,20 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sightline Playground — build a chart live</title>
-  <meta name="description" content="Interactively configure a Sightline chart — series, type, colors, titles, data, options — and copy the config. Fast and accessible by default." />
+  <title>fcharts Playground — build a chart live</title>
+  <meta name="description" content="Interactively configure a fcharts chart — series, type, colors, titles, data, options — and copy the config. Fast and accessible by default." />
   <style>
     :root{
       --bg:#06080c; --panel:#0c1016; --panel-2:#10151d; --ink:#e8eef4; --muted:#8794a3;
       --faint:#5a6675; --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.14);
       --accent:#6ee7a8; --accent-dim:rgba(110,231,168,.12); --amber:#fbbf24; --danger:#f87171;
       --sky:#38bdf8;
-      /* Sightline theme (matches the landing site) */
-      --sl-ink:#cfd8e3; --sl-tick-color:#8794a3; --sl-axis-title:#5a6675;
-      --sl-grid:rgba(110,231,168,.06); --sl-axis:rgba(255,255,255,.12);
-      --sl-cursor:rgba(255,255,255,.4); --sl-ring:#06080c; --sl-focus:#6ee7a8;
-      --sl-legend-border:rgba(255,255,255,.16); --sl-legend-border-hover:rgba(255,255,255,.4);
-      --sl-readout-bg:#10151d; --sl-readout-ink:#e8eef4; --sl-readout-border:rgba(255,255,255,.16);
+      /* fcharts theme (matches the landing site) */
+      --fc-ink:#cfd8e3; --fc-tick-color:#8794a3; --fc-axis-title:#5a6675;
+      --fc-grid:rgba(110,231,168,.06); --fc-axis:rgba(255,255,255,.12);
+      --fc-cursor:rgba(255,255,255,.4); --fc-ring:#06080c; --fc-focus:#6ee7a8;
+      --fc-legend-border:rgba(255,255,255,.16); --fc-legend-border-hover:rgba(255,255,255,.4);
+      --fc-readout-bg:#10151d; --fc-readout-ink:#e8eef4; --fc-readout-border:rgba(255,255,255,.16);
     }
     *{box-sizing:border-box}
     body{margin:0;background:
@@ -105,7 +105,7 @@
 </head>
 <body>
   <header class="bar">
-    <div class="brand"><span class="dot"></span> Sightline <span class="badge">Playground</span></div>
+    <div class="brand"><span class="dot"></span> fcharts <span class="badge">Playground</span></div>
     <div class="meta">
       <span class="badge" id="badge-points">— points × — series</span>
       <span class="badge" id="badge-path">render: —</span>

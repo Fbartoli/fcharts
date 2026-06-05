@@ -1,6 +1,6 @@
 # Compliance Pack — CI Accessibility Gate Contract
 
-> **Document 4 of 4.** Defines the `sightline-audit` CLI and the GitHub Action that run the
+> **Document 4 of 4.** Defines the `fcharts-audit` CLI and the GitHub Action that run the
 > conformance engine (document 3) on every commit, **fail the build on any regression** below the
 > committed baseline (document 1), and (re)generate the ACR (document 2). This is the durable moat
 > the free renderer deliberately omits: proof that charts *stay* accessible.
@@ -22,16 +22,16 @@ On each run it:
 The gate enforces only the **automated** + automatable-half-of-**hybrid** rows (document 3 §5).
 Manual-attestation rows are never failed by CI — they live in the ACR's signature block.
 
-## 2. `sightline-audit` CLI
+## 2. `fcharts-audit` CLI
 
 Shipped from the Compliance Pack entry (`src/compliance/`), **not** the core chart bundle. Run via
-`npx sightline-audit` or a `bin` entry.
+`npx fcharts-audit` or a `bin` entry.
 
 ```
-sightline-audit [options]
+fcharts-audit [options]
 
   --fixture <path>      Module exporting `mountChart(el) => () => void` (build + teardown).
-                        Default: the bundled demo fixture (Sightline with sample data).
+                        Default: the bundled demo fixture (fcharts with sample data).
   --edition <key>       en301549 | wcag | section508   (repeatable). Default: en301549.
   --baseline <path>     Committed evidence-map JSON to diff against.
                         Default: the version's bundled baseline.
@@ -62,9 +62,9 @@ success, a one-line green summary (`✓ 28 Supports / 7 Partially / 20 N/A — n
 
 ```ts
 // fixture.ts
-import { Sightline } from 'sightline';
+import { FChart } from 'fcharts-js';
 export function mountChart(el: HTMLElement): () => void {
-  const chart = new Sightline(el, { /* the integrator's real config + representative data */ });
+  const chart = new FChart(el, { /* the integrator's real config + representative data */ });
   return () => chart.destroy();
 }
 ```
@@ -82,7 +82,7 @@ A reusable workflow + a worked example committed in task 21. Sketch:
 name: Accessibility gate
 on: [pull_request, push]
 jobs:
-  sightline-audit:
+  fcharts-audit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -90,7 +90,7 @@ jobs:
         with: { node-version: '22' }
       - run: npm ci
       - run: npx playwright install --with-deps chromium   # dev/peer dep, CI-only
-      - run: npx sightline-audit --fixture ./a11y/fixture.ts --edition en301549 --out ./compliance-out
+      - run: npx fcharts-audit --fixture ./a11y/fixture.ts --edition en301549 --out ./compliance-out
       - if: always()
         uses: actions/upload-artifact@v4
         with: { name: accessibility-conformance-report, path: ./compliance-out }
@@ -116,7 +116,7 @@ To prove the gate works, task 19 demonstrates it **catching a planted regression
 2. Inject a regression on a branch — e.g. revert one remediation: drop `xLabel` threading (R1) so
    the table x-header is `"x"` again, **or** remove the legend `min-height` (R9), **or** re-add the
    `opacity:.45` legend dim (R8).
-3. Re-run `sightline-audit` → the corresponding check (`table-x-header` / `target-size` /
+3. Re-run `fcharts-audit` → the corresponding check (`table-x-header` / `target-size` /
    `contrast-default-text`) goes `fail`, the reducer flags `regression: true`, the CLI exits 1,
    and the printed table names the SC (1.3.1/2.4.6, 2.5.8, or 1.4.3) and the failing check.
 4. Revert the injection → exit 0 again.
@@ -126,9 +126,9 @@ moment a chart stops being accessible, and the VPAT it regenerates."*
 
 ## 5. Configuration & provenance
 
-- Config may come from CLI flags or a `sightline-audit.config.{js,json}` (flags win). Keep it
+- Config may come from CLI flags or a `fcharts-audit.config.{js,json}` (flags win). Keep it
   minimal — no config framework dependency.
-- Every `audit-report.json` and ACR records: Sightline version, commit SHA (from `GITHUB_SHA` or
+- Every `audit-report.json` and ACR records: FChart version, commit SHA (from `GITHUB_SHA` or
   `git rev-parse`), edition, evaluation date (`--stamp`), tool versions (axe-core, Playwright),
   background used for hybrid contrast, and which rows were automated vs. attested.
 - The gate is **deterministic** for a fixed (fixture, baseline, stamp): same input → byte-identical
@@ -142,11 +142,11 @@ moment a chart stops being accessible, and the VPAT it regenerates."*
   it deliberately does the one thing a whole-page scanner does badly — prove a *complex interactive
   component* stays per-point accessible.
 - No new runtime dependencies: Playwright and axe-core are **dev/peer** deps used by the audit
-  tooling; the shipped `sightline` renderer remains zero-runtime-dependency.
+  tooling; the shipped `fcharts` renderer remains zero-runtime-dependency.
 
 ## 7. What this unblocks
 
 - **Task 17** extracts `runConformance` + the pure helpers into `src/compliance/`.
-- **Task 19** implements the `sightline-audit` CLI + the Action and runs the §4 injected-regression
+- **Task 19** implements the `fcharts-audit` CLI + the Action and runs the §4 injected-regression
   demo.
 - **Task 21** commits the worked `a11y-gate.yml` example + a fixture + the generated sample ACR.

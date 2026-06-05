@@ -28,7 +28,7 @@ test('contrastRatio: black/white is the maximal 21:1', () => {
   assert.ok(near(contrastRatio({ r: 0, g: 0, b: 0, a: 1 }, { r: 255, g: 255, b: 255, a: 1 }), 21, 0.1));
 });
 
-test('ratioOf: documented Sightline pairs match the evidence map', () => {
+test('ratioOf: documented FChart pairs match the evidence map', () => {
   // tick #4b5563 on white ≈ 7.56:1; body #374151 ≈ 10.31:1; readout #f9fafb on #111827 ≈ 16.98:1
   assert.ok(near(ratioOf('#4b5563', '#ffffff')!, 7.56, 0.1));
   assert.ok(near(ratioOf('#374151', '#ffffff')!, 10.31, 0.1));

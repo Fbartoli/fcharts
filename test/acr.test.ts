@@ -8,10 +8,10 @@ const base = (edition: EditionKey, signed?: { signer: string; date: string }): B
   criteria: CRITERIA,
   edition,
   product: {
-    name: 'Sightline',
+    name: 'fcharts',
     version: '0.1.0',
     description: 'Fast, accessible charts.',
-    componentScope: 'The chart component inside .sl-root.',
+    componentScope: 'The chart component inside .fc-root.',
   },
   evaluation: { methods: ['axe', 'keyboard', 'contrast'], notes: 'Automated vs attested split.' },
   generatedAt: '2026-05-29',

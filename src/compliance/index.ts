@@ -1,5 +1,5 @@
 /**
- * Sightline Compliance Pack — the paid layer: the conformance engine, the WCAG 2.2 AA baseline,
+ * fcharts Compliance Pack — the paid layer: the conformance engine, the WCAG 2.2 AA baseline,
  * and (added in task 18) the VPAT/ACR generator. Shipped as a SEPARATE entry from the MIT
  * renderer; the live engine imports Playwright (a dev/peer dependency), never bundled into core.
  */

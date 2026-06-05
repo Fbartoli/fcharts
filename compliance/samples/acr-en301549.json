@@ -1,9 +1,9 @@
 {
   "product": {
-    "name": "Sightline",
+    "name": "fcharts",
     "version": "0.1.0",
     "description": "Charts that render 100k+ points at 60fps and pass the accessibility audit at the same time.",
-    "componentScope": "Everything the library renders inside its container (.sl-root): the <canvas> data layer, the DOM axis ticks, the legend, the focusable data surface, the live region, the hidden data table, the readout, and the embedded JSON summary. Page-level criteria are the host application’s."
+    "componentScope": "Everything the library renders inside its container (.fc-root): the <canvas> data layer, the DOM axis ticks, the legend, the focusable data surface, the live region, the hidden data table, the readout, and the embedded JSON summary. Page-level criteria are the host application’s."
   },
   "edition": {
     "key": "en301549",
@@ -24,7 +24,7 @@
       "Manual attestation for perceptual + real-AT + integration-context criteria"
     ],
     "notes": "Automated/hybrid rows are re-proven on every run by this gate; manual-attestation rows are listed for human sign-off. axe-clean alone is necessary, not sufficient.",
-    "evaluator": "sightline-audit (automated) @ cf145af"
+    "evaluator": "fcharts-audit (automated) @ a2c336a"
   },
   "criteria": [
     {
@@ -39,7 +39,7 @@
       "evidence": [
         {
           "detail": "Canvas removed from a11y tree (aria-hidden=\"true\")",
-          "ref": "src/sightline.ts:179"
+          "ref": "src/fchart.ts:179"
         },
         {
           "detail": "Hidden <table> alternative with caption + scoped headers, ≤40 rows",
@@ -146,7 +146,7 @@
         },
         {
           "detail": "xLabel threaded into the table x-column header (R1)",
-          "ref": "src/sightline.ts"
+          "ref": "src/fchart.ts"
         }
       ]
     },
@@ -156,13 +156,13 @@
       "level": "A",
       "applicability": "applicable",
       "conformance": "Supports",
-      "remarks": "DOM is appended in reading order (legend before plot; table reads x-then-series in ascending sample order); .sl-root is flex-column with no order/*-reverse/float. (verified: automated)",
+      "remarks": "DOM is appended in reading order (legend before plot; table reads x-then-series in ascending sample order); .fc-root is flex-column with no order/*-reverse/float. (verified: automated)",
       "verification": "automated",
       "attestationRequired": false,
       "evidence": [
         {
           "detail": "DOM appended in reading order",
-          "ref": "src/sightline.ts:197-208"
+          "ref": "src/fchart.ts:197-208"
         },
         {
           "detail": "Table body reads x-then-series ascending",
@@ -186,11 +186,11 @@
       "evidence": [
         {
           "detail": "describeChart() names keys, not spatial cues",
-          "ref": "src/sightline.ts:335-344"
+          "ref": "src/fchart.ts:335-344"
         },
         {
           "detail": "Announcements name series + axis-labeled values",
-          "ref": "src/sightline.ts:444-453"
+          "ref": "src/fchart.ts:444-453"
         }
       ]
     },
@@ -200,7 +200,7 @@
       "level": "AA",
       "applicability": "applicable",
       "conformance": "Supports",
-      "remarks": "No orientation lock; .sl-root is a fluid 100% flex-column re-measured by ResizeObserver. No @media (orientation), transform:rotate, or screen.orientation lock. (verified: automated)",
+      "remarks": "No orientation lock; .fc-root is a fluid 100% flex-column re-measured by ResizeObserver. No @media (orientation), transform:rotate, or screen.orientation lock. (verified: automated)",
       "verification": "automated",
       "attestationRequired": false,
       "evidence": [
@@ -210,7 +210,7 @@
         },
         {
           "detail": "ResizeObserver re-measure + re-render",
-          "ref": "src/sightline.ts:217-218,346-357"
+          "ref": "src/fchart.ts:217-218,346-357"
         }
       ]
     },
@@ -308,7 +308,7 @@
         },
         {
           "detail": "Fluid container re-measures on resize/zoom (ResizeObserver → measure)",
-          "ref": "src/sightline.ts:272-273,443"
+          "ref": "src/fchart.ts:272-273,443"
         }
       ]
     },
@@ -352,7 +352,7 @@
         },
         {
           "detail": "Adaptive density wired into the frame",
-          "ref": "src/sightline.ts:473-474"
+          "ref": "src/fchart.ts:473-474"
         }
       ]
     },
@@ -412,7 +412,7 @@
         },
         {
           "detail": "Escape -> dismissCursor() clears readout, keeps focus (R3)",
-          "ref": "src/sightline.ts"
+          "ref": "src/fchart.ts"
         }
       ]
     },
@@ -432,7 +432,7 @@
         },
         {
           "detail": "Keyboard zoom mirrors wheel-zoom (R2)",
-          "ref": "src/sightline.ts"
+          "ref": "src/fchart.ts"
         }
       ]
     },
@@ -448,11 +448,11 @@
       "evidence": [
         {
           "detail": "Only six handled keys preventDefaulted",
-          "ref": "src/sightline.ts:514-516"
+          "ref": "src/fchart.ts:514-516"
         },
         {
           "detail": "Pointer-capture released on up/cancel",
-          "ref": "src/sightline.ts:551,565-571"
+          "ref": "src/fchart.ts:551,565-571"
         }
       ]
     },
@@ -484,7 +484,7 @@
       "evidence": [
         {
           "detail": "Throttle/debounce timers only, no deadlines",
-          "ref": "src/sightline.ts:72-75,417-431,455-461"
+          "ref": "src/fchart.ts:72-75,417-431,455-461"
         }
       ]
     },
@@ -570,11 +570,11 @@
       "evidence": [
         {
           "detail": "Legend-then-surface DOM order",
-          "ref": "src/sightline.ts:197-208"
+          "ref": "src/fchart.ts:197-208"
         },
         {
           "detail": "Only tabIndex 0, no positive tabindex",
-          "ref": "src/sightline.ts:186"
+          "ref": "src/fchart.ts:186"
         }
       ]
     },
@@ -620,7 +620,7 @@
       "evidence": [
         {
           "detail": "Descriptive surface aria-label",
-          "ref": "src/sightline.ts"
+          "ref": "src/fchart.ts"
         },
         {
           "detail": "Legend group + button labels",
@@ -668,7 +668,7 @@
         },
         {
           "detail": "Surface is the top interactive layer",
-          "ref": "src/sightline.ts:202-204"
+          "ref": "src/fchart.ts:202-204"
         }
       ]
     },
@@ -684,11 +684,11 @@
       "evidence": [
         {
           "detail": "Drag-pan uses net delta, not trajectory",
-          "ref": "src/sightline.ts:546-563"
+          "ref": "src/fchart.ts:546-563"
         },
         {
           "detail": "Zoom is wheel-driven, no multipoint",
-          "ref": "src/sightline.ts:536-544"
+          "ref": "src/fchart.ts:536-544"
         }
       ]
     },
@@ -704,7 +704,7 @@
       "evidence": [
         {
           "detail": "No action on down; pan reversible, finalizes on up",
-          "ref": "src/sightline.ts:546-571"
+          "ref": "src/fchart.ts:546-571"
         },
         {
           "detail": "Native legend buttons activate on up-event",
@@ -759,7 +759,7 @@
         },
         {
           "detail": "panPage() shifts the domain ~one page",
-          "ref": "src/sightline.ts:724-742"
+          "ref": "src/fchart.ts:724-742"
         }
       ]
     },
@@ -775,7 +775,7 @@
       "evidence": [
         {
           "detail": "Surface fills plot inset, exceeds 24x24",
-          "ref": "src/sightline.ts:359-362"
+          "ref": "src/fchart.ts:359-362"
         },
         {
           "detail": "Legend buttons min 24x24 (R9)",
@@ -809,12 +809,12 @@
       "attestationRequired": false,
       "evidence": [
         {
-          "detail": "SightlineStrings token-template defaults (R10)",
+          "detail": "FChartStrings token-template defaults (R10)",
           "ref": "src/a11y/strings.ts"
         },
         {
           "detail": "strings threaded through legend/table/summary",
-          "ref": "src/sightline.ts"
+          "ref": "src/fchart.ts"
         }
       ]
     },
@@ -830,7 +830,7 @@
       "evidence": [
         {
           "detail": "Focus only activates cursor + polite announce",
-          "ref": "src/sightline.ts:501-505"
+          "ref": "src/fchart.ts:501-505"
         },
         {
           "detail": "Live region announce, no context change",
@@ -850,7 +850,7 @@
       "evidence": [
         {
           "detail": "Keys move cursor/pan in place",
-          "ref": "src/sightline.ts:514-534"
+          "ref": "src/fchart.ts:514-534"
         },
         {
           "detail": "Legend toggle in place via toggleSeries",
@@ -889,7 +889,7 @@
         },
         {
           "detail": "Stable role=\"application\" + roledescription",
-          "ref": "src/sightline.ts:187"
+          "ref": "src/fchart.ts:187"
         }
       ]
     },
@@ -935,7 +935,7 @@
       "evidence": [
         {
           "detail": "Surface aria-label embeds keyboard model",
-          "ref": "src/sightline.ts:335-344"
+          "ref": "src/fchart.ts:335-344"
         },
         {
           "detail": "Legend group + button labels with state",
@@ -1009,17 +1009,17 @@
       "level": "A",
       "applicability": "applicable",
       "conformance": "Supports",
-      "remarks": "Name and Role are exposed for every control. R11 closed the Value half: the focused sample is a queryable aria-describedby target (sl-active-{n}) updated in lockstep with each cursor move, and the legend state span is aria-hidden so each name stays the stable series name. (verified: automated)",
+      "remarks": "Name and Role are exposed for every control. R11 closed the Value half: the focused sample is a queryable aria-describedby target (fc-active-{n}) updated in lockstep with each cursor move, and the legend state span is aria-hidden so each name stays the stable series name. (verified: automated)",
       "verification": "automated",
       "attestationRequired": false,
       "evidence": [
         {
           "detail": "Surface role/name/details + native legend buttons",
-          "ref": "src/sightline.ts"
+          "ref": "src/fchart.ts"
         },
         {
           "detail": "Lockstep aria-describedby value target (R11)",
-          "ref": "src/sightline.ts"
+          "ref": "src/fchart.ts"
         },
         {
           "detail": "Native table with scoped headers",
@@ -1043,7 +1043,7 @@
         },
         {
           "detail": "Debounced announce, fires on focus",
-          "ref": "src/sightline.ts:443-461,501-505"
+          "ref": "src/fchart.ts:443-461,501-505"
         }
       ]
     },
@@ -1064,7 +1064,7 @@
         },
         {
           "detail": "reducedMotion auto-detected and plumbed",
-          "ref": "src/sightline.ts:143-144,406,634-636"
+          "ref": "src/fchart.ts:143-144,406,634-636"
         }
       ]
     },
@@ -1085,7 +1085,7 @@
         },
         {
           "detail": "Live forced-colors media listener triggers a repaint",
-          "ref": "src/sightline.ts:261-270"
+          "ref": "src/fchart.ts:261-270"
         },
         {
           "detail": "forced-colors outline + remapped DOM colors",
@@ -1205,7 +1205,7 @@
     {
       "id": "software",
       "title": "Chapter 11: Software",
-      "intro": "Sightline is a UI component embedded in a host page; most software clauses are the platform/host responsibility and are marked Not Applicable.",
+      "intro": "fcharts is a UI component embedded in a host page; most software clauses are the platform/host responsibility and are marked Not Applicable.",
       "rows": [
         {
           "id": "11.5.2",

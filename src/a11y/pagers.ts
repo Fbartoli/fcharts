@@ -4,9 +4,9 @@
  * that WCAG 2.5.7 requires; being real buttons, they are keyboard- and screen-reader-operable
  * too. Shown only when the view is zoomed in (panning has an effect).
  */
-import type { SightlineStrings } from './strings.ts';
+import type { FChartStrings } from './strings.ts';
 
-type PagerStrings = Pick<SightlineStrings, 'pagerPrev' | 'pagerNext'>;
+type PagerStrings = Pick<FChartStrings, 'pagerPrev' | 'pagerNext'>;
 
 export class Pagers {
   readonly el: HTMLElement;
@@ -15,12 +15,12 @@ export class Pagers {
 
   constructor(onPan: (dir: -1 | 1) => void, strings: PagerStrings, doc: Document = document) {
     this.el = doc.createElement('div');
-    this.el.className = 'sl-pagers';
+    this.el.className = 'fc-pagers';
     this.el.style.display = 'none'; // hidden until there's something to pan to
     const mk = (glyph: string, label: string, dir: -1 | 1): HTMLButtonElement => {
       const b = doc.createElement('button');
       b.type = 'button';
-      b.className = 'sl-pager';
+      b.className = 'fc-pager';
       b.textContent = glyph;
       b.setAttribute('aria-label', label);
       b.addEventListener('click', () => onPan(dir));

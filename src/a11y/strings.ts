@@ -9,7 +9,7 @@
  * mixed subtrees in a `lang` attribute. Strings are `{token}` templates filled by `format`.
  */
 
-export interface SightlineStrings {
+export interface FChartStrings {
   /** Accessible name for the legend button group. No tokens. */
   legendGroup: string;
   /** Per-series visibility state words (visible-only; aria-pressed carries state for AT). */
@@ -40,7 +40,7 @@ export interface SightlineStrings {
   pagerNext: string;
 }
 
-export const DEFAULT_STRINGS: SightlineStrings = {
+export const DEFAULT_STRINGS: FChartStrings = {
   legendGroup: 'Series — activate to show or hide',
   shown: 'shown',
   hidden: 'hidden',
@@ -71,6 +71,6 @@ export function format(template: string, vars: Record<string, string | number>):
 }
 
 /** Merge user overrides onto the English defaults. */
-export function resolveStrings(overrides?: Partial<SightlineStrings>): SightlineStrings {
+export function resolveStrings(overrides?: Partial<FChartStrings>): FChartStrings {
   return overrides ? { ...DEFAULT_STRINGS, ...overrides } : DEFAULT_STRINGS;
 }

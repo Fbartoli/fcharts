@@ -1,7 +1,7 @@
 # Compliance Pack — Conformance Test Plan & Pass→Conformance Mapping
 
 > **Document 3 of 4.** Specifies the **conformance engine**: the battery of automated checks run
-> against a live Sightline instance, the dependency-free contrast math, and the rules mapping each
+> against a live fcharts instance, the dependency-free contrast math, and the rules mapping each
 > check result to a WCAG criterion verdict from [`scope-and-evidence-map.md`](./scope-and-evidence-map.md).
 > The engine is extracted from `bench/harness.ts` into `src/compliance/` (task 17); this document
 > is its contract. It is the machinery that keeps the ACR (document 2) and the CI gate (document 4)
@@ -20,7 +20,7 @@ would change), **n/a** (the check doesn't apply to the configured chart).
 
 ## 2. Execution model
 
-- The engine drives a **live Sightline instance** in a real browser via **Playwright** (a
+- The engine drives a **live fcharts instance** in a real browser via **Playwright** (a
   **dev/peer dependency only — never in the shipped core**, per the standing decision). This is
   the only way to test *functional* a11y (focus, keypress, computed styles, find-in-page) — the
   exact gap axe can't see.
@@ -30,7 +30,7 @@ would change), **n/a** (the check doesn't apply to the configured chart).
 - **Pure helpers** (contrast math, the SC→check mapping table, the conformance reducer) live in
   `src/compliance/` with **no browser dependency** and are unit-tested under `node:test` (task 20).
   Only the page-driving layer needs Playwright.
-- The engine takes a **chart factory** (how to build the Sightline instance under test) so it can
+- The engine takes a **chart factory** (how to build the fcharts instance under test) so it can
   audit *any* integrator's configured chart, not just the bench fixture. The CLI (document 4)
   accepts a user-supplied fixture.
 
@@ -41,7 +41,7 @@ remediations already landed (document 1, §11).
 
 | Check id | Asserts | Serves SC | Class | Source |
 |---|---|---|---|---|
-| `axe-serious` | 0 serious/critical axe violations scoped to `.sl-root` | (necessary baseline) | automated | harness |
+| `axe-serious` | 0 serious/critical axe violations scoped to `.fc-root` | (necessary baseline) | automated | harness |
 | `canvas-hidden` | the `<canvas>` has `aria-hidden="true"` | 1.1.1, 4.1.2 | automated | new |
 | `text-alternative` | a `<table>` with `<caption>`, `<th scope=col/row>`, ≥10 rows exists | 1.1.1, 1.3.1 | automated | harness (extended) |
 | `table-x-header` | first `<th>` text === configured `xLabel` (R1) | 1.3.1, 2.4.6 | automated | new |
@@ -50,11 +50,11 @@ remediations already landed (document 1, §11).
 | `live-region-present` | `[aria-live=polite][aria-atomic=true]` exists inside the surface before updates | 4.1.3 | automated | new |
 | `keyboard-announce` | focus → `End`/`ArrowLeft` changes the live-region text (`liveRegionChangesOnArrow`) | 2.1.1, 4.1.3 | automated | harness |
 | `keyboard-zoom` | `+` / `-` change the visible domain (ticks change) (R2) | 2.1.1 | automated | new |
-| `escape-dismiss` | after focus, `Escape` removes `.sl-show` and keeps focus on the surface (R3) | 1.4.13 | automated | new |
+| `escape-dismiss` | after focus, `Escape` removes `.fc-show` and keeps focus on the surface (R3) | 1.4.13 | automated | new |
 | `active-value` | the 2nd `aria-describedby` target is populated on focus, cleared on Escape (R11) | 4.1.2 | automated | new |
 | `no-keyboard-trap` | focus enters, `Tab`/`Shift+Tab` leave the surface and legend | 2.1.2 | automated | new |
 | `label-in-name` | each legend button's accessible name contains its visible label (axe `label-in-name`) | 2.5.3 | automated | axe rule |
-| `target-size` | every `.sl-legend button` `getBoundingClientRect()` ≥ 24×24 (R9) | 2.5.8 | automated | new |
+| `target-size` | every `.fc-legend button` `getBoundingClientRect()` ≥ 24×24 (R9) | 2.5.8 | automated | new |
 | `tick-findable` | `window.find()` locates a visible axis tick label | 1.4.5, 1.3.1 | automated | harness |
 | `no-canvas-text` | source assertion: no `fillText`/`strokeText` in the renderer | 1.4.5 | automated | new (static) |
 | `contrast-readout` | readout fg/bg computed ratio ≥ 4.5:1 (library-controlled pair) | 1.4.3 | automated | new |
@@ -158,12 +158,12 @@ says accessible" and "the ACR says accessible").
 ## 7. Test strategy (task 20)
 
 - **Unit (node:test, no deps):** `contrastRatio`/`relativeLuminance` against the WCAG reference
-  pairs (black/white = 21:1, the documented Sightline pairs); `parseColor` for hex/rgb/rgba;
+  pairs (black/white = 21:1, the documented fcharts pairs); `parseColor` for hex/rgb/rgba;
   `reduceToVerdicts` for each mapping rule (a failing check downgrades; a passing set confirms; a
   manual item never regresses; axe-serious always regresses).
-- **Integration (Playwright):** `runConformance` against (a) the real Sightline (expect every
+- **Integration (Playwright):** `runConformance` against (a) the real fcharts (expect every
   automated check `pass`, 0 regressions vs. baseline) and (b) an **intentionally broken** chart —
   the injected-regression demo of document 4 (expect the specific check to `fail` and the gate to
   exit non-zero).
 
-This is the substrate the CI gate (`sightline-audit`) and the ACR generator both build on.
+This is the substrate the CI gate (`fcharts-audit`) and the ACR generator both build on.

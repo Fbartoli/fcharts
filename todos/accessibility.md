@@ -51,7 +51,7 @@ Tightens **1.4.3 / 1.4.11** and answers the EU guide's **"algorithmic colour & c
 grid/axis defaults are below 3:1 (`canvas2d.ts` grid 0.13 = 1.16:1, axis 0.30 = 1.41:1).
 
 - [ ] Ship an opinionated default series palette pre-checked for ≥3:1 against the documented bg.
-- [ ] Raise default `--sl-grid`/`--sl-axis` alpha (or use solid contrast-checked colors) to clear 3:1.
+- [ ] Raise default `--fc-grid`/`--fc-axis` alpha (or use solid contrast-checked colors) to clear 3:1.
 - [ ] Optional: a dev-time `console.warn` (or the audit gate) when author colors fall below 3:1
       — reuse `src/compliance/contrast.ts`.
 
@@ -71,7 +71,7 @@ Effort: M–L.
 
 Closes **2.5.7 Dragging Movements** (pan is drag-only today; keyboard doesn't satisfy 2.5.7).
 
-- `src/sightline.ts` `onPointerMove` is the only pan path.
+- `src/fchart.ts` `onPointerMove` is the only pan path.
 - [ ] Add a single-pointer non-drag affordance: prev/next-page overlay buttons, or click/tap a
       plot margin to advance the window. Must translate (not zoom) the domain.
 

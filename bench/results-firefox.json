@@ -5,9 +5,9 @@
   "durationMs": 5000,
   "headline": [
     {
-      "id": "sightline",
-      "label": "Sightline",
-      "kind": "sightline",
+      "id": "fchart",
+      "label": "fcharts",
+      "kind": "fchart",
       "nodeCount": 256,
       "frames": 209,
       "fps": 41.66118493180722,
@@ -84,8 +84,8 @@
     "liveRegionChangesOnArrow": true,
     "tickLabelFindable": true,
     "dataValueFindable": true,
-    "sightlineFrameUnder16ms": true,
+    "fchartFrameUnder16ms": true,
     "scalingRatioUnder1_5x": true,
-    "sightlineUniquelyFastAndAccessible": true
+    "fchartUniquelyFastAndAccessible": true
   }
 }

@@ -17,7 +17,7 @@ export function createUplot(container: HTMLElement, data: Dataset): ChartAdapter
   const opts: uPlot.Options = {
     width: Math.max(160, Math.round(rect.width)),
     // Reserve ~34px for uPlot's below-plot legend so it's visible inside the frame (not clipped)
-    // — and so uPlot's plotting area matches Sightline's, which likewise gives up top space to
+    // — and so uPlot's plotting area matches fcharts', which likewise gives up top space to
     // its own legend. A fair, same-sized comparison.
     height: Math.max(120, Math.round(rect.height) - 34),
     scales: { x: { time: false } },

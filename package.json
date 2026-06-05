@@ -1,5 +1,5 @@
 {
-  "name": "sightline",
+  "name": "fcharts-js",
   "version": "0.1.0",
   "description": "Charts that render 100k+ points at 60fps and pass the accessibility audit at the same time.",
   "type": "module",
@@ -12,19 +12,19 @@
   "files": [
     "dist"
   ],
-  "main": "./dist/sightline.js",
-  "module": "./dist/sightline.js",
+  "main": "./dist/fcharts.js",
+  "module": "./dist/fcharts.js",
   "types": "./dist/index.d.ts",
-  "unpkg": "./dist/sightline.umd.cjs",
-  "jsdelivr": "./dist/sightline.umd.cjs",
+  "unpkg": "./dist/fcharts.umd.cjs",
+  "jsdelivr": "./dist/fcharts.umd.cjs",
   "bin": {
-    "sightline-audit": "./dist/compliance/cli.js"
+    "fcharts-audit": "./dist/compliance/cli.js"
   },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/sightline.js",
-      "require": "./dist/sightline.umd.cjs"
+      "import": "./dist/fcharts.js",
+      "require": "./dist/fcharts.umd.cjs"
     },
     "./compliance": {
       "types": "./dist/compliance/index.d.ts",

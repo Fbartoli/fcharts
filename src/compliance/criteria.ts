@@ -1,5 +1,5 @@
 /**
- * WCAG 2.2 AA conformance baseline for the Sightline chart component.
+ * WCAG 2.2 AA conformance baseline for the fcharts chart component.
  *
  * Transcribed from `compliance/scope-and-evidence-map.md` (document 1 of the Compliance Pack),
  * reflecting the post-remediation source (incl. the R4–R12 accessibility backlog): 33 Supports /
@@ -29,7 +29,7 @@ export const CRITERIA: CriterionRow[] = [
     verification: 'automated',
     attestationRequired: false,
     evidence: [
-      { detail: 'Canvas removed from a11y tree (aria-hidden="true")', ref: 'src/sightline.ts:179' },
+      { detail: 'Canvas removed from a11y tree (aria-hidden="true")', ref: 'src/fchart.ts:179' },
       {
         detail: 'Hidden <table> alternative with caption + scoped headers, ≤40 rows',
         ref: 'src/a11y/table-alt.ts:52-110',
@@ -112,7 +112,7 @@ export const CRITERIA: CriterionRow[] = [
     evidence: [
       { detail: 'Table caption + scoped headers', ref: 'src/a11y/table-alt.ts:68-114' },
       { detail: 'role="group" legend of aria-pressed buttons', ref: 'src/a11y/legend.ts' },
-      { detail: 'xLabel threaded into the table x-column header (R1)', ref: 'src/sightline.ts' },
+      { detail: 'xLabel threaded into the table x-column header (R1)', ref: 'src/fchart.ts' },
     ],
   },
   {
@@ -123,12 +123,12 @@ export const CRITERIA: CriterionRow[] = [
     conformance: 'Supports',
     remarks:
       'DOM is appended in reading order (legend before plot; table reads x-then-series in ' +
-      'ascending sample order); .sl-root is flex-column with no order/*-reverse/float. ' +
+      'ascending sample order); .fc-root is flex-column with no order/*-reverse/float. ' +
       '(verified: automated)',
     verification: 'automated',
     attestationRequired: false,
     evidence: [
-      { detail: 'DOM appended in reading order', ref: 'src/sightline.ts:197-208' },
+      { detail: 'DOM appended in reading order', ref: 'src/fchart.ts:197-208' },
       { detail: 'Table body reads x-then-series ascending', ref: 'src/a11y/table-alt.ts:84-101' },
       { detail: 'flex-column, no order/reverse/float', ref: 'src/a11y/styles.ts:9' },
     ],
@@ -146,8 +146,8 @@ export const CRITERIA: CriterionRow[] = [
     verification: 'hybrid',
     attestationRequired: true,
     evidence: [
-      { detail: 'describeChart() names keys, not spatial cues', ref: 'src/sightline.ts:335-344' },
-      { detail: 'Announcements name series + axis-labeled values', ref: 'src/sightline.ts:444-453' },
+      { detail: 'describeChart() names keys, not spatial cues', ref: 'src/fchart.ts:335-344' },
+      { detail: 'Announcements name series + axis-labeled values', ref: 'src/fchart.ts:444-453' },
     ],
   },
   {
@@ -157,13 +157,13 @@ export const CRITERIA: CriterionRow[] = [
     applicability: 'applicable',
     conformance: 'Supports',
     remarks:
-      'No orientation lock; .sl-root is a fluid 100% flex-column re-measured by ResizeObserver. ' +
+      'No orientation lock; .fc-root is a fluid 100% flex-column re-measured by ResizeObserver. ' +
       'No @media (orientation), transform:rotate, or screen.orientation lock. (verified: automated)',
     verification: 'automated',
     attestationRequired: false,
     evidence: [
       { detail: 'Fluid 100% flex-column layout', ref: 'src/a11y/styles.ts:9' },
-      { detail: 'ResizeObserver re-measure + re-render', ref: 'src/sightline.ts:217-218,346-357' },
+      { detail: 'ResizeObserver re-measure + re-render', ref: 'src/fchart.ts:217-218,346-357' },
     ],
   },
   {
@@ -245,7 +245,7 @@ export const CRITERIA: CriterionRow[] = [
     attestationRequired: false,
     evidence: [
       { detail: 'Label fonts in rem (.6875/.625/.78/.625/.75rem)', ref: 'src/a11y/styles.ts:16,20,43,53,31' },
-      { detail: 'Fluid container re-measures on resize/zoom (ResizeObserver → measure)', ref: 'src/sightline.ts:272-273,443' },
+      { detail: 'Fluid container re-measures on resize/zoom (ResizeObserver → measure)', ref: 'src/fchart.ts:272-273,443' },
     ],
   },
   {
@@ -283,7 +283,7 @@ export const CRITERIA: CriterionRow[] = [
     evidence: [
       { detail: 'Legend wraps (flex-wrap:wrap), no imposed min-width', ref: 'src/a11y/styles.ts:38' },
       { detail: 'effectiveTickCount thins tick density at narrow widths', ref: 'src/core/ticks.ts:48-53' },
-      { detail: 'Adaptive density wired into the frame', ref: 'src/sightline.ts:473-474' },
+      { detail: 'Adaptive density wired into the frame', ref: 'src/fchart.ts:473-474' },
     ],
   },
   {
@@ -337,7 +337,7 @@ export const CRITERIA: CriterionRow[] = [
     attestationRequired: false,
     evidence: [
       { detail: 'Readout pointer-events:none, no dismiss timer', ref: 'src/a11y/styles.ts' },
-      { detail: 'Escape -> dismissCursor() clears readout, keeps focus (R3)', ref: 'src/sightline.ts' },
+      { detail: 'Escape -> dismissCursor() clears readout, keeps focus (R3)', ref: 'src/fchart.ts' },
     ],
   },
   {
@@ -354,7 +354,7 @@ export const CRITERIA: CriterionRow[] = [
     attestationRequired: false,
     evidence: [
       { detail: 'Cursor nav handlers', ref: 'src/a11y/cursor.ts:43-75' },
-      { detail: 'Keyboard zoom mirrors wheel-zoom (R2)', ref: 'src/sightline.ts' },
+      { detail: 'Keyboard zoom mirrors wheel-zoom (R2)', ref: 'src/fchart.ts' },
     ],
   },
   {
@@ -370,8 +370,8 @@ export const CRITERIA: CriterionRow[] = [
     verification: 'automated',
     attestationRequired: false,
     evidence: [
-      { detail: 'Only six handled keys preventDefaulted', ref: 'src/sightline.ts:514-516' },
-      { detail: 'Pointer-capture released on up/cancel', ref: 'src/sightline.ts:551,565-571' },
+      { detail: 'Only six handled keys preventDefaulted', ref: 'src/fchart.ts:514-516' },
+      { detail: 'Pointer-capture released on up/cancel', ref: 'src/fchart.ts:551,565-571' },
     ],
   },
   {
@@ -403,7 +403,7 @@ export const CRITERIA: CriterionRow[] = [
     verification: 'hybrid',
     attestationRequired: true,
     evidence: [
-      { detail: 'Throttle/debounce timers only, no deadlines', ref: 'src/sightline.ts:72-75,417-431,455-461' },
+      { detail: 'Throttle/debounce timers only, no deadlines', ref: 'src/fchart.ts:72-75,417-431,455-461' },
     ],
   },
   {
@@ -477,8 +477,8 @@ export const CRITERIA: CriterionRow[] = [
     verification: 'automated',
     attestationRequired: false,
     evidence: [
-      { detail: 'Legend-then-surface DOM order', ref: 'src/sightline.ts:197-208' },
-      { detail: 'Only tabIndex 0, no positive tabindex', ref: 'src/sightline.ts:186' },
+      { detail: 'Legend-then-surface DOM order', ref: 'src/fchart.ts:197-208' },
+      { detail: 'Only tabIndex 0, no positive tabindex', ref: 'src/fchart.ts:186' },
     ],
   },
   {
@@ -517,7 +517,7 @@ export const CRITERIA: CriterionRow[] = [
     verification: 'automated',
     attestationRequired: false,
     evidence: [
-      { detail: 'Descriptive surface aria-label', ref: 'src/sightline.ts' },
+      { detail: 'Descriptive surface aria-label', ref: 'src/fchart.ts' },
       { detail: 'Legend group + button labels', ref: 'src/a11y/legend.ts' },
       { detail: 'Table x-header uses configured xLabel (R1)', ref: 'src/a11y/table-alt.ts' },
     ],
@@ -553,7 +553,7 @@ export const CRITERIA: CriterionRow[] = [
     attestationRequired: true,
     evidence: [
       { detail: 'Small readout tooltip, surface is top layer', ref: 'src/a11y/styles.ts:28-33' },
-      { detail: 'Surface is the top interactive layer', ref: 'src/sightline.ts:202-204' },
+      { detail: 'Surface is the top interactive layer', ref: 'src/fchart.ts:202-204' },
     ],
   },
   {
@@ -569,8 +569,8 @@ export const CRITERIA: CriterionRow[] = [
     verification: 'manual-attestation',
     attestationRequired: true,
     evidence: [
-      { detail: 'Drag-pan uses net delta, not trajectory', ref: 'src/sightline.ts:546-563' },
-      { detail: 'Zoom is wheel-driven, no multipoint', ref: 'src/sightline.ts:536-544' },
+      { detail: 'Drag-pan uses net delta, not trajectory', ref: 'src/fchart.ts:546-563' },
+      { detail: 'Zoom is wheel-driven, no multipoint', ref: 'src/fchart.ts:536-544' },
     ],
   },
   {
@@ -586,7 +586,7 @@ export const CRITERIA: CriterionRow[] = [
     verification: 'automated',
     attestationRequired: false,
     evidence: [
-      { detail: 'No action on down; pan reversible, finalizes on up', ref: 'src/sightline.ts:546-571' },
+      { detail: 'No action on down; pan reversible, finalizes on up', ref: 'src/fchart.ts:546-571' },
       { detail: 'Native legend buttons activate on up-event', ref: 'src/a11y/legend.ts:36-38' },
     ],
   },
@@ -633,7 +633,7 @@ export const CRITERIA: CriterionRow[] = [
     attestationRequired: false,
     evidence: [
       { detail: 'Pan pagers: single-pointer buttons step the window', ref: 'src/a11y/pagers.ts:1-44' },
-      { detail: 'panPage() shifts the domain ~one page', ref: 'src/sightline.ts:724-742' },
+      { detail: 'panPage() shifts the domain ~one page', ref: 'src/fchart.ts:724-742' },
     ],
   },
   {
@@ -649,7 +649,7 @@ export const CRITERIA: CriterionRow[] = [
     verification: 'automated',
     attestationRequired: false,
     evidence: [
-      { detail: 'Surface fills plot inset, exceeds 24x24', ref: 'src/sightline.ts:359-362' },
+      { detail: 'Surface fills plot inset, exceeds 24x24', ref: 'src/fchart.ts:359-362' },
       { detail: 'Legend buttons min 24x24 (R9)', ref: 'src/a11y/styles.ts' },
     ],
   },
@@ -678,8 +678,8 @@ export const CRITERIA: CriterionRow[] = [
     verification: 'automated',
     attestationRequired: false,
     evidence: [
-      { detail: 'SightlineStrings token-template defaults (R10)', ref: 'src/a11y/strings.ts' },
-      { detail: 'strings threaded through legend/table/summary', ref: 'src/sightline.ts' },
+      { detail: 'FChartStrings token-template defaults (R10)', ref: 'src/a11y/strings.ts' },
+      { detail: 'strings threaded through legend/table/summary', ref: 'src/fchart.ts' },
     ],
   },
   {
@@ -695,7 +695,7 @@ export const CRITERIA: CriterionRow[] = [
     verification: 'automated',
     attestationRequired: false,
     evidence: [
-      { detail: 'Focus only activates cursor + polite announce', ref: 'src/sightline.ts:501-505' },
+      { detail: 'Focus only activates cursor + polite announce', ref: 'src/fchart.ts:501-505' },
       { detail: 'Live region announce, no context change', ref: 'src/a11y/live-region.ts:13-14' },
     ],
   },
@@ -712,7 +712,7 @@ export const CRITERIA: CriterionRow[] = [
     verification: 'automated',
     attestationRequired: false,
     evidence: [
-      { detail: 'Keys move cursor/pan in place', ref: 'src/sightline.ts:514-534' },
+      { detail: 'Keys move cursor/pan in place', ref: 'src/fchart.ts:514-534' },
       { detail: 'Legend toggle in place via toggleSeries', ref: 'src/a11y/legend.ts:36' },
     ],
   },
@@ -741,7 +741,7 @@ export const CRITERIA: CriterionRow[] = [
     attestationRequired: false,
     evidence: [
       { detail: 'One build() routine, uniform aria-pressed', ref: 'src/a11y/legend.ts:31' },
-      { detail: 'Stable role="application" + roledescription', ref: 'src/sightline.ts:187' },
+      { detail: 'Stable role="application" + roledescription', ref: 'src/fchart.ts:187' },
     ],
   },
   {
@@ -779,7 +779,7 @@ export const CRITERIA: CriterionRow[] = [
     verification: 'automated',
     attestationRequired: false,
     evidence: [
-      { detail: 'Surface aria-label embeds keyboard model', ref: 'src/sightline.ts:335-344' },
+      { detail: 'Surface aria-label embeds keyboard model', ref: 'src/fchart.ts:335-344' },
       { detail: 'Legend group + button labels with state', ref: 'src/a11y/legend.ts:25,69-75' },
     ],
   },
@@ -835,14 +835,14 @@ export const CRITERIA: CriterionRow[] = [
     conformance: 'Supports',
     remarks:
       'Name and Role are exposed for every control. R11 closed the Value half: the focused sample ' +
-      'is a queryable aria-describedby target (sl-active-{n}) updated in lockstep with each cursor ' +
+      'is a queryable aria-describedby target (fc-active-{n}) updated in lockstep with each cursor ' +
       'move, and the legend state span is aria-hidden so each name stays the stable series name. ' +
       '(verified: automated)',
     verification: 'automated',
     attestationRequired: false,
     evidence: [
-      { detail: 'Surface role/name/details + native legend buttons', ref: 'src/sightline.ts' },
-      { detail: 'Lockstep aria-describedby value target (R11)', ref: 'src/sightline.ts' },
+      { detail: 'Surface role/name/details + native legend buttons', ref: 'src/fchart.ts' },
+      { detail: 'Lockstep aria-describedby value target (R11)', ref: 'src/fchart.ts' },
       { detail: 'Native table with scoped headers', ref: 'src/a11y/table-alt.ts' },
     ],
   },
@@ -861,7 +861,7 @@ export const CRITERIA: CriterionRow[] = [
     attestationRequired: true,
     evidence: [
       { detail: 'Live region created before updates', ref: 'src/a11y/live-region.ts:11-22' },
-      { detail: 'Debounced announce, fires on focus', ref: 'src/sightline.ts:443-461,501-505' },
+      { detail: 'Debounced announce, fires on focus', ref: 'src/fchart.ts:443-461,501-505' },
     ],
   },
   {
@@ -880,7 +880,7 @@ export const CRITERIA: CriterionRow[] = [
     attestationRequired: false,
     evidence: [
       { detail: 'Readout fade removed under reduced-motion', ref: 'src/a11y/styles.ts:32,49' },
-      { detail: 'reducedMotion auto-detected and plumbed', ref: 'src/sightline.ts:143-144,406,634-636' },
+      { detail: 'reducedMotion auto-detected and plumbed', ref: 'src/fchart.ts:143-144,406,634-636' },
     ],
   },
   {
@@ -901,7 +901,7 @@ export const CRITERIA: CriterionRow[] = [
     attestationRequired: false,
     evidence: [
       { detail: 'Renderer reads system colors + repaints marks under forced-colors', ref: 'src/renderers/canvas2d.ts:37-54,99-101' },
-      { detail: 'Live forced-colors media listener triggers a repaint', ref: 'src/sightline.ts:261-270' },
+      { detail: 'Live forced-colors media listener triggers a repaint', ref: 'src/fchart.ts:261-270' },
       { detail: 'forced-colors outline + remapped DOM colors', ref: 'src/a11y/styles.ts:55-59' },
     ],
   },

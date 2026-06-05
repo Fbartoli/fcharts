@@ -15,7 +15,7 @@ import { createServer, type ViteDevServer } from 'vite';
 import { runConformance, countStatuses } from '../src/compliance/conformance.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const SIGHTLINE = '#cell-sightline';
+const FCHART = '#cell-fchart';
 
 const BROWSERS: Record<string, BrowserType> = { chromium, firefox, webkit };
 const browserName = process.argv[2] ?? 'chromium';
@@ -24,9 +24,9 @@ interface Acceptance {
   liveRegionChangesOnArrow: boolean;
   tickLabelFindable: boolean;
   dataValueFindable: boolean;
-  sightlineFrameUnder16ms: boolean;
+  fchartFrameUnder16ms: boolean;
   scalingRatioUnder1_5x: boolean;
-  sightlineUniquelyFastAndAccessible: boolean;
+  fchartUniquelyFastAndAccessible: boolean;
 }
 
 async function startServer(): Promise<ViteDevServer> {
@@ -36,8 +36,8 @@ async function startServer(): Promise<ViteDevServer> {
 }
 
 async function keyboardAccessibility(page: Page): Promise<{ changed: boolean }> {
-  const liveSel = `${SIGHTLINE} [aria-live]`;
-  await page.focus(`${SIGHTLINE} [role="application"]`);
+  const liveSel = `${FCHART} [aria-live]`;
+  await page.focus(`${FCHART} [role="application"]`);
   await page.waitForTimeout(60);
   const before = (await page.locator(liveSel).textContent()) ?? '';
   await page.keyboard.press('End'); // jump — guaranteed to change the announced sample
@@ -53,10 +53,10 @@ async function keyboardAccessibility(page: Page): Promise<{ changed: boolean }> 
 async function findability(page: Page): Promise<{ tick: boolean; value: boolean }> {
   const targets = await page.evaluate((sel) => {
     const root = document.querySelector(sel);
-    const tick = root?.querySelector('.sl-tick')?.textContent?.trim() ?? '';
-    const value = root?.querySelector('.sl-table-alt td')?.textContent?.trim() ?? '';
+    const tick = root?.querySelector('.fc-tick')?.textContent?.trim() ?? '';
+    const value = root?.querySelector('.fc-table-alt td')?.textContent?.trim() ?? '';
     return { tick, value };
-  }, SIGHTLINE);
+  }, FCHART);
   const find = (q: string): Promise<boolean> =>
     page.evaluate((s) => {
       if (!s) return false;
@@ -127,7 +127,7 @@ async function main(): Promise<void> {
     const kbd = await keyboardAccessibility(page);
     const find = await findability(page);
 
-    // Run the extracted conformance engine against the live Sightline cell — the same checks the
+    // Run the extracted conformance engine against the live fcharts cell — the same checks the
     // audit CLI uses (no drift between "the benchmark says accessible" and "the ACR says so").
     // Informational here (axe runs per-renderer above); contrast uses the cell's effective bg.
     const pageBg = await page.evaluate((sel) => {
@@ -138,17 +138,17 @@ async function main(): Promise<void> {
         el = el.parentElement;
       }
       return 'rgb(255, 255, 255)';
-    }, SIGHTLINE);
-    const conformance = await runConformance(page, SIGHTLINE, { background: pageBg });
+    }, FCHART);
+    const conformance = await runConformance(page, FCHART, { background: pageBg });
     const conf = countStatuses(conformance);
-    console.log(`\n=== Conformance engine (Sightline @ bg ${pageBg}) ===`);
+    console.log(`\n=== Conformance engine (fcharts @ bg ${pageBg}) ===`);
     console.log(`  ${conf.pass} pass · ${conf.fail} fail · ${conf.na} n/a`);
     for (const r of conformance.results.filter((r) => r.status === 'fail')) {
       console.log(`  ✗ ${r.id}: ${r.detail}`);
     }
 
     const rows = results.headline as Row[];
-    const sl = rows.find((r) => r.id === 'sightline');
+    const sl = rows.find((r) => r.id === 'fchart');
     const ratio =
       results.scaling.length >= 2
         ? results.scaling[results.scaling.length - 1].frameMs /
@@ -157,16 +157,16 @@ async function main(): Promise<void> {
 
     const slBoth = !!sl && smooth(sl.fps, sl.frameMs) && accessible(sl);
     const othersBoth = rows.filter(
-      (r) => r.id !== 'sightline' && smooth(r.fps, r.frameMs) && accessible(r),
+      (r) => r.id !== 'fchart' && smooth(r.fps, r.frameMs) && accessible(r),
     );
 
     const acceptance: Acceptance = {
       liveRegionChangesOnArrow: kbd.changed,
       tickLabelFindable: find.tick,
       dataValueFindable: find.value,
-      sightlineFrameUnder16ms: !!sl && sl.frameMs < 16,
+      fchartFrameUnder16ms: !!sl && sl.frameMs < 16,
       scalingRatioUnder1_5x: ratio < 1.5,
-      sightlineUniquelyFastAndAccessible: slBoth && othersBoth.length === 0,
+      fchartUniquelyFastAndAccessible: slBoth && othersBoth.length === 0,
     };
 
     const stamp = new Date().toISOString();
@@ -199,7 +199,7 @@ function printSummary(
         `${smooth(r.fps, r.frameMs) && accessible(r) ? '✓ BOTH' : ''}`,
     );
   }
-  console.log('\n=== Sightline frame cost vs N ===');
+  console.log('\n=== fcharts frame cost vs N ===');
   for (const s of scaling) {
     console.log(`  ${String(s.n).padStart(7)} pts  ${s.frameMs.toFixed(3)}ms/frame`);
   }
@@ -207,7 +207,7 @@ function printSummary(
 
   console.log('\n=== Acceptance ===');
   for (const [k, v] of Object.entries(a)) console.log(`  ${yn(v)} ${k}`);
-  const verdict = a.sightlineUniquelyFastAndAccessible && a.liveRegionChangesOnArrow;
+  const verdict = a.fchartUniquelyFastAndAccessible && a.liveRegionChangesOnArrow;
   const tag = verdict ? '✓ THESIS HELD' : '✗ THESIS NOT FULLY MET';
   console.log(`\n${tag} — results written to ${outPath}\n`);
 }

@@ -1,7 +1,7 @@
 /**
  * Conformance engine — the live-page check battery (conformance-test-plan.md §3).
  *
- * Drives a real Sightline instance in a browser (Playwright) and re-proves each automatable
+ * Drives a real fcharts instance in a browser (Playwright) and re-proves each automatable
  * WCAG claim from the evidence map — the functional layer axe cannot see. Returns a structured
  * `CheckReport` that `reduceToVerdicts` (mapping.ts) folds against the committed baseline.
  *
@@ -39,7 +39,7 @@ function scFromAxeTags(tags: string[]): string[] {
   // `axe-serious` check (which the gate honors directly) — but warn so per-SC attribution gaps
   // are visible rather than silent.
   if (out.length === 0 && tags.length > 0) {
-    console.warn(`sightline-audit: axe violation tags did not map to an SC: ${tags.join(', ')}`);
+    console.warn(`fcharts-audit: axe violation tags did not map to an SC: ${tags.join(', ')}`);
   }
   return out;
 }
@@ -58,7 +58,7 @@ export async function runConformance(
   // Let the first render + the (debounced, ~150ms) data-table build settle before asserting,
   // so steady-state DOM is checked regardless of how soon the caller invokes the engine.
   await page
-    .waitForFunction((s) => !!document.querySelector(`${s} .sl-table-alt caption`), sel, { timeout: 3000 })
+    .waitForFunction((s) => !!document.querySelector(`${s} .fc-table-alt caption`), sel, { timeout: 3000 })
     .catch(() => undefined);
   await page.waitForTimeout(60);
 
@@ -88,13 +88,13 @@ export async function runConformance(
     const q = (sub: string): Element | null => root?.querySelector(sub) ?? null;
     const surface = q('[role="application"]');
     const canvas = q('canvas');
-    const legendButtons = [...(root?.querySelectorAll('.sl-legend button') ?? [])];
+    const legendButtons = [...(root?.querySelectorAll('.fc-legend button') ?? [])];
     const tables = [...(root?.querySelectorAll('table') ?? [])];
     const dataTable = tables.find((t) => t.querySelectorAll('tr').length >= 10) ?? null;
     const firstTh = dataTable?.querySelector('thead th')?.textContent?.trim() ?? null;
-    const axisTitleX = q('.sl-axis-title-x')?.textContent?.trim() ?? null;
+    const axisTitleX = q('.fc-axis-title-x')?.textContent?.trim() ?? null;
     const live = q('[aria-live="polite"][aria-atomic="true"]');
-    const styleEl = document.getElementById('sl-styles');
+    const styleEl = document.getElementById('fc-styles');
     const css = styleEl?.textContent ?? '';
     return {
       canvasHidden: canvas?.getAttribute('aria-hidden') === 'true',
@@ -118,7 +118,7 @@ export async function runConformance(
         count: legendButtons.length,
         allButtons: legendButtons.every((b) => b.tagName === 'BUTTON' && b.getAttribute('type') === 'button'),
         allPressed: legendButtons.every((b) => b.hasAttribute('aria-pressed')),
-        stateHidden: [...(root?.querySelectorAll('.sl-legend-state') ?? [])].every(
+        stateHidden: [...(root?.querySelectorAll('.fc-legend-state') ?? [])].every(
           (e) => e.getAttribute('aria-hidden') === 'true',
         ),
         noAriaLabel: legendButtons.every((b) => !b.hasAttribute('aria-label') && !b.hasAttribute('aria-labelledby')),
@@ -129,7 +129,7 @@ export async function runConformance(
         // Each swatch's non-colour encoding (the dashed <line> / area <rect>) + its colour, so the
         // gate can prove (a) colour is not the only channel (1.4.1) and (b) mark contrast (1.4.11).
         swatches: legendButtons.map((b) => {
-          const g = b.querySelector('.sl-swatch')?.firstElementChild ?? null;
+          const g = b.querySelector('.fc-swatch')?.firstElementChild ?? null;
           return {
             tag: g?.tagName.toLowerCase() ?? '',
             dash: g?.getAttribute('stroke-dasharray') ?? '',
@@ -143,7 +143,7 @@ export async function runConformance(
         (e) => Number(e.getAttribute('tabindex')) > 0,
       ),
       legendBeforeSurface: (() => {
-        const lg = root?.querySelector('.sl-legend');
+        const lg = root?.querySelector('.fc-legend');
         if (!lg || !surface) return true;
         return (lg.compareDocumentPosition(surface) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
       })(),
@@ -227,13 +227,13 @@ export async function runConformance(
     'meaningful-sequence', ['1.3.2'], 'injected CSS reorders content (order / *-reverse / float)'));
   results.push(status(!/@media[^{]*orientation/i.test(dom.css) && !/transform:\s*rotate/i.test(dom.css),
     'orientation', ['1.3.4'], 'injected CSS locks orientation (orientation media query or rotate)'));
-  results.push(status(/\.sl-root\{[^}]*width:\s*100%[^}]*height:\s*100%/.test(dom.css),
+  results.push(status(/\.fc-root\{[^}]*width:\s*100%[^}]*height:\s*100%/.test(dom.css),
     'resize-text', ['1.4.4'], 'chart container is not fluid (100% width/height)'));
-  results.push(status(/\.sl-legend ul\{[^}]*flex-wrap:\s*wrap/.test(dom.css),
+  results.push(status(/\.fc-legend ul\{[^}]*flex-wrap:\s*wrap/.test(dom.css),
     'reflow', ['1.4.10'], 'legend does not wrap (flex-wrap:wrap) — reflow at narrow widths at risk'));
   results.push(status(
-    dom.css.split('}').filter((r) => /overflow:\s*hidden/.test(r)).every((r) => /\.sl-sr-only/.test(r)),
-    'text-spacing', ['1.4.12'], 'visible text may be clipped (overflow:hidden outside .sl-sr-only)'));
+    dom.css.split('}').filter((r) => /overflow:\s*hidden/.test(r)).every((r) => /\.fc-sr-only/.test(r)),
+    'text-spacing', ['1.4.12'], 'visible text may be clipped (overflow:hidden outside .fc-sr-only)'));
 
   // --- functional keyboard checks ---
   const startUrl = page.url();
@@ -270,7 +270,7 @@ export async function runConformance(
 
   // keyboard-zoom (R2): '+' changes the visible x-ticks.
   const xTicks = async (): Promise<string[]> =>
-    page.$$eval(`${sel} .sl-tick-x`, (els) => els.map((e) => e.textContent ?? ''));
+    page.$$eval(`${sel} .fc-tick-x`, (els) => els.map((e) => e.textContent ?? ''));
   const ticksBefore = await xTicks();
   await page.keyboard.press('+');
   await page.waitForTimeout(80);
@@ -282,12 +282,12 @@ export async function runConformance(
   await page.keyboard.press('Escape');
   await page.waitForTimeout(60);
   const afterEsc = await page.evaluate((s) => {
-    const readout = document.querySelector(`${s} .sl-readout`);
+    const readout = document.querySelector(`${s} .fc-readout`);
     const surface = document.querySelector(`${s} [role="application"]`);
     const ids = (surface?.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean);
     const active = ids.length >= 2 ? (document.getElementById(ids[1])?.textContent ?? '') : '';
     return {
-      readoutHidden: !readout?.classList.contains('sl-show'),
+      readoutHidden: !readout?.classList.contains('fc-show'),
       stillFocused: document.activeElement === surface,
       activeCleared: active === '',
     };
@@ -304,7 +304,7 @@ export async function runConformance(
 
   // tick-findable (1.4.5/1.3.1): real find-in-page locates a tick label (Chromium).
   const tickFind = await page.evaluate((s) => {
-    const tick = document.querySelector(`${s} .sl-tick`)?.textContent?.trim() ?? '';
+    const tick = document.querySelector(`${s} .fc-tick`)?.textContent?.trim() ?? '';
     const w = window as unknown as { find?: (q: string) => boolean; getSelection?: () => Selection | null };
     w.getSelection?.()?.removeAllRanges?.();
     return tick.length > 0 && typeof w.find === 'function' ? w.find(tick) : null;
@@ -322,9 +322,9 @@ export async function runConformance(
       return el ? getComputedStyle(el).getPropertyValue(prop) : '';
     };
     return {
-      readoutBg: cs('.sl-readout', 'background-color'),
-      readoutInk: cs('.sl-readout-val', 'color') || cs('.sl-readout', 'color'),
-      tick: cs('.sl-tick', 'color'),
+      readoutBg: cs('.fc-readout', 'background-color'),
+      readoutInk: cs('.fc-readout-val', 'color') || cs('.fc-readout', 'color'),
+      tick: cs('.fc-tick', 'color'),
     };
   }, sel);
   const readoutRatio = ratioOf(colors.readoutInk, colors.readoutBg);
@@ -372,7 +372,7 @@ export async function runConformance(
   // it (a px font would not move). Read, scale the root, re-read, restore.
   const tickFontPx = async (): Promise<number> =>
     page.evaluate((s) => {
-      const t = document.querySelector(`${s} .sl-tick`);
+      const t = document.querySelector(`${s} .fc-tick`);
       return t ? parseFloat(getComputedStyle(t).fontSize) : 0;
     }, sel);
   const fontBefore = await tickFontPx();
@@ -393,7 +393,7 @@ export async function runConformance(
   await page.waitForTimeout(80);
   const ticksPrePan = await xTicks();
   const pan = await page.evaluate((s) => {
-    const pagers = [...document.querySelectorAll(`${s} .sl-pager`)] as HTMLButtonElement[];
+    const pagers = [...document.querySelectorAll(`${s} .fc-pager`)] as HTMLButtonElement[];
     const visible = pagers.filter((b) => b.offsetParent !== null);
     return {
       count: pagers.length,
@@ -402,7 +402,7 @@ export async function runConformance(
       enabled: visible.filter((b) => !b.disabled).length,
     };
   }, sel);
-  if (pan.enabled > 0) await page.click(`${sel} .sl-pager:not(:disabled)`);
+  if (pan.enabled > 0) await page.click(`${sel} .fc-pager:not(:disabled)`);
   await page.waitForTimeout(80);
   const ticksPostPan = await xTicks();
   results.push(status(
@@ -415,7 +415,7 @@ export async function runConformance(
   // canvas bitmap (it repaints in system colors) — proving the canvas participates, not just the DOM.
   const canvasSig = async (): Promise<string> =>
     page.evaluate((s) => {
-      const c = document.querySelector(`${s} canvas.sl-canvas`) as HTMLCanvasElement | null;
+      const c = document.querySelector(`${s} canvas.fc-canvas`) as HTMLCanvasElement | null;
       try {
         return c ? c.toDataURL() : '';
       } catch {

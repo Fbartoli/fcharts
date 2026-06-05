@@ -1,4 +1,4 @@
-# FINDINGS — Sightline validation MVP
+# FINDINGS — fcharts validation MVP
 
 **Thesis:** a single chart can render 100k+ points at smooth frame rates **and** be fully
 accessible (keyboard-navigable, screen-reader-announced, find-in-page-able) at the same
@@ -6,9 +6,9 @@ time — something no existing JS chart library does.
 
 ## Verdict: **the thesis held.**
 
-Sightline is the only renderer that is both fast and accessible. uPlot is fast but
+fcharts is the only renderer that is both fast and accessible. uPlot is fast but
 inaccessible; the naive SVG chart is accessible but far too slow. The min/max pyramid kept
-Sightline's per-frame cost essentially flat from 10k to 250k points, and the DOM-overlay
+fcharts's per-frame cost essentially flat from 10k to 250k points, and the DOM-overlay
 accessibility layer passed every automated check while staying ~0.07 ms/frame.
 
 > **One important caveat, stated up front:** the spec's literal success metric — "zero
@@ -28,7 +28,7 @@ pan/zoom; measured headless in Chromium 148 on an Apple-Silicon Mac (120 Hz disp
 
 | Renderer | Sustained FPS | Frame cost (avg) | JS heap² | DOM nodes | axe serious | Keyboard cursor | Live region | Data text-alt | **Fast + accessible** |
 |---|---|---|---|---|---|---|---|---|---|
-| **Sightline** | **120** | **0.065 ms** | 17.0 MB | 257 | **0** | ✓ | ✓ | ✓ | **✓ only one** |
+| **fcharts** | **120** | **0.065 ms** | 17.0 MB | 257 | **0** | ✓ | ✓ | ✓ | **✓ only one** |
 | uPlot | 120 | ~0 (deferred)¹ | 14.8 MB | 35 | 0 | ✗ | ✗ | ✗ | ✗ (inaccessible) |
 | Naive SVG (50k nodes) | 16 | 51.5 ms | 15.8 MB² | 50,213 | 0 | ✗ | ✗ | ✓ | ✗ (too slow) |
 
@@ -44,7 +44,7 @@ true footprint.
 
 ### Frame cost is decoupled from point count (the core trick)
 
-Sightline only, same pan/zoom, average per-frame draw cost:
+fcharts only, same pan/zoom, average per-frame draw cost:
 
 | Points / series | Frame cost (avg) |
 |---|---|
@@ -58,18 +58,18 @@ flat because per-frame work tracks viewport width, not N. (Run-to-run the ratio 
 
 ### Cross-browser (Chromium, Firefox, WebKit/Safari — DOM-overlay path, no flags)
 
-The thesis held in all three engines: Sightline was the only renderer that was both fast
+The thesis held in all three engines: FChart was the only renderer that was both fast
 (frame cost well under the 16 ms / 60 fps budget) and fully accessible (axe-clean + keyboard
 cursor + live region + data table), with the scaling ratio under 1.5×.
 
-| Browser | Sightline frame cost | Sightline FPS | 250k/10k | axe | kbd/live/table | Uniquely fast + accessible |
+| Browser | fcharts frame cost | fcharts FPS | 250k/10k | axe | kbd/live/table | Uniquely fast + accessible |
 |---|---|---|---|---|---|---|
 | Chromium 148 | 0.067 ms | 120 | 1.23× | 0 | ✓✓✓ | ✓ |
 | Firefox | 1.96 ms | 42¹ | 1.40× | 0 | ✓✓✓ | ✓ |
 | WebKit / Safari | 0.157 ms | 60 | 1.16× | 0 | ✓✓✓ | ✓ |
 
 ¹ **Sustained FPS is environment-dependent, not a renderer-speed metric.** Headless Firefox
-throttles `requestAnimationFrame` to ~42 Hz, so Sightline shows 42 fps there despite a
+throttles `requestAnimationFrame` to ~42 Hz, so fcharts shows 42 fps there despite a
 1.96 ms frame cost (≈500 fps of headroom) — on a real Firefox with normal vsync it renders
 at 60. uPlot's "118 fps" on Firefox is also misleading: it's our drive loop calling its
 deferred `setScale`, not 118 real redraws. So the honest "is it smooth" criterion is **frame
@@ -83,10 +83,10 @@ Each engine's raw output is committed: `bench/results.json` (Chromium),
 
 | Criterion | Result |
 |---|---|
-| `pnpm bench` produces a results table; Sightline uniquely green on both axes | ✓ |
+| `pnpm bench` produces a results table; fcharts uniquely green on both axes | ✓ |
 | Median/avg frame time < 16 ms at 100k × 3 | ✓ 0.065 ms |
 | Frame time at 250k within ~1.5× of 10k | ✓ 1.23× |
-| axe-core: 0 critical + 0 serious on Sightline | ✓ (uPlot's gap shown via functional checks, see caveat) |
+| axe-core: 0 critical + 0 serious on fcharts | ✓ (uPlot's gap shown via functional checks, see caveat) |
 | Keyboard: arrows traverse samples + switch series; every move announced via live region | ✓ asserted in Playwright (`liveRegionChangesOnArrow`) |
 | Ctrl+F finds an axis tick label and a data value | ✓ verified via real `window.find()` (Chromium); browser-dependent for clipped text |
 | Core bundle < 30 KB min+gzip, zero runtime deps | ✓ 10.34 KB gzip, 0 deps |
@@ -104,11 +104,11 @@ Each engine's raw output is committed: `bench/results.json` (Chromium),
    **batched timing** (many draws ÷ total elapsed) so it spans many ms and beats the clamp.
    The real ratio is 1.14×, not a measurement artifact.
 3. **Heap is *not* a differentiator — and an earlier draft of this file got it wrong.** A
-   first run reported "Sightline 14 MB, uPlot 131 MB, SVG 235 MB" and concluded Sightline
+   first run reported "fcharts 14 MB, uPlot 131 MB, SVG 235 MB" and concluded fcharts
    used the least memory. That was **false by construction**: `usedJSHeapSize` is the
    *whole-process* JS heap, all three charts coexisted, and we sampled a running max in
    factory order — so the numbers only reflected measurement order, not footprint. Measuring
-   each renderer **alone, after a forced GC**, the JS heaps are comparable (Sightline 17.0,
+   each renderer **alone, after a forced GC**, the JS heaps are comparable (fcharts 17.0,
    uPlot 14.8, SVG 15.8 MB) and dominated by the shared dataset. Worse, `usedJSHeapSize`
    doesn't even capture the SVG's 50k DOM nodes (native memory), so it can't fairly compare
    memory here at all. The thesis never rested on heap; we keep the column only with these
@@ -117,11 +117,11 @@ Each engine's raw output is committed: `bench/results.json` (Chromium),
    Its only failing is accessibility, which is exactly the gap the thesis targets.
 5. **Cross-browser verified in all three engines** (Chromium, Firefox, WebKit) — see the
    table above; the thesis held in each. Two engine quirks surfaced: (a) headless Firefox
-   throttles rAF (hence Sightline's 42 fps there despite a 1.96 ms frame cost — smoothness is
+   throttles rAF (hence fcharts's 42 fps there despite a 1.96 ms frame cost — smoothness is
    judged on frame cost, not the throttled fps); (b) uPlot threw at init in headless Firefox
    because it built an `Intl` formatter from an unset `navigator.language` (the string
    `"undefined"`, which Firefox rejects strictly and Chromium tolerates) — fixed by giving
-   the test context a real `locale`. Sightline itself ran cleanly in every engine.
+   the test context a real `locale`. fcharts itself ran cleanly in every engine.
 6. **HTML-in-Canvas** was correctly detected as **unsupported** in stock Chromium, so the
    DOM-overlay path (the one under test) is what ran — confirming the library is fully fast
    and fully accessible with no flags.
@@ -204,7 +204,7 @@ Raw machine output is committed at [`bench/results.json`](./bench/results.json).
 ## Bottom line
 
 The hard part of the thesis was never "can canvas be fast" (uPlot proves that) or "can DOM
-be accessible" (the SVG proves that) — it was doing **both at once**. Sightline does:
+be accessible" (the SVG proves that) — it was doing **both at once**. fcharts does:
 O(viewport-width) canvas rendering for speed, a real-DOM overlay for accessibility, one
 render scheduler coordinating them. The validation succeeded, with the important asterisk
 that proving the accessibility half required looking past axe-core to actual keyboard and

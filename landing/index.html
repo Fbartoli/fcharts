@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sightline — financial charts that are fast and pass the audit</title>
+  <title>fcharts — financial charts that are fast and pass the audit</title>
   <meta name="description" content="Trading-grade charting that renders 100k+ points at 60fps and is fully keyboard- and screen-reader-accessible. Built for regulated fintech." />
   <style>
     :root{
@@ -13,12 +13,12 @@
       --btn-line:rgba(255,255,255,.45); --btn-line-hover:rgba(255,255,255,.72);
       --accent:#6ee7a8; --accent-dim:rgba(110,231,168,.12); --amber:#fbbf24; --danger:#f87171;
       --sky:#38bdf8;
-      /* Sightline theme */
-      --sl-ink:#cfd8e3; --sl-tick-color:#8794a3; --sl-axis-title:#5a6675;
-      --sl-grid:rgba(110,231,168,.06); --sl-axis:rgba(255,255,255,.12);
-      --sl-cursor:rgba(255,255,255,.4); --sl-ring:#06080c; --sl-focus:#6ee7a8;
-      --sl-legend-border:rgba(255,255,255,.45); --sl-legend-border-hover:rgba(255,255,255,.72);
-      --sl-readout-bg:#10151d; --sl-readout-ink:#e8eef4; --sl-readout-border:rgba(255,255,255,.16);
+      /* fcharts theme */
+      --fc-ink:#cfd8e3; --fc-tick-color:#8794a3; --fc-axis-title:#5a6675;
+      --fc-grid:rgba(110,231,168,.06); --fc-axis:rgba(255,255,255,.12);
+      --fc-cursor:rgba(255,255,255,.4); --fc-ring:#06080c; --fc-focus:#6ee7a8;
+      --fc-legend-border:rgba(255,255,255,.45); --fc-legend-border-hover:rgba(255,255,255,.72);
+      --fc-readout-bg:#10151d; --fc-readout-ink:#e8eef4; --fc-readout-border:rgba(255,255,255,.16);
     }
     *{box-sizing:border-box}
     html{scroll-behavior:smooth}
@@ -175,7 +175,7 @@
 <body>
   <nav>
     <div class="wrap">
-      <div class="logo">SIGHT<b>LINE</b></div>
+      <div class="logo">f<b>charts</b></div>
       <div class="links">
         <a href="#problem">The gap</a>
         <a href="#stakes">What's at stake</a>
@@ -238,7 +238,7 @@
           <div class="tags"><span class="tag no">months of work</span><span class="tag no">a11y is on you</span></div>
         </div>
         <div class="quad win">
-          <h3>Sightline</h3>
+          <h3>fcharts</h3>
           <div class="who">Both, by default — no trade-off.</div>
           <div class="tags"><span class="tag ok">fast at 100k+</span><span class="tag ok">keyboard + SR</span><span class="tag ok">audit-ready</span></div>
         </div>
@@ -276,7 +276,7 @@
           <div class="ic">⏱️</div>
           <h3>Found late, fixed expensive</h3>
           <p>When accessibility surfaces weeks before close, it's emergency remediation or a dropped
-            feature. Built in from the start it's nearly free — Sightline ships it by default, with
+            feature. Built in from the start it's nearly free — fcharts ships it by default, with
             the <a href="/acr-en301549.html" target="_blank" rel="noopener">conformance evidence</a>
             attached.</p>
         </div>
@@ -311,7 +311,7 @@
           <tr><td>uPlot</td><td>canvas</td><td class="yes">fast</td><td class="no">no</td><td class="no">no</td><td class="no">no</td></tr>
           <tr><td>Highcharts Stock</td><td>SVG</td><td class="mid">slows</td><td class="yes">yes</td><td class="yes">yes</td><td class="yes">yes</td></tr>
           <tr><td>ECharts</td><td>canvas</td><td class="yes">fast</td><td class="mid">partial</td><td class="mid">partial</td><td class="no">no</td></tr>
-          <tr class="me"><td>Sightline</td><td>canvas + DOM</td><td class="yes">fast</td><td class="yes">yes</td><td class="yes">yes</td><td class="yes">yes</td></tr>
+          <tr class="me"><td>fcharts</td><td>canvas + DOM</td><td class="yes">fast</td><td class="yes">yes</td><td class="yes">yes</td><td class="yes">yes</td></tr>
         </tbody>
       </table>
       </div>
@@ -323,7 +323,7 @@
       <div class="lead">Accessible = agent-readable</div>
       <h2>Charts your AI agents can actually read.</h2>
       <p class="desc">The same real-DOM layer that serves screen readers makes the data legible
-        to LLM agents and crawlers. A canvas chart is an opaque bitmap; Sightline exposes exact
+        to LLM agents and crawlers. A canvas chart is an opaque bitmap; fcharts exposes exact
         values and trend in the accessibility tree and as embedded JSON. Below is live data
         pulled straight from the chart at the top of this page.</p>
       <div class="agent-grid">
@@ -334,12 +334,12 @@
             It's a bitmap — the agent must screenshot and guess. No values, no trend, not findable.</p>
         </div>
         <div class="agent-card win">
-          <div class="ac-h">Sightline <span>read live from the DOM</span></div>
+          <div class="ac-h">fcharts <span>read live from the DOM</span></div>
           <p class="agent-sentence" id="agent-sentence">…</p>
           <div class="agent-series" id="agent-series"></div>
           <pre class="agent-json" id="agent-json">…</pre>
           <p class="ac-note"><b class="yes">Exact values</b>, no vision model required — embedded as
-            <span class="mono">&lt;script type="application/json" data-sightline&gt;</span> and in the
+            <span class="mono">&lt;script type="application/json" data-fcharts&gt;</span> and in the
             accessibility tree.</p>
         </div>
       </div>
@@ -354,7 +354,7 @@
         <b style="color:var(--ink)">banking and financial services</b> explicitly. ADA web
         lawsuits keep climbing, and procurement increasingly demands a VPAT. An inaccessible
         price chart is now a compliance liability — but ripping out your fast canvas charts
-        for slow SVG isn't an option either. Sightline is the way out of that bind.</p>
+        for slow SVG isn't an option either. fcharts is the way out of that bind.</p>
       <div class="feat">
         <div class="fcard"><div class="ic">⌨️</div><h3>Keyboard data cursor</h3><p>Arrow through every sample, switch series, jump to extremes — announced via a polite live region.</p></div>
         <div class="fcard"><div class="ic">🔍</div><h3>Real text, not pixels</h3><p>Axis ticks and a hidden data table are real DOM — screen-reader-readable and Ctrl+F-findable.</p></div>
@@ -390,7 +390,7 @@
 
   <footer>
     <div class="wrap">
-      <div>© 2026 Sightline · validation build</div>
+      <div>© 2026 fcharts · validation build</div>
       <div>Fast charts that pass the audit.</div>
     </div>
   </footer>

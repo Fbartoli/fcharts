@@ -333,7 +333,7 @@ function renderHtml(m: AcrModel): string {
 
   parts.push(`<h2>Legal</h2><p>${escapeHtml(m.legal)}</p>`);
   parts.push(`<p><em>Generated ${escapeHtml(m.generatedAt)}.</em></p>`);
-  // Embed the model so the HTML is itself machine-readable (Sightline's agent-readable ethos).
+  // Embed the model so the HTML is itself machine-readable (fcharts' agent-readable ethos).
   parts.push(`<script type="application/json" data-acr>${JSON.stringify(m).replace(/</g, '\\u003c')}</script>`);
 
   return (

@@ -4,7 +4,7 @@
  * interface without changing the core or the public API).
  *
  * A `RenderScene` is a plain-data snapshot of everything needed to draw one frame. The
- * core/`Sightline` builds it; the renderer only reads it.
+ * core/`FChart` builds it; the renderer only reads it.
  */
 import type { LinearScale } from '../core/scales.ts';
 import type { ChartData, CursorState, Margins, ResolvedSeries } from '../core/model.ts';

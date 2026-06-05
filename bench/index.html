@@ -3,17 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sightline — benchmark vs competition</title>
+  <title>fcharts — benchmark vs competition</title>
   <style>
     :root {
       --bg: #07090d; --panel: #0c1016; --ink: #e7edf3; --muted: #7d8b99; --faint: #4a5662;
       --line: rgba(255,255,255,.08); --accent: #6ee7a8; --danger: #f87171; --warn: #fbbf24;
-      /* Sightline theming (read by its renderer + DOM layer) */
-      --sl-ink: #cfd8e3; --sl-tick-color: #8b97a5; --sl-axis-title: #5b6675;
-      --sl-grid: rgba(110,231,168,.07); --sl-axis: rgba(255,255,255,.14);
-      --sl-cursor: rgba(255,255,255,.42); --sl-ring: #07090d; --sl-focus: #6ee7a8;
-      --sl-legend-border: rgba(255,255,255,.16); --sl-legend-border-hover: rgba(255,255,255,.4);
-      --sl-readout-bg: #0c1016; --sl-readout-ink: #e7edf3; --sl-readout-border: rgba(255,255,255,.16);
+      /* fcharts theming (read by its renderer + DOM layer) */
+      --fc-ink: #cfd8e3; --fc-tick-color: #8b97a5; --fc-axis-title: #5b6675;
+      --fc-grid: rgba(110,231,168,.07); --fc-axis: rgba(255,255,255,.14);
+      --fc-cursor: rgba(255,255,255,.42); --fc-ring: #07090d; --fc-focus: #6ee7a8;
+      --fc-legend-border: rgba(255,255,255,.16); --fc-legend-border-hover: rgba(255,255,255,.4);
+      --fc-readout-bg: #0c1016; --fc-readout-ink: #e7edf3; --fc-readout-border: rgba(255,255,255,.16);
     }
     * { box-sizing: border-box; }
     body { margin: 0; background: var(--bg); color: var(--ink);
@@ -41,11 +41,11 @@
       background: var(--panel); overflow: hidden; }
     .frame > div { position: absolute; inset: 0; }
     /* Every renderer draws into a .bench-chart that fills the frame, so uPlot and the SVG
-       measure the same height Sightline does — a fair, identically-sized comparison. Without
+       measure the same height fcharts does — a fair, identically-sized comparison. Without
        this they fell back to a 120px strip and looked squished. */
     .bench-chart { width: 100%; height: 100%; }
     /* uPlot ships CSS tuned for light backgrounds; theme its legend to the same grayish-white
-       as Sightline's so the comparison reads consistently on the dark panel. */
+       as fcharts's so the comparison reads consistently on the dark panel. */
     .u-legend { color: var(--ink); font-size: 11.5px; text-align: center; }
     .u-legend .u-label { color: var(--ink); }
     .u-legend .u-value { color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -68,9 +68,9 @@
 </head>
 <body>
   <header>
-    <h1>SIGHT<b>LINE</b> — benchmark vs competition</h1>
+    <h1>f<b>charts</b> — benchmark vs competition</h1>
     <p>Same 100k-point × 3-series dataset, four renderers, a 5-second automated pan/zoom.
-      The thesis holds if Sightline is the only column that is fast <em>and</em> accessible.</p>
+      The thesis holds if fcharts is the only column that is fast <em>and</em> accessible.</p>
   </header>
   <main>
     <div class="controls">
@@ -80,8 +80,8 @@
     </div>
     <div class="charts">
       <section class="chart-cell">
-        <h3>Sightline <span>canvas + DOM a11y</span></h3>
-        <div class="frame"><div id="cell-sightline"></div></div>
+        <h3>fcharts <span>canvas + DOM a11y</span></h3>
+        <div class="frame"><div id="cell-fchart"></div></div>
       </section>
       <section class="chart-cell">
         <h3>uPlot <span>fast · inaccessible</span></h3>

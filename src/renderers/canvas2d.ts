@@ -7,7 +7,7 @@
  * series and frames (zero per-frame allocation in the hot path).
  *
  * Theme colors for grid/axis/cursor come from CSS custom properties on the canvas
- * (`--sl-grid`, `--sl-axis`, `--sl-cursor`, `--sl-ring`) with neutral gray fallbacks that
+ * (`--fc-grid`, `--fc-axis`, `--fc-cursor`, `--fc-ring`) with neutral gray fallbacks that
  * read acceptably on both light and dark backgrounds. Series colors come from config.
  */
 import { downsampleColumns, type ColumnEnvelope } from '../core/downsample.ts';
@@ -61,16 +61,16 @@ function readTheme(canvas: HTMLCanvasElement): ThemeColors {
     // Grid/axis are decorative aids (not the "graphical object required to understand" that
     // 1.4.11 governs — that's the series marks, see DEFAULT_PALETTE). Raised from 0.13/0.30 for
     // legible defaults; a translucent gray line can't reach 3:1 on white and isn't required to.
-    grid: v('--sl-grid', 'rgba(128,128,128,0.20)'),
-    axis: v('--sl-axis', 'rgba(128,128,128,0.40)'),
-    cursor: v('--sl-cursor', 'rgba(128,128,128,0.55)'),
-    ring: v('--sl-ring', 'rgba(255,255,255,0.85)'),
+    grid: v('--fc-grid', 'rgba(128,128,128,0.20)'),
+    axis: v('--fc-axis', 'rgba(128,128,128,0.40)'),
+    cursor: v('--fc-cursor', 'rgba(128,128,128,0.55)'),
+    ring: v('--fc-ring', 'rgba(255,255,255,0.85)'),
   };
 }
 
 export function createCanvas2DRenderer(canvas: HTMLCanvasElement): Renderer {
   const context = canvas.getContext('2d');
-  if (!context) throw new Error('Sightline: could not acquire a 2D canvas context.');
+  if (!context) throw new Error('fcharts: could not acquire a 2D canvas context.');
   const ctx: CanvasRenderingContext2D = context;
 
   let cssW = 0;

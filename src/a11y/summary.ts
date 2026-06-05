@@ -8,7 +8,7 @@
  * values and trend — pure functions, no DOM, unit-tested.
  */
 import type { ChartData, ResolvedSeries } from '../core/model.ts';
-import { DEFAULT_STRINGS, format, type SightlineStrings } from './strings.ts';
+import { DEFAULT_STRINGS, format, type FChartStrings } from './strings.ts';
 
 export type Trend = 'up' | 'down' | 'flat';
 
@@ -90,7 +90,7 @@ export function describeSummary(
   summary: ChartSummary,
   fmtX: (v: number) => string,
   fmtY: (v: number) => string,
-  strings: SightlineStrings = DEFAULT_STRINGS,
+  strings: FChartStrings = DEFAULT_STRINGS,
 ): string {
   const label = summary.label;
   if (summary.points === 0 || summary.series.length === 0) {

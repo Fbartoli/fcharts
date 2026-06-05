@@ -12,7 +12,7 @@
 - An **ACR** (Accessibility Conformance Report) is a *completed* VPAT — a VPAT filled in for a
   specific product version. Procurement asks for "a VPAT" but means an ACR.
 
-The generator emits **ACRs**: a completed report for a stated Sightline version, per edition. We
+The generator emits **ACRs**: a completed report for a stated fcharts version, per edition. We
 follow the structure and vocabulary of **VPAT® 2.5** so the output is recognizable to a
 procurement/legal reviewer without explanation.
 
@@ -33,7 +33,7 @@ tables; not built first.
 
 ### What "applicable" means for a chart **component**
 
-Sightline is a web UI component, not a whole product or a piece of authoring/OS software. So:
+fcharts is a web UI component, not a whole product or a piece of authoring/OS software. So:
 
 - **WCAG / EN 301 549 Ch. 9 / 508 web** — the substance (document 1). Always present.
 - **Functional Performance** (EN 301 549 Ch. 4 / 508 Ch. 3) — *derived*, not independently
@@ -77,7 +77,7 @@ interface AcrModel {
 }
 
 interface ProductInfo {
-  name: string;            // "Sightline"
+  name: string;            // "fcharts"
   version: string;         // from package.json
   description: string;     // one line
   url?: string;            // repo / docs
@@ -188,7 +188,7 @@ color"). The mapping table itself lives in `src/compliance/` and is unit-tested 
   "final/signed" without — the generator emits an unsigned **DRAFT** watermark until a
   `--attest` input supplies the signer + date. This is what stops the artifact from quietly
   overclaiming (the uPlot-passes-axe failure mode).
-- **Provenance.** The report embeds the Sightline version, the commit SHA, the evaluation date,
+- **Provenance.** The report embeds the fcharts version, the commit SHA, the evaluation date,
   the tool versions (axe-core), and a line stating which rows are automated vs. attested — so a
   buyer can see the ACR was generated from a specific, re-runnable state.
 
@@ -203,7 +203,7 @@ color"). The mapping table itself lives in `src/compliance/` and is unit-tested 
 Implementation constraints (standing decisions): **dependency-free** — the generator is pure TS
 string building (a tiny `escapeHtml`, a Markdown-table writer, an HTML shell with inline styles).
 No Markdown/HTML library. The HTML embeds the same data as a `<script type="application/json">`
-block (consistent with Sightline's own agent-readable ethos), so the HTML is also machine-parsable.
+block (consistent with fcharts's own agent-readable ethos), so the HTML is also machine-parsable.
 
 ### Rendering rules
 

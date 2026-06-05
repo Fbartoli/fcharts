@@ -1,7 +1,7 @@
 /**
  * HTML-in-Canvas compositor — progressive enhancement (Chrome dev-trial only).
  *
- * When the browser exposes the HTML-in-Canvas API (`ctx.drawElementImage`), Sightline can draw
+ * When the browser exposes the HTML-in-Canvas API (`ctx.drawElementImage`), fcharts can draw
  * its real-DOM text layer *into* the canvas so the chart is one composited surface, while the
  * element stays the live, accessible, hit-testable, find-in-page-able source of truth.
  *
@@ -18,7 +18,7 @@
  * No browser ships this un-flagged, so `composite()` is a no-op in production today. Because a
  * `layoutsubtree` child only becomes visible via `drawElementImage`, the caller MUST keep a
  * fallback (re-show the layer as a normal overlay) if `composite()` never succeeds — see
- * `Sightline`'s html-in-canvas handling.
+ * `fcharts`' html-in-canvas handling.
  */
 
 interface HtmlInCanvasContext extends CanvasRenderingContext2D {

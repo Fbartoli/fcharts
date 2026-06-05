@@ -1,19 +1,19 @@
 {
-  "generatedAt": "2026-06-05T15:46:31.050Z",
+  "generatedAt": "2026-06-05T17:08:45.503Z",
   "browser": "chromium",
   "datasetN": 100000,
   "durationMs": 5000,
   "headline": [
     {
-      "id": "sightline",
-      "label": "Sightline",
-      "kind": "sightline",
+      "id": "fchart",
+      "label": "fcharts",
+      "kind": "fchart",
       "nodeCount": 262,
-      "frames": 600,
-      "fps": 120,
-      "frameMs": 0.0495,
+      "frames": 587,
+      "fps": 117.39765204695905,
+      "frameMs": 0.08844999998807906,
       "deferredDraw": false,
-      "peakHeapMB": 21.875237464904785,
+      "peakHeapMB": 20.154050827026367,
       "axe": {
         "serious": 0,
         "ids": []
@@ -29,11 +29,11 @@
       "label": "uPlot",
       "kind": "fast-inaccessible",
       "nodeCount": 35,
-      "frames": 601,
-      "fps": 120.00319476059266,
-      "frameMs": 0.00020000001788139342,
+      "frames": 599,
+      "fps": 119.8,
+      "frameMs": 0.00027500000596046445,
       "deferredDraw": true,
-      "peakHeapMB": 19.573267936706543,
+      "peakHeapMB": 17.85903549194336,
       "axe": {
         "serious": 0,
         "ids": []
@@ -48,12 +48,12 @@
       "id": "highcharts",
       "label": "Highcharts + Boost",
       "kind": "fast-inaccessible",
-      "nodeCount": 711,
-      "frames": 89,
-      "fps": 17.47942730325824,
-      "frameMs": 78.76249998807907,
+      "nodeCount": 417,
+      "frames": 43,
+      "fps": 8.472906403940886,
+      "frameMs": 146.9,
       "deferredDraw": false,
-      "peakHeapMB": 38.435845375061035,
+      "peakHeapMB": 37.8113956451416,
       "axe": {
         "serious": 0,
         "ids": []
@@ -69,11 +69,11 @@
       "label": "Naive SVG (50k nodes)",
       "kind": "accessible-slow",
       "nodeCount": 50213,
-      "frames": 81,
-      "fps": 16.03960396039604,
-      "frameMs": 50.599999994039536,
+      "frames": 36,
+      "fps": 7.093456286575637,
+      "frameMs": 104.33333333333333,
       "deferredDraw": false,
-      "peakHeapMB": 20.697535514831543,
+      "peakHeapMB": 18.981792449951172,
       "axe": {
         "serious": 0,
         "ids": []
@@ -88,15 +88,15 @@
   "scaling": [
     {
       "n": 10000,
-      "frameMs": 0.06982499998807908
+      "frameMs": 0.09272500002384186
     },
     {
       "n": 100000,
-      "frameMs": 0.08809999999403953
+      "frameMs": 0.11722499999403954
     },
     {
       "n": 250000,
-      "frameMs": 0.08625
+      "frameMs": 0.111875
     }
   ],
   "preciseHeap": true,
@@ -104,9 +104,9 @@
     "liveRegionChangesOnArrow": true,
     "tickLabelFindable": true,
     "dataValueFindable": true,
-    "sightlineFrameUnder16ms": true,
+    "fchartFrameUnder16ms": true,
     "scalingRatioUnder1_5x": true,
-    "sightlineUniquelyFastAndAccessible": true
+    "fchartUniquelyFastAndAccessible": true
   },
   "conformance": {
     "results": [

@@ -1,5 +1,5 @@
 /**
- * Sightline — the public chart class. Wires the renderer-agnostic core, the Canvas2D
+ * fcharts — the public chart class. Wires the renderer-agnostic core, the Canvas2D
  * renderer, the render scheduler, the interaction handlers (wheel-zoom, drag-pan,
  * keyboard cursor, hover), and the always-on accessibility layer into one component.
  *
@@ -15,7 +15,7 @@ import {
   type Margins,
   type ResolvedSeries,
   type SeriesConfig,
-  type SightlineData,
+  type FChartData,
 } from './core/model.ts';
 import { linearScale, type LinearScale } from './core/scales.ts';
 import { niceTicks, formatTick, effectiveTickCount } from './core/ticks.ts';
@@ -40,11 +40,11 @@ import { Sonifier } from './a11y/sonify.ts';
 import { TableAlt } from './a11y/table-alt.ts';
 import { buildSummary, describeSummary, type ChartSummary } from './a11y/summary.ts';
 import { handlesKey, panToInclude, stepCursor, zoomFactor } from './a11y/cursor.ts';
-import { format, resolveStrings, type SightlineStrings } from './a11y/strings.ts';
+import { format, resolveStrings, type FChartStrings } from './a11y/strings.ts';
 
 type Formatter = (value: number) => string;
 
-export interface SightlineOptions {
+export interface FChartOptions {
   /** Accessible name for the whole chart. */
   ariaLabel?: string;
   xLabel?: string;
@@ -71,13 +71,13 @@ export interface SightlineOptions {
    *  Off by default. */
   sonify?: boolean;
   /** Localize the library's fixed UI strings (legend, keyboard help, summary, caption). */
-  strings?: Partial<SightlineStrings>;
+  strings?: Partial<FChartStrings>;
 }
 
-export interface SightlineConfig {
+export interface FChartConfig {
   series: SeriesConfig[];
-  data?: SightlineData;
-  options?: SightlineOptions;
+  data?: FChartData;
+  options?: FChartOptions;
 }
 
 const TABLE_THROTTLE_MS = 150;
@@ -94,14 +94,14 @@ interface ReadoutEls {
   value: HTMLElement;
 }
 
-export class Sightline {
+export class FChart {
   private readonly root: HTMLElement;
   private readonly doc: Document;
   private readonly options: Required<
-    Omit<SightlineOptions, 'ariaLabel' | 'xLabel' | 'yLabel' | 'strings'>
+    Omit<FChartOptions, 'ariaLabel' | 'xLabel' | 'yLabel' | 'strings'>
   > &
-    Pick<SightlineOptions, 'ariaLabel' | 'xLabel' | 'yLabel'>;
-  private readonly strings: SightlineStrings;
+    Pick<FChartOptions, 'ariaLabel' | 'xLabel' | 'yLabel'>;
+  private readonly strings: FChartStrings;
 
   private series: ResolvedSeries[];
   private data: ChartData;
@@ -148,7 +148,7 @@ export class Sightline {
   private dragStartX = 0;
   private dragStartDomain: [number, number] = [0, 1];
 
-  constructor(el: HTMLElement, config: SightlineConfig) {
+  constructor(el: HTMLElement, config: FChartConfig) {
     this.root = el;
     this.doc = el.ownerDocument;
     this.options = {
@@ -177,10 +177,10 @@ export class Sightline {
 
     // --- DOM ---
     const seq = ++instanceSeq;
-    const tableId = `sl-data-${seq}`;
-    const summaryId = `sl-summary-${seq}`;
-    const activeId = `sl-active-${seq}`;
-    this.root.classList.add('sl-root');
+    const tableId = `fc-data-${seq}`;
+    const summaryId = `fc-summary-${seq}`;
+    const activeId = `fc-active-${seq}`;
+    this.root.classList.add('fc-root');
     this.liveRegion = new LiveRegion(this.doc);
     this.axisTicks = new AxisTicks(this.doc, this.options.xLabel, this.options.yLabel);
     this.tableAlt = new TableAlt(this.doc);
@@ -189,17 +189,17 @@ export class Sightline {
     // Machine-readable layer: a one-line natural-language summary (aria-describedby, so it
     // is announced and agent-readable) plus a structured JSON block for DOM scrapers.
     this.summaryEl = this.doc.createElement('p');
-    this.summaryEl.className = 'sl-sr-only';
+    this.summaryEl.className = 'fc-sr-only';
     this.summaryEl.id = summaryId;
     // The focused sample as a programmatically-determinable value: an aria-describedby target
     // updated in lockstep with the cursor (vs. the live region, which is a transient
     // announcement). Lets AT/automation *query* the current point, not just hear it announced.
     this.activeSample = this.doc.createElement('span');
-    this.activeSample.className = 'sl-sr-only';
+    this.activeSample.className = 'fc-sr-only';
     this.activeSample.id = activeId;
     this.dataScript = this.doc.createElement('script');
     this.dataScript.setAttribute('type', 'application/json');
-    this.dataScript.setAttribute('data-sightline', 'summary');
+    this.dataScript.setAttribute('data-fcharts', 'summary');
     this.legend = this.options.legend
       ? new Legend(this.series, (i) => this.toggleSeries(i), this.strings, this.doc)
       : null;
@@ -208,14 +208,14 @@ export class Sightline {
     this.sonifier = this.options.sonify && view ? new Sonifier(view) : null;
 
     this.canvas = this.doc.createElement('canvas');
-    this.canvas.className = 'sl-canvas';
+    this.canvas.className = 'fc-canvas';
     this.canvas.setAttribute('aria-hidden', 'true');
 
     this.plot = this.doc.createElement('div');
-    this.plot.className = 'sl-plot';
+    this.plot.className = 'fc-plot';
 
     this.surface = this.doc.createElement('div');
-    this.surface.className = 'sl-surface';
+    this.surface.className = 'fc-surface';
     this.surface.tabIndex = 0;
     this.surface.setAttribute('role', 'application');
     this.surface.setAttribute('aria-roledescription', 'interactive chart');
@@ -336,7 +336,7 @@ export class Sightline {
   }
 
   /** Replace the dataset. Resets the view to the full x-domain. */
-  setData(data: SightlineData): Sightline {
+  setData(data: FChartData): FChart {
     this.data = new ChartData(data);
     this.resetView();
     this.refreshDerived();
@@ -349,7 +349,7 @@ export class Sightline {
    * rAF scheduler — useful for programmatic zoom, print/offscreen capture, and
    * deterministic benchmarking.
    */
-  renderSync(domain?: readonly [number, number]): Sightline {
+  renderSync(domain?: readonly [number, number]): FChart {
     if (domain) this.applyDomain(domain);
     this.scheduler.cancel(); // honor "bypasses the scheduler": drop any frame already queued
     this.frame();
@@ -357,7 +357,7 @@ export class Sightline {
   }
 
   /** Patch series and/or options. Series visibility/colors update in place. */
-  update(patch: Partial<SightlineConfig>): Sightline {
+  update(patch: Partial<FChartConfig>): FChart {
     if (patch.series) this.series = resolveSeries(patch.series);
     if (patch.options) Object.assign(this.options, patch.options);
     if (patch.data) {
@@ -385,7 +385,7 @@ export class Sightline {
     this.sonifier?.destroy();
     this.liveRegion.destroy();
     this.plot.remove();
-    this.root.classList.remove('sl-root');
+    this.root.classList.remove('fc-root');
   }
 
   // --- internals ---
@@ -619,7 +619,7 @@ export class Sightline {
   private updateReadout(xScale: LinearScale, yScale: LinearScale): void {
     const s = this.series[this.cursor.series];
     if (!s || !s.visible || this.data.n === 0) {
-      this.readout.el.classList.remove('sl-show');
+      this.readout.el.classList.remove('fc-show');
       return;
     }
     const x = this.data.x[this.cursor.index];
@@ -627,7 +627,7 @@ export class Sightline {
     const px = xScale(x);
     const py = yScale(v);
     if (px < this.margins.left - 2 || px > this.width - this.margins.right + 2) {
-      this.readout.el.classList.remove('sl-show');
+      this.readout.el.classList.remove('fc-show');
       return;
     }
     this.readout.swatch.style.background = s.color;
@@ -635,7 +635,7 @@ export class Sightline {
     this.readout.value.textContent = `${this.options.formatX(x)} · ${this.options.formatY(v)}`;
     this.readout.el.style.left = `${px}px`;
     this.readout.el.style.top = `${py - 8}px`;
-    this.readout.el.classList.add('sl-show');
+    this.readout.el.classList.add('fc-show');
   }
 
   // --- interaction ---
@@ -666,7 +666,7 @@ export class Sightline {
     if (this.dragging) return;
     this.cursorActive = false;
     this.updateActiveSample();
-    this.readout.el.classList.remove('sl-show');
+    this.readout.el.classList.remove('fc-show');
     this.requestRender();
   }
 
@@ -707,7 +707,7 @@ export class Sightline {
   private dismissCursor(): void {
     this.cursorActive = false;
     this.updateActiveSample();
-    this.readout.el.classList.remove('sl-show');
+    this.readout.el.classList.remove('fc-show');
     this.requestRender();
   }
 
@@ -785,7 +785,7 @@ export class Sightline {
     if (this.dragging || this.doc.activeElement === this.surface) return;
     this.cursorActive = false;
     this.updateActiveSample();
-    this.readout.el.classList.remove('sl-show');
+    this.readout.el.classList.remove('fc-show');
     this.requestRender();
   }
 
@@ -860,16 +860,16 @@ function nearestIndex(x: Float64Array, target: number): number {
 
 function buildReadout(doc: Document): ReadoutEls {
   const el = doc.createElement('div');
-  el.className = 'sl-readout';
+  el.className = 'fc-readout';
   el.setAttribute('aria-hidden', 'true');
   const series = doc.createElement('div');
-  series.className = 'sl-readout-series';
+  series.className = 'fc-readout-series';
   const swatch = doc.createElement('span');
-  swatch.className = 'sl-readout-swatch';
+  swatch.className = 'fc-readout-swatch';
   const name = doc.createElement('span');
   series.append(swatch, name);
   const value = doc.createElement('div');
-  value.className = 'sl-readout-val';
+  value.className = 'fc-readout-val';
   el.append(series, value);
   return { el, swatch, name, value };
 }

@@ -29,13 +29,13 @@ export class AxisTicks {
   constructor(doc: Document = document, xLabel?: string, yLabel?: string) {
     this.doc = doc;
     this.el = doc.createElement('div');
-    this.el.className = 'sl-ticks';
+    this.el.className = 'fc-ticks';
     this.el.setAttribute('aria-hidden', 'false');
 
     this.yLayer = doc.createElement('div');
-    this.yLayer.className = 'sl-ticks-y';
+    this.yLayer.className = 'fc-ticks-y';
     this.xLayer = doc.createElement('div');
-    this.xLayer.className = 'sl-ticks-x';
+    this.xLayer.className = 'fc-ticks-x';
     this.el.append(this.yLayer, this.xLayer);
 
     if (yLabel) this.el.append(this.axisTitle('y', yLabel));
@@ -44,14 +44,14 @@ export class AxisTicks {
 
   private axisTitle(axis: 'x' | 'y', text: string): HTMLElement {
     const span = this.doc.createElement('span');
-    span.className = `sl-axis-title sl-axis-title-${axis}`;
+    span.className = `fc-axis-title fc-axis-title-${axis}`;
     span.textContent = text;
     return span;
   }
 
   private tick(axis: 'x' | 'y', text: string, pos: number): HTMLElement {
     const span = this.doc.createElement('span');
-    span.className = `sl-tick sl-tick-${axis}`;
+    span.className = `fc-tick fc-tick-${axis}`;
     span.textContent = text;
     if (axis === 'x') span.style.left = `${pos}px`;
     else span.style.top = `${pos}px`;

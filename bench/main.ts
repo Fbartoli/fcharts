@@ -8,7 +8,7 @@
 import axe from 'axe-core';
 import { makeDataset, type Dataset } from './dataset.ts';
 import type { ChartAdapter, AdapterFactory } from './adapter.ts';
-import { createSightline } from './baselines/sightline-chart.ts';
+import { createFChart } from './baselines/fchart-chart.ts';
 import { createUplot } from './baselines/uplot-chart.ts';
 import { createHighcharts } from './baselines/highcharts-chart.ts';
 import { createNaiveSvg } from './baselines/naive-svg.ts';
@@ -54,7 +54,7 @@ export interface BenchResults {
 }
 
 const FACTORIES: { factory: AdapterFactory; cell: string }[] = [
-  { factory: createSightline, cell: 'cell-sightline' },
+  { factory: createFChart, cell: 'cell-fchart' },
   { factory: createUplot, cell: 'cell-uplot' },
   { factory: createHighcharts, cell: 'cell-highcharts' },
   { factory: createNaiveSvg, cell: 'cell-svg' },
@@ -223,7 +223,7 @@ function teardown(): void {
   adapters = [];
 }
 
-async function sightlineScaling(ns: number[], durationMs: number): Promise<ScalingRow[]> {
+async function fchartScaling(ns: number[], durationMs: number): Promise<ScalingRow[]> {
   const host = document.getElementById('scaling-host');
   if (!host) return [];
   const rows: ScalingRow[] = [];
@@ -232,7 +232,7 @@ async function sightlineScaling(ns: number[], durationMs: number): Promise<Scali
     cell.className = 'bench-chart';
     cell.style.cssText = 'width:640px;height:340px';
     host.append(cell);
-    const adapter = createSightline(cell, makeDataset(n));
+    const adapter = createFChart(cell, makeDataset(n));
     await measureRun(adapter, n, durationMs); // warm caches / settle layout
     rows.push({ n, frameMs: measureDrawCostMs(adapter, n) });
     adapter.destroy();
@@ -270,7 +270,7 @@ async function runAll(durationMs = 5000): Promise<BenchResults> {
   buildAdapters(n);
   for (const row of headline) row.peakHeapMB = heap[row.id] ?? null;
 
-  const scaling = await sightlineScaling([10_000, 100_000, 250_000], 3000);
+  const scaling = await fchartScaling([10_000, 100_000, 250_000], 3000);
   const results: BenchResults = {
     datasetN: n,
     durationMs,
@@ -305,7 +305,7 @@ function renderTable(r: BenchResults): void {
   const rows = r.headline
     .map((row) => {
       const both = smooth(row.fps, row.frameMs) && accessible(row);
-      const cls = row.id === 'sightline' ? ' class="me"' : '';
+      const cls = row.id === 'fchart' ? ' class="me"' : '';
       const frameCell = row.deferredDraw ? '~0 (deferred)†' : `${row.frameMs.toFixed(3)} ms`;
       const heapCell = row.peakHeapMB === null ? 'n/a' : `${row.peakHeapMB.toFixed(1)} MB`;
       return `<tr${cls}><td>${row.label}</td>
@@ -345,7 +345,7 @@ function renderTable(r: BenchResults): void {
         (run with <span class="mono">--js-flags=--expose-gc</span>); otherwise it shows n/a,
         because <span class="mono">usedJSHeapSize</span> without forced GC is process-wide
         noise (and never captures the SVG's native DOM nodes anyway).</p>
-      <h2>Sightline frame-cost vs N (proves cost is decoupled from point count)</h2>
+      <h2>fcharts frame-cost vs N (proves cost is decoupled from point count)</h2>
       <table><tr><th>Points/series</th><th>Frame cost (avg)</th></tr>${scaling}</table>
       <p class="note">250k / 10k frame-cost ratio: <b>${ratio}×</b> (target &lt; 1.5×).</p>`;
   }

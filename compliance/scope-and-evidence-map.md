@@ -1,4 +1,4 @@
-# Sightline Compliance Pack — Chart-Layer WCAG 2.2 AA Scope & Evidence Map
+# fcharts Compliance Pack — Chart-Layer WCAG 2.2 AA Scope & Evidence Map
 
 > **Status:** authoritative source of truth for the Compliance Pack. The conformance test
 > suite, the auto-generated VPAT/ACR, and the CI accessibility gate are all derived from this
@@ -28,22 +28,22 @@ This is **document 1 of 4** in the Compliance Pack design:
 1. **Scope & evidence map** (this file)
 2. VPAT/ACR format + editions (EN 301 549 first, then WCAG-INT and US 508) — `vpat-editions.md`
 3. Conformance test plan + pass→conformance mapping — `conformance-test-plan.md`
-4. CI gate contract (`sightline-audit` CLI + GitHub Action) — `ci-gate.md`
+4. CI gate contract (`fcharts-audit` CLI + GitHub Action) — `ci-gate.md`
 
 ---
 
 ## 1. Scope
 
-The Compliance Pack reports conformance for **the Sightline chart component** — everything the
-library renders inside its container (`.sl-root`) and the behavior it ships by default. It does
+The Compliance Pack reports conformance for **the fcharts chart component** — everything the
+library renders inside its container (`.fc-root`) and the behavior it ships by default. It does
 **not** report conformance for the page that embeds the chart.
 
 ### In scope (the component boundary)
 
-Everything Sightline constructs inside `.sl-root`:
+Everything fcharts constructs inside `.fc-root`:
 
 - the `<canvas>` data layer (the fast min/max-pyramid renderer);
-- the real-DOM overlay: axis tick text (`.sl-tick`), the accessible legend (`role="group"` of
+- the real-DOM overlay: axis tick text (`.fc-tick`), the accessible legend (`role="group"` of
   `aria-pressed` buttons), the focusable data surface (`role="application"`), the polite live
   region, the hidden data `<table>` text alternative, the readout tooltip, the one-line
   natural-language summary (`aria-describedby`), and the embedded `application/json` summary;
@@ -64,7 +64,7 @@ no data-entry fields. They are listed as **Not Applicable** with a one-line reas
 A reusable component cannot unilaterally guarantee every criterion, because some outcomes
 depend on choices the integrator makes. Throughout this map we separate:
 
-- **Library guarantee** — true for every Sightline instance with shipped defaults, regardless
+- **Library guarantee** — true for every fcharts instance with shipped defaults, regardless
   of how it is embedded. These are what the CI gate enforces.
 - **Author responsibility** — depends on integrator-supplied values (series **colors** — there
   is *no* default palette; the **host background** behind the transparent DOM overlay; theme
@@ -125,7 +125,7 @@ Each criterion carries one of the four standard VPAT conformance levels:
 
 This is the second load-bearing idea. The headline finding of the validation MVP (`FINDINGS.md`)
 was that **"passes axe" is necessary but not sufficient** — axe rated a bare inaccessible canvas
-identically to Sightline. So each evidence item is tagged with how it is verified:
+identically to fcharts. So each evidence item is tagged with how it is verified:
 
 - **`automated`** — a machine check can prove/disprove it on **every commit**. This is one of:
   an axe rule, a DOM-structure assertion (attributes/roles/element presence), a **computed
@@ -247,16 +247,16 @@ Detailed rationale + `file:line` evidence per criterion follows in §7–§8.
 
 The `<canvas>` bitmap is non-text content opaque to AT, and a programmatically-determined text
 alternative is **always** present (constructed before any `setData`, via `refreshDerived()` at
-`src/sightline.ts:224`):
+`src/fchart.ts:224`):
 
-- Canvas removed from the a11y tree — `src/sightline.ts:179` (`aria-hidden="true"`). *(automated)*
+- Canvas removed from the a11y tree — `src/fchart.ts:179` (`aria-hidden="true"`). *(automated)*
 - Hidden `<table>` text alternative with `<caption>`, `<th scope="col">`, `<th scope="row">`,
   downsampled to ≤40 rows — `src/a11y/table-alt.ts:52-110`. *(automated)*
-- Surface accessible **name** (`aria-label` set at `src/sightline.ts:322` via `describeChart()`
+- Surface accessible **name** (`aria-label` set at `src/fchart.ts:322` via `describeChart()`
   `:335-344`) and **description** (`aria-describedby` → one-line values+trend summary,
   `src/a11y/summary.ts:88-105`). *(automated)*
 - Decorative graphics hidden: legend swatch `aria-hidden` (`src/a11y/legend.ts:42`), readout
-  tooltip `aria-hidden` (`src/sightline.ts:650`). *(automated)*
+  tooltip `aria-hidden` (`src/fchart.ts:650`). *(automated)*
 - Whether the integrator's `ariaLabel`/`xLabel`/`yLabel` meaningfully describe the chart's
   *purpose* is an authoring judgment; with no `ariaLabel` the name falls back to the generic
   "Chart". *(manual-attestation)*
@@ -268,20 +268,20 @@ alternative is **always** present (constructed before any `setData`, via `refres
 Visual relationships are exposed in the DOM: table semantics with `<caption>` and scoped
 headers (`src/a11y/table-alt.ts:68-114`), `role="group"` legend of `aria-pressed` buttons
 (`src/a11y/legend.ts`), surface `role="application"` with `aria-roledescription` / `aria-details`
-→ table / `aria-describedby` → summary + focused-sample value (`src/sightline.ts`), live
+→ table / `aria-describedby` → summary + focused-sample value (`src/fchart.ts`), live
 announcements pairing series name with axis-labeled values, and real-text axis ticks. *(automated)*
 
 **Closed by R1:** the data-table x-column header now uses the configured `xLabel`
 (`TableUpdate.xLabel` → `buildHead`, `src/a11y/table-alt.ts`; threaded from `scheduleTableUpdate()`
-in `src/sightline.ts`), so the independent-variable column carries its real name. With no `xLabel`
+in `src/fchart.ts`), so the independent-variable column carries its real name. With no `xLabel`
 set it falls back to `"x"` (an attested integrator-responsibility default).
 
 ### 1.3.2 Meaningful Sequence (A) — Supports
 
 DOM is appended in a coherent reading order — legend before plot; within the plot canvas, ticks,
-surface (with live region), readout, table, summary, JSON (`src/sightline.ts:197-208`); the
+surface (with live region), readout, table, summary, JSON (`src/fchart.ts:197-208`); the
 table body reads x-then-series in ascending sample order (`src/a11y/table-alt.ts:84-101`); and
-`.sl-root` is `display:flex;flex-direction:column` with **no** `order`/`*-reverse`/float anywhere
+`.fc-root` is `display:flex;flex-direction:column` with **no** `order`/`*-reverse`/float anywhere
 (`src/a11y/styles.ts:9`). *(automated)*
 
 Honest notes (do not change the claim): the canvas (`:179`) and readout (`:650`) are
@@ -293,9 +293,9 @@ hidden table.
 ### 1.3.3 Sensory Characteristics (A) — Supports
 
 The library's own instructions name keys, not spatial/visual cues — `describeChart()`
-(`src/sightline.ts:335-344`): "Left and right arrows move between samples; up and down switch
+(`src/fchart.ts:335-344`): "Left and right arrows move between samples; up and down switch
 series; Home and End jump to the ends…". *(automated)* Announcements identify the series by text
-name and label values by axis name (`src/sightline.ts:444-453`, *hybrid*). The only residual
+name and label values by axis name (`src/fchart.ts:444-453`, *hybrid*). The only residual
 sensory dependence (distinguishing on-canvas lines by color) is excised to 1.4.1.
 
 **Author responsibility:** avoid sensory-only language ("the red/top line") in labels and series
@@ -303,9 +303,9 @@ names. *(manual-attestation)*
 
 ### 1.3.4 Orientation (AA) — Supports
 
-No orientation lock: `.sl-root` is `width/height:100%` flex-column (`src/a11y/styles.ts:9`), the
+No orientation lock: `.fc-root` is `width/height:100%` flex-column (`src/a11y/styles.ts:9`), the
 canvas is `inset:0` 100%/100% (`:14`), and a `ResizeObserver` re-measures and re-renders on any
-container resize (`src/sightline.ts:217-218,346-357`). No `@media (orientation)`,
+container resize (`src/fchart.ts:217-218,346-357`). No `@media (orientation)`,
 `transform:rotate`, or `screen.orientation` lock exists. *(automated)*
 
 ### 1.4.1 Use of Color (A) — Supports
@@ -329,10 +329,10 @@ keep them distinct across series; or vary series color in more than hue.
 
 Library-controlled DOM text passes AA **on a light background** (computed vs `#ffffff`):
 
-- tick `--sl-tick-color #4b5563` = **7.56:1** (`src/a11y/styles.ts:16`); *(automated)*
+- tick `--fc-tick-color #4b5563` = **7.56:1** (`src/a11y/styles.ts:16`); *(automated)*
 - axis-title `#6b7280` at 10px = **4.83:1** (passes the 4.5:1 normal-text threshold; note 10px
   is *not* large text) (`:20-21`); *(automated)*
-- body `--sl-ink #374151` = **10.31:1** (`:10`); *(automated)*
+- body `--fc-ink #374151` = **10.31:1** (`:10`); *(automated)*
 - readout `#f9fafb` on `#111827` = **16.98:1** — fully library-controlled, host-independent
   (`:28-32`); *(automated)*
 - `prefers-contrast:more` darkens ticks to `#1f2937` = **14.68:1** (`:50-54`). *(automated)*
@@ -344,17 +344,17 @@ contrast is 1.4.11, not 1.4.3, and is now covered by the default palette — see
 one library text-contrast item that no machine can close, so 1.4.3 stays Partially.
 
 **Closed by R8:** the legend "hidden" state no longer reduces text opacity (it previously dropped
-`--sl-ink` to ~2.35:1). The off state is now conveyed by `aria-pressed` + a strikethrough name +
+`--fc-ink` to ~2.35:1). The off state is now conveyed by `aria-pressed` + a strikethrough name +
 a dimmed (decorative, `aria-hidden`) swatch, keeping the label text at full contrast
 (`src/a11y/styles.ts`, `src/a11y/legend.ts`).
 
 **Author responsibility:** pick series colors ≥3:1 against the chart background; keep the host
-background above 4.5:1 for the DOM text (or override `--sl-tick-color`/`--sl-ink`).
+background above 4.5:1 for the DOM text (or override `--fc-tick-color`/`--fc-ink`).
 
 ### 1.4.4 Resize Text (AA) — Supports
 
 The container is fluid and re-measures on zoom (`src/a11y/styles.ts:9-14`,
-`src/sightline.ts:407-418`), and all label text is real DOM text. **R7** expresses every label
+`src/fchart.ts:407-418`), and all label text is real DOM text. **R7** expresses every label
 font in **rem** — tick `.6875rem`, axis-title `.625rem`, legend `.78rem`, legend-state `.625rem`,
 readout `.75rem` (`src/a11y/styles.ts:16,20,43,53,31`) — so a user's *text-only* zoom (raising the
 root font size) enlarges them, and the fluid container reflows to follow. Full-page browser zoom
@@ -373,9 +373,9 @@ guarded visual no-op; the real DOM text remains the source of truth.)
 ### 1.4.10 Reflow (AA) — Supports
 
 The component is fluid with no library-imposed `min-width`; the legend reflows
-(`.sl-legend ul{flex-wrap:wrap}`, `src/a11y/styles.ts:38`); 2-D chart geometry is covered by the
+(`.fc-legend ul{flex-wrap:wrap}`, `src/a11y/styles.ts:38`); 2-D chart geometry is covered by the
 criterion's "content requiring two-dimensional layout" exception. **R7** closed the tick-overlap
-gap: `effectiveTickCount` (`src/core/ticks.ts:48-53`, wired in at `src/sightline.ts:473-474`) thins
+gap: `effectiveTickCount` (`src/core/ticks.ts:48-53`, wired in at `src/fchart.ts:473-474`) thins
 tick density as the plot narrows (≥1 label per 64 px on x, 28 px on y), so labels do not collide at
 ~320 CSS px or high zoom. The `reflow-adaptive` gate check narrows the chart and confirms the
 x-tick count drops (8 → 3). *(hybrid — the library's part is automated; whether the integrator's
@@ -389,7 +389,7 @@ The essential graphical objects — the data marks — clear 3:1. **R6** added a
 (#ffffff) and a dark (#0c1016 / #1f2937) chart background** (`test/palette.test.ts`), assigned by
 series index when the integrator gives no color. The `contrast-marks` gate check reads each legend
 swatch's color (the DOM-observable proxy for the canvas mark) and confirms ≥3:1 vs the documented
-background. The keyboard focus indicator also meets it: `--sl-focus #2563eb` = **5.17:1 on white**
+background. The keyboard focus indicator also meets it: `--fc-focus #2563eb` = **5.17:1 on white**
 (`src/a11y/styles.ts:25`), with a real `outline` under `prefers-contrast:more` and a system-color
 `Highlight` outline under `forced-colors:active`. *(hybrid)*
 
@@ -403,7 +403,7 @@ becomes your attestation — which is why the row is hybrid rather than fully au
 
 No library text sets `line-height`/`letter-spacing`/`word-spacing` that would clip under a
 user-spacing override, and there is no `overflow:hidden`/fixed-height on visible text (the only
-`overflow:hidden` is on the `.sl-sr-only` hidden helpers, which are out of scope; the only
+`overflow:hidden` is on the `.fc-sr-only` hidden helpers, which are out of scope; the only
 `letter-spacing` is `.12em` on the short uppercase axis title) (`src/a11y/styles.ts:16-21`). No
 inline style sets text spacing. *(automated)* Confirming no clip under the full spacing
 bookmarklet is a one-time human check. *(manual-attestation)*
@@ -414,7 +414,7 @@ The readout tooltip + crosshair shown on hover/focus satisfy **Hoverable** (read
 `pointer-events:none`, `src/a11y/styles.ts`) and **Persistent** (hidden only on pointer-leave or
 blur, never on a timer). **Closed by R3 — now Dismissible:** `onKeyDown` handles Escape via
 `dismissCursor()`, which clears the readout + crosshair (`cursorActive = false`) **without moving
-focus**, so a later arrow re-activates the cursor (`src/sightline.ts`; `handlesKey` recognizes
+focus**, so a later arrow re-activates the cursor (`src/fchart.ts`; `handlesKey` recognizes
 Escape in `src/a11y/cursor.ts`). *(automated)*
 
 ---
@@ -423,17 +423,17 @@ Escape in `src/a11y/cursor.ts`). *(automated)*
 
 ### 2.1.1 Keyboard (A) — Supports
 
-Cursor navigation (`src/sightline.ts`, `src/a11y/cursor.ts:43-75`) and legend show/hide (native
+Cursor navigation (`src/fchart.ts`, `src/a11y/cursor.ts:43-75`) and legend show/hide (native
 `<button>`) are fully keyboard-operable; arrows auto-pan via `panToInclude` so any sample is
 reachable. **Closed by R2:** keyboard zoom now mirrors wheel-zoom — `+`/`=` zoom in, `-`/`_` zoom
 out, centered on the cursor (`zoomFactor` in `src/a11y/cursor.ts`; `zoomAroundCursor` in
-`src/sightline.ts`), and the keyboard-help text documents it. Every pointer function now has a
+`src/fchart.ts`), and the keyboard-help text documents it. Every pointer function now has a
 keyboard path. *(automated)*
 
 ### 2.1.2 No Keyboard Trap (A) — Supports
 
 `onKeyDown` early-returns for any non-navigation key and only `preventDefault`s the six handled
-keys — Tab/Shift+Tab are never consumed (`src/sightline.ts:514-516`, `src/a11y/cursor.ts:21`).
+keys — Tab/Shift+Tab are never consumed (`src/fchart.ts:514-516`, `src/a11y/cursor.ts:21`).
 No `focus()` trap, `aria-modal`, or `inert` exists; the blur handler only deactivates the cursor
 (`:507-512`); drag pointer-capture is released on up/cancel and cannot trap focus (`:551,565-571`).
 *(automated)*
@@ -447,7 +447,7 @@ has nothing to remap or turn off. No `accesskey` anywhere. *(automated)*
 ### 2.2.1 Timing Adjustable (A) — Supports
 
 No time limits, sessions, timeouts, or countdowns. The only timers are a 150ms table-update
-throttle and a 100ms announce debounce (`src/sightline.ts:72-75,417-431,455-461`) — output
+throttle and a 100ms announce debounce (`src/fchart.ts:72-75,417-431,455-461`) — output
 coalescers that delay no user action and expire no task. *(hybrid — absence of `setInterval`/new
 timers is source-assertable; "imposes no deadline" is a semantic judgment.)*
 
@@ -473,14 +473,14 @@ over-time probe over arbitrary author data is a human check.)*
 ### 2.4.3 Focus Order (A) — Supports
 
 Within the component, focus order is legend buttons then the data surface — matching DOM/reading
-order (`src/sightline.ts:197-208`); `tabIndex 0` is the only focus-affecting statement (no
+order (`src/fchart.ts:197-208`); `tabIndex 0` is the only focus-affecting statement (no
 positive tabindex, no programmatic reorder, no autofocus) (`:186`). Hidden helpers carry no
 tabindex. *(automated)*
 
 ### 2.4.6 Headings and Labels (AA) — Supports
 
 The component emits no section headings (host owns document headings), and its labels are
-descriptive: surface `aria-label` (`src/sightline.ts`), legend group + buttons
+descriptive: surface `aria-label` (`src/fchart.ts`), legend group + buttons
 (`src/a11y/legend.ts`), table caption + scoped headers (`src/a11y/table-alt.ts`). **Closed by R1:**
 the table x-column header now uses the configured `xLabel` rather than the hardcoded `"x"`.
 *(automated)* (Generic `ariaLabel`/`xLabel` fallbacks — "Chart"/"x"/"value" when unset — remain a
@@ -493,14 +493,14 @@ ring (`src/a11y/styles.ts:25`), upgraded to a real `outline` under `prefers-cont
 (`:50-54`) and a system-color `Highlight` outline under `forced-colors:active` (`:57-59`, the
 correct pattern since forced-colors suppresses box-shadow); legend `<button>`s keep the UA's
 native focus ring (no `outline:none` on them). *(automated)* (Indicator *contrast* is SC 2.4.11
-Focus Appearance, AAA — out of A+AA scope; the perceivability of `--sl-focus` against an arbitrary
+Focus Appearance, AAA — out of A+AA scope; the perceivability of `--fc-focus` against an arbitrary
 host background is an integrator concern.) *(manual-attestation)*
 
 ### 2.4.11 Focus Not Obscured (Minimum) (AA) — Partially Supports
 
 The component never *entirely* obscures its own focused surface: the readout is `opacity:0` by
 default, `aria-hidden`, and when shown is a small tooltip (`min-width:118px`) covering only a
-fraction of the large surface (`src/a11y/styles.ts:28-33`, `src/sightline.ts:650`); the surface
+fraction of the large surface (`src/a11y/styles.ts:28-33`, `src/fchart.ts:650`); the surface
 is the top interactive layer (`:202-204`). *(hybrid — DOM/z-index structure is assertable;
 non-obscuring depends on rendered geometry.)* **Gap (integrator):** host-page sticky headers,
 toolbars, or overlays could obscure the focused chart — the library cannot control this.
@@ -512,7 +512,7 @@ toolbars, or overlays could obscure the focused chart — the library cannot con
 
 All pointer interactions are single-pointer and not path-based: drag-pan depends on the net
 horizontal delta (`clientX - dragStartX`), not the trajectory traced, so any path produces the
-same result (`src/sightline.ts:546-563`); zoom is wheel-driven (`:536-544`); no multipoint
+same result (`src/fchart.ts:546-563`); zoom is wheel-driven (`:536-544`); no multipoint
 (pinch/rotate) gesture exists. 2.5.1 only governs multipoint/path gestures, so it is satisfied.
 *(manual-attestation — "not path-based / not multipoint" is a human judgment; a keyboard
 equivalent additionally exists.)* (Drag-pan as a *dragging* movement is assessed under 2.5.7.)
@@ -520,7 +520,7 @@ equivalent additionally exists.)* (Drag-pan as a *dragging* movement is assessed
 ### 2.5.2 Pointer Cancellation (A) — Supports
 
 No function executes on the down-event: `onPointerDown` only sets drag state and captures the
-pointer (`src/sightline.ts:546-552`); the pan is computed against the immutable start-domain
+pointer (`src/fchart.ts:546-552`); the pan is computed against the immutable start-domain
 snapshot each move, so dragging back to origin restores it exactly, and it finalizes on
 `pointerup` (`:554-571`, with `pointercancel` wired to the same handler). Legend buttons are
 native `<button>` activating on the up-event (`src/a11y/legend.ts:36-38`). *(automated for the
@@ -539,7 +539,7 @@ no visible text label, so it has nothing to assess. *(manual-attestation)*
 Legend toggles are single taps and wheel-zoom is non-dragging. **R4** closed the drag-pan gap: the
 chart renders **pan pagers** — two real ‹/› `<button>`s (`src/a11y/pagers.ts:1-44`) that step the
 visible window ~one page earlier/later on a single-pointer click via `panPage()`
-(`src/sightline.ts:724-742`), the single-*pointer*, non-dragging alternative 2.5.7 requires. They
+(`src/fchart.ts:724-742`), the single-*pointer*, non-dragging alternative 2.5.7 requires. They
 appear once the view is zoomed in (panning has an effect) and, being buttons, are keyboard- and
 AT-operable too. The `single-pointer-pan` gate check zooms in, then confirms the pagers are present
 and that a click shifts the visible domain. *(automated)* (Drag-pan still exists as a convenience;
@@ -547,7 +547,7 @@ the keyboard path additionally satisfies 2.1.1.)
 
 ### 2.5.8 Target Size (Minimum) (AA) — Supports
 
-The data surface fills the plot inset and far exceeds 24×24 (`src/sightline.ts:359-362`).
+The data surface fills the plot inset and far exceeds 24×24 (`src/fchart.ts:359-362`).
 **Closed by R9:** legend buttons now set `min-height:24px;min-width:24px;line-height:1.1`
 (`src/a11y/styles.ts`), so they meet the 24×24 minimum independent of inherited host font metrics
 — now assertable by a computed-box check (`getBoundingClientRect() ≥ 24`). *(automated)*
@@ -557,7 +557,7 @@ The data surface fills the plot inset and far exceeds 24×24 (`src/sightline.ts:
 Author-supplied strings and numeric tick/value text are the integrator's (they own their
 language). **Closed by R10:** every fixed UI string the library emits — keyboard help, legend
 group label, per-series state words, table caption, and the full data-summary sentence — is now
-overridable via the `strings` option (`SightlineStrings` + token-template defaults in
+overridable via the `strings` option (`FChartStrings` + token-template defaults in
 `src/a11y/strings.ts`, threaded through legend/table/summary/`describeChart`). An integrator on a
 non-English page supplies translations so the parts match the page language. *(automated — the
 strings flow is unit-tested; defaults remain English.)*
@@ -569,12 +569,12 @@ axis labels) so the rendered text matches the document language.
 
 Focusing the surface only sets `cursorActive`, announces the current point via the polite live
 region, and re-renders the crosshair in place — no focus move, navigation, window, or form
-submission (`src/sightline.ts:501-505`; `src/a11y/live-region.ts:13-14`). Legend buttons have no
+submission (`src/fchart.ts:501-505`; `src/a11y/live-region.ts:13-14`). Legend buttons have no
 focus handler. *(automated)*
 
 ### 3.2.2 On Input (A) — Supports
 
-Navigation keys move the cursor / pan in place (`src/sightline.ts:514-534`); legend buttons
+Navigation keys move the cursor / pan in place (`src/fchart.ts:514-534`); legend buttons
 (`type="button"`, `aria-pressed`) toggle visibility in place via `toggleSeries` (`:433`,
 `src/a11y/legend.ts:36`). No path changes context (no navigation/submission/focus-move). The
 in-widget pan is the direct, advertised consequence of the key pressed. *(automated)*
@@ -583,26 +583,26 @@ in-widget pan is the direct, advertised consequence of the key pressed. *(automa
 
 All legend buttons are produced by one `build()` routine with identical structure (swatch + name
 + state) and uniform `aria-pressed` (`src/a11y/legend.ts:31`); the surface carries a stable
-`role="application"` + `aria-roledescription` on every instance (`src/sightline.ts:187`). Same-
+`role="application"` + `aria-roledescription` on every instance (`src/fchart.ts:187`). Same-
 function components are identified identically across instances. *(automated)*
 
 ### 3.3.2 Labels or Instructions (A) — Supports
 
 The component has no data-entry fields, but its interactive controls carry instructions: the
 surface `aria-label` embeds the full keyboard model + a pointer to the data table
-(`src/sightline.ts:335-344`), the legend group is labeled "activate to show or hide", and each
+(`src/fchart.ts:335-344`), the legend group is labeled "activate to show or hide", and each
 button has a name + "shown"/"hidden" state (`src/a11y/legend.ts:25,69-75`). *(automated)*
 
 ### 4.1.2 Name, Role, Value (A) — Supports
 
 **Name** and **Role** are correctly exposed for every interactive object: surface
 `role="application"` + `aria-roledescription` + `aria-label` + `aria-details`/`aria-describedby`
-(`src/sightline.ts`); native legend `<button>` with `aria-pressed` (`src/a11y/legend.ts`); canvas
+(`src/fchart.ts`); native legend `<button>` with `aria-pressed` (`src/a11y/legend.ts`); canvas
 + readout `aria-hidden`; native table with scoped headers (`src/a11y/table-alt.ts`). *(automated)*
 
 **Closed by R11 — the Value half:** the focused sample is now a programmatically-determinable
-value. A dedicated `aria-describedby` target (`sl-active-{n}`) is updated **in lockstep** with
-every cursor move (`updateActiveSample`, `src/sightline.ts`), so AT/automation can *query* the
+value. A dedicated `aria-describedby` target (`fc-active-{n}`) is updated **in lockstep** with
+every cursor move (`updateActiveSample`, `src/fchart.ts`), so AT/automation can *query* the
 current point (not only hear the transient live announcement, which still serves 4.1.3). The
 legend "shown"/"hidden" state span is now `aria-hidden`, so each button's accessible name stays
 the stable series name while `aria-pressed` carries state. *(automated for the attribute wiring;
@@ -613,9 +613,9 @@ VoiceOver, since `role="application"` is a deliberate browse-mode trade-off.)*
 
 Cursor moves (keyboard + hover) that are not conveyed through focus are announced via a dedicated
 `aria-live="polite"` `aria-atomic="true"` region, appended at construction so it pre-exists
-updates (`src/a11y/live-region.ts:11-22`, `src/sightline.ts:198`). Announcements are debounced
+updates (`src/a11y/live-region.ts:11-22`, `src/fchart.ts:198`). Announcements are debounced
 100ms so key-repeat does not flood the region, fire immediately on focus, and re-announce
-identical text via a trailing-space nudge (`src/sightline.ts:443-461,501-505`). *(automated for
+identical text via a trailing-space nudge (`src/fchart.ts:443-461,501-505`). *(automated for
 attribute presence + DOM-before-update ordering; the live region nests inside `role="application"`
 — polite announcement there is AT-dependent.)* **Attestation:** that announcements are actually
 spoken and the debounce does not drop the settled point requires a functional probe + real-AT
@@ -662,7 +662,7 @@ page-level structure. Each is reported **Not Applicable** with this reason:
 The library honors `prefers-reduced-motion` and lets the integrator force it: the only shipped CSS
 transition (the 0.08s readout fade) is removed under `@media (prefers-reduced-motion:reduce)`
 (`src/a11y/styles.ts:32,49`); the `reducedMotion` option is auto-detected via `matchMedia` and
-threaded into every `RenderScene` (`src/sightline.ts:143-144,406,634-636`). *(automated)* There is
+threaded into every `RenderScene` (`src/fchart.ts:143-144,406,634-636`). *(automated)* There is
 essentially no decorative/looping motion to suppress — rendering is data-driven, with no entrance
 animations, autoplay, or parallax. *(The renderer does not yet branch on `scene.reducedMotion`
 because no animation exists to gate; the flag is plumbed for future animated transitions. A human
@@ -681,7 +681,7 @@ the renderer now does it explicitly: when `forced-colors:active`, `readForcedCol
 system palette (CanvasText / Canvas / GrayText / Highlight) via a styled probe element
 (`src/renderers/canvas2d.ts:37-54`) and the render path repaints the grid, axes, series, and cursor
 crosshair in those system colors instead of author colors (`:99-101,143,159,186,247`). A media
-listener tracks live toggles and re-renders (`src/sightline.ts:261-270`). The data also remains
+listener tracks live toggles and re-renders (`src/fchart.ts:261-270`). The data also remains
 available non-visually (data table, legend, live region, JSON summary). The `forced-colors-canvas`
 gate check toggles forced-colors on and confirms the canvas bitmap actually changes (it repaints in
 system colors). *(automated)*
@@ -709,8 +709,8 @@ a check that re-proves each upgrade).
 | **R6** | 1.4.11 | ✅ done | 8-color `DEFAULT_PALETTE`, each ≥3:1 on light AND dark (`palette.test.ts`), assigned by index. Gate check: `contrast-marks`. |
 | **R7** | 1.4.4, 1.4.10 | ✅ done | px→rem label fonts (text-only zoom scales) + `effectiveTickCount` adaptive tick density (no overlap when narrow). Gate checks: `resize-text-rem`, `reflow-adaptive`. |
 | **R8** | 1.4.3 | ✅ done | Legend "hidden" state no longer reduces text opacity; uses `aria-pressed` + strikethrough + dimmed (decorative) swatch. |
-| **R9** | 2.5.8 | ✅ done | `min-height:24px;min-width:24px;line-height:1.1` on `.sl-legend button`. |
-| **R10** | 3.1.2 | ✅ done | `strings` option (`SightlineStrings` token-templates) localizes every fixed UI string. |
+| **R9** | 2.5.8 | ✅ done | `min-height:24px;min-width:24px;line-height:1.1` on `.fc-legend button`. |
+| **R10** | 3.1.2 | ✅ done | `strings` option (`FChartStrings` token-templates) localizes every fixed UI string. |
 | **R11** | 4.1.2 | ✅ done | Focused sample exposed as a queryable value via a lockstep `aria-describedby` target; legend state span `aria-hidden`. |
 | **R12** | forced-colors | ✅ done | Renderer probes the system palette and repaints the canvas (marks/grid/crosshair) under `forced-colors:active`; media listener tracks live toggles. Gate check: `forced-colors-canvas`. |
 
@@ -768,7 +768,7 @@ Derived from the verification tags above; formalized in documents 3 and 4.
 
 ---
 
-*Generated for the Sightline Compliance Pack. Mapping + adversarial verification + completeness
+*Generated for the fcharts Compliance Pack. Mapping + adversarial verification + completeness
 critique covered all 55 WCAG 2.2 A/AA success criteria (4.1.1 excluded as removed in 2.2), each
 applicable claim independently challenged, with `file:line` evidence confirmed against the source
 at the time of writing.*

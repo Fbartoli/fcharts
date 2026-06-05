@@ -4,9 +4,9 @@
  * correct screen-reader state come for free.
  */
 import type { ResolvedSeries } from '../core/model.ts';
-import type { SightlineStrings } from './strings.ts';
+import type { FChartStrings } from './strings.ts';
 
-type LegendStrings = Pick<SightlineStrings, 'legendGroup' | 'shown' | 'hidden'>;
+type LegendStrings = Pick<FChartStrings, 'legendGroup' | 'shown' | 'hidden'>;
 
 export class Legend {
   readonly el: HTMLElement;
@@ -26,7 +26,7 @@ export class Legend {
     this.onToggle = onToggle;
     this.strings = strings;
     this.el = doc.createElement('div');
-    this.el.className = 'sl-legend';
+    this.el.className = 'fc-legend';
     this.el.setAttribute('role', 'group');
     this.el.setAttribute('aria-label', strings.legendGroup);
     this.list = doc.createElement('ul');
@@ -46,11 +46,11 @@ export class Legend {
       const swatch = this.swatch(s);
 
       const name = this.doc.createElement('span');
-      name.className = 'sl-legend-name';
+      name.className = 'fc-legend-name';
       name.textContent = s.name;
 
       const state = this.doc.createElement('span');
-      state.className = 'sl-legend-state';
+      state.className = 'fc-legend-state';
       // Visible-only state cue: aria-pressed already conveys shown/hidden to AT, so keeping
       // this out of the accessible name leaves the button's name as the stable series name.
       state.setAttribute('aria-hidden', 'true');
@@ -71,7 +71,7 @@ export class Legend {
   private swatch(s: ResolvedSeries): SVGElement {
     const NS = 'http://www.w3.org/2000/svg';
     const svg = this.doc.createElementNS(NS, 'svg');
-    svg.setAttribute('class', 'sl-swatch');
+    svg.setAttribute('class', 'fc-swatch');
     svg.setAttribute('viewBox', '0 0 18 10');
     svg.setAttribute('aria-hidden', 'true');
     if (s.type === 'area') {
@@ -111,7 +111,7 @@ export class Legend {
     series.forEach((s, i) => {
       const button = this.buttons[i];
       button.setAttribute('aria-pressed', String(s.visible));
-      const state = button.querySelector('.sl-legend-state');
+      const state = button.querySelector('.fc-legend-state');
       if (state) state.textContent = s.visible ? this.strings.shown : this.strings.hidden;
     });
   }

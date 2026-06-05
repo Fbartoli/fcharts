@@ -1,10 +1,10 @@
 /**
- * Sightline Playground — interactively configure a chart and watch it rebuild live, with the
+ * fcharts Playground — interactively configure a chart and watch it rebuild live, with the
  * generated config and the agent-readable summary() shown alongside. Imports the library straight
  * from source (Vite serves `../src/index.ts`).
  */
-import { Sightline } from '../src/index.ts';
-import type { SightlineOptions, SightlineStrings } from '../src/index.ts';
+import { FChart } from '../src/index.ts';
+import type { FChartOptions, FChartStrings } from '../src/index.ts';
 
 type SeriesType = 'line' | 'area';
 interface SeriesState {
@@ -18,7 +18,7 @@ interface SeriesState {
 
 const PALETTE = ['#6ee7a8', '#38bdf8', '#fbbf24', '#f87171', '#a78bfa', '#34d399', '#fb923c', '#22d3ee'];
 
-const FR: Partial<SightlineStrings> = {
+const FR: Partial<FChartStrings> = {
   legendGroup: 'Séries — activer pour afficher ou masquer',
   shown: 'affichée',
   hidden: 'masquée',
@@ -50,7 +50,7 @@ let locale: 'en' | 'fr' = 'en';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
 const chartEl = $('chart');
-let chart: Sightline | null = null;
+let chart: FChart | null = null;
 
 // --- data generators (cached; regenerated only when shape / point-count / series-count change) ---
 function mulberry32(seed: number): () => number {
@@ -101,7 +101,7 @@ function data(): { x: Float64Array; y: Float64Array[] } {
 }
 
 // --- read options from the DOM ---
-function readOptions(): SightlineOptions {
+function readOptions(): FChartOptions {
   return {
     ariaLabel: ($('opt-title') as HTMLInputElement).value || 'Chart',
     xLabel: ($('opt-xlabel') as HTMLInputElement).value || undefined,
@@ -128,8 +128,8 @@ function scheduleRebuild(): void {
 
 function rebuild(): void {
   chart?.destroy();
-  const options: SightlineOptions = { ...readOptions(), strings: locale === 'fr' ? FR : undefined };
-  chart = new Sightline(chartEl, {
+  const options: FChartOptions = { ...readOptions(), strings: locale === 'fr' ? FR : undefined };
+  chart = new FChart(chartEl, {
     series: series.map((s) => ({
       name: s.name,
       color: s.color,
@@ -179,8 +179,8 @@ function buildSnippet(): string {
   if (locale === 'fr') opt.push('strings: fr /* localized UI strings */');
 
   return (
-    `import { Sightline } from 'sightline';\n\n` +
-    `const chart = new Sightline(el, {\n` +
+    `import { FChart } from 'fcharts-js';\n\n` +
+    `const chart = new FChart(el, {\n` +
     `  series: [\n${seriesLines}\n  ],\n` +
     `  options: { ${opt.join(', ')} },\n` +
     `});\n\n` +

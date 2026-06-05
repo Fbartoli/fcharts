@@ -12,7 +12,7 @@ import type { ChartAdapter } from '../adapter.ts';
  * *best fast-and-accessible* configuration — the accessibility module is enabled too.
  *
  * This is the fairest version of the "just use Highcharts" rebuttal: boost keeps the 300k points
- * off the DOM (so it's fast and the node count stays small, like Sightline), and the a11y module
+ * off the DOM (so it's fast and the node count stays small, like fcharts), and the a11y module
  * adds an info region + keyboard chart navigation. But the per-point data still lives only in the
  * WebGL canvas: there is no DOM data table unless you add the export-data module with
  * `showTable`, which re-introduces the 100k-row DOM that makes the naive-SVG column slow. So

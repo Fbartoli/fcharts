@@ -177,7 +177,7 @@ export function buildSections(criteria: readonly CriterionRow[], edition: Editio
       id: 'software',
       title: is508 ? '§502 / §503 — Software' : 'Chapter 11: Software',
       intro:
-        'Sightline is a UI component embedded in a host page; most software clauses are the ' +
+        'fcharts is a UI component embedded in a host page; most software clauses are the ' +
         'platform/host responsibility and are marked Not Applicable.',
       rows: software,
     },

@@ -3,7 +3,7 @@
  *
  * The data surface is keyboard-navigable: arrows move between samples and switch series,
  * Home/End jump to the edges. This module computes the *next* cursor position from a key
- * press; `Sightline` owns the events, the live-region announcement, and the panning.
+ * press; `FChart` owns the events, the live-region announcement, and the panning.
  */
 import type { CursorState } from '../core/model.ts';
 

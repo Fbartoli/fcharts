@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * `sightline-audit` — the CI accessibility gate (ci-gate.md).
+ * `fcharts-audit` — the CI accessibility gate (ci-gate.md).
  *
  * Mounts a fixture chart in headless Chromium, runs the conformance engine, reduces the checks
  * against the committed baseline, regenerates the ACR(s), and exits non-zero on any regression.
@@ -21,9 +21,9 @@ import { CRITERIA } from './criteria.ts';
 import { buildModel, renderAcr, type AcrFormat } from './acr.ts';
 import type { EditionKey, EvaluationInfo, ProductInfo } from './types.ts';
 
-const SEL = '#sl-audit-root';
+const SEL = '#fc-audit-root';
 const COMPONENT_SCOPE =
-  'Everything the library renders inside its container (.sl-root): the <canvas> data layer, the ' +
+  'Everything the library renders inside its container (.fc-root): the <canvas> data layer, the ' +
   'DOM axis ticks, the legend, the focusable data surface, the live region, the hidden data table, ' +
   'the readout, and the embedded JSON summary. Page-level criteria are the host application’s.';
 
@@ -63,7 +63,7 @@ function parseArgs(argv: string[]): Args {
     else if (v === '--json') a.json = true;
     else if (v === '--quiet') a.quiet = true;
     else if (v === '--help' || v === '-h') {
-      console.log('Usage: sightline-audit [--fixture p] [--edition k]* [--out d] [--background css]' +
+      console.log('Usage: fcharts-audit [--fixture p] [--edition k]* [--out d] [--background css]' +
         ' [--format md,html,json] [--stamp iso] [--attest p] [--json] [--quiet]');
       process.exit(0);
     }
@@ -82,7 +82,7 @@ function readProduct(): ProductInfo {
     /* fall back to defaults */
   }
   return {
-    name: 'Sightline',
+    name: 'fcharts',
     version: pkg.version ?? '0.0.0',
     description: pkg.description ?? 'Fast, accessible charts.',
     url: pkg.homepage,
@@ -116,10 +116,10 @@ function fixtureWebPath(fixture: string): string {
 function auditHtml(fixturePath: string): string {
   return (
     '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
-    '<style>html,body{margin:0}#sl-audit-root{width:900px;height:480px}</style></head>' +
-    '<body><div id="sl-audit-root"></div>' +
+    '<style>html,body{margin:0}#fc-audit-root{width:900px;height:480px}</style></head>' +
+    '<body><div id="fc-audit-root"></div>' +
     `<script type="module">import { mountChart } from '${fixturePath}';` +
-    `mountChart(document.getElementById('sl-audit-root'));` +
+    `mountChart(document.getElementById('fc-audit-root'));` +
     `requestAnimationFrame(() => requestAnimationFrame(() => { window.__auditReady = true; }));` +
     '</script></body></html>'
   );
@@ -139,15 +139,15 @@ async function main(): Promise<number> {
     notes:
       'Automated/hybrid rows are re-proven on every run by this gate; manual-attestation rows ' +
       'are listed for human sign-off. axe-clean alone is necessary, not sufficient.',
-    evaluator: 'sightline-audit (automated)' + (commitSha() ? ` @ ${commitSha()}` : ''),
+    evaluator: 'fcharts-audit (automated)' + (commitSha() ? ` @ ${commitSha()}` : ''),
   };
 
   let server: ViteDevServer | undefined;
   let browser: Browser | undefined;
-  const entryFile = resolve(process.cwd(), '.sl-audit-entry.html');
+  const entryFile = resolve(process.cwd(), '.fc-audit-entry.html');
   try {
     if (!existsSync(resolve(args.fixture))) {
-      console.error(`sightline-audit: fixture not found: ${args.fixture}`);
+      console.error(`fcharts-audit: fixture not found: ${args.fixture}`);
       return 2;
     }
     // A real HTML entry at the project root, so Vite transforms the inline module + its imports.
@@ -163,7 +163,7 @@ async function main(): Promise<number> {
     page.on('console', (m) => {
       if (m.type() === 'error') console.error('page console:', m.text());
     });
-    await page.goto(`${url}.sl-audit-entry.html`, { waitUntil: 'load' });
+    await page.goto(`${url}.fc-audit-entry.html`, { waitUntil: 'load' });
     await page.waitForFunction(() => (window as unknown as { __auditReady?: boolean }).__auditReady === true, undefined, { timeout: 30_000 });
 
     const report = await runConformance(page, SEL, { background: args.background, axeSource: loadAxe() });
@@ -182,7 +182,7 @@ async function main(): Promise<number> {
       try {
         signed = JSON.parse(readFileSync(resolve(args.attest), 'utf8'));
       } catch {
-        console.error(`sightline-audit: could not read --attest file ${args.attest}`);
+        console.error(`fcharts-audit: could not read --attest file ${args.attest}`);
       }
     }
     const ext: Record<AcrFormat, string> = { md: 'md', html: 'html', json: 'json' };
@@ -216,7 +216,7 @@ async function main(): Promise<number> {
 
     return failed ? 1 : 0;
   } catch (err) {
-    console.error('sightline-audit: harness error —', err instanceof Error ? err.message : err);
+    console.error('fcharts-audit: harness error —', err instanceof Error ? err.message : err);
     return 2;
   } finally {
     await browser?.close();
@@ -236,7 +236,7 @@ function printSummary(
   const tw: Record<string, number> = {};
   for (const v of wcag) tw[v.observed] = (tw[v.observed] ?? 0) + 1;
   console.log(
-    `\nsightline-audit — ${tw['Supports'] ?? 0} Supports / ${tw['Partially Supports'] ?? 0} Partially / ` +
+    `\nfcharts-audit — ${tw['Supports'] ?? 0} Supports / ${tw['Partially Supports'] ?? 0} Partially / ` +
       `${tw['Not Applicable'] ?? 0} Not Applicable (55 WCAG 2.2 A/AA criteria)`,
   );
   console.log(`checks: ${counts.pass} pass · ${counts.fail} fail · ${counts.na} n/a → ACR written to ${out}`);

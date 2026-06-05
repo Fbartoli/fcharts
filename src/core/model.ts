@@ -29,7 +29,7 @@ export interface SeriesConfig {
 }
 
 /** Columnar dataset: one shared, non-decreasing x array and one y array per series. */
-export interface SightlineData {
+export interface FChartData {
   x: NumberArray;
   y: NumberArray[];
 }
@@ -161,14 +161,14 @@ export class ChartData {
   readonly pyramids: readonly MinMaxPyramid[];
   readonly stats: readonly SeriesStats[];
 
-  constructor(data: SightlineData) {
+  constructor(data: FChartData) {
     this.x = toF64(data.x);
     this.n = this.x.length;
     this.y = data.y.map((series, i) => {
       const arr = toF64(series);
       if (arr.length !== this.n) {
         throw new Error(
-          `Sightline: series ${i} has ${arr.length} points but x has ${this.n}. ` +
+          `fcharts: series ${i} has ${arr.length} points but x has ${this.n}. ` +
             'Every y array must match the length of x.',
         );
       }

@@ -22,11 +22,11 @@ npm i -g wrangler          # or use the repo devDep: npx wrangler ...
 wrangler login
 
 # 1. Create the database, then paste the printed database_id into wrangler.toml
-wrangler d1 create sightline-waitlist
+wrangler d1 create fcharts-waitlist
 
 # 2. Create the table (add --remote to also apply it to the deployed DB)
-wrangler d1 execute sightline-waitlist --local  --file=./migrations/0001_waitlist.sql
-wrangler d1 execute sightline-waitlist --remote --file=./migrations/0001_waitlist.sql
+wrangler d1 execute fcharts-waitlist --local  --file=./migrations/0001_waitlist.sql
+wrangler d1 execute fcharts-waitlist --remote --file=./migrations/0001_waitlist.sql
 ```
 
 ## Run it locally (real function + local D1)
@@ -34,14 +34,14 @@ wrangler d1 execute sightline-waitlist --remote --file=./migrations/0001_waitlis
 ```sh
 pnpm preview:site          # build:site, then `wrangler pages dev dist-site` with the D1 binding
 # open the printed URL, submit the form, then read the rows back:
-wrangler d1 execute sightline-waitlist --local --command "SELECT * FROM waitlist;"
+wrangler d1 execute fcharts-waitlist --local --command "SELECT * FROM waitlist;"
 ```
 
 ## Deploy
 
 **Easiest — git integration (no local wrangler for deploys):** in the Cloudflare dashboard create a
 Pages project from this repo with build command `pnpm build:site` and output dir `dist-site`, then
-bind D1 (variable name `DB` → the `sightline-waitlist` database) under Settings → Functions.
+bind D1 (variable name `DB` → the `fcharts-waitlist` database) under Settings → Functions.
 
 **Or from the CLI:**
 ```sh
@@ -52,8 +52,8 @@ wrangler pages deploy dist-site
 ## Read / export the list
 
 ```sh
-wrangler d1 execute sightline-waitlist --remote --command "SELECT email, created_at, source FROM waitlist ORDER BY created_at DESC;"
-wrangler d1 export  sightline-waitlist --remote --output waitlist.sql   # full backup
+wrangler d1 execute fcharts-waitlist --remote --command "SELECT email, created_at, source FROM waitlist ORDER BY created_at DESC;"
+wrangler d1 export  fcharts-waitlist --remote --output waitlist.sql   # full backup
 ```
 
 ## Notes

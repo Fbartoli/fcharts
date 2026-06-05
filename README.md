@@ -1,10 +1,10 @@
-# Sightline
+# fcharts
 
 **Charts that render 100k+ points at 60fps *and* pass the accessibility audit — at the same time.**
 
 Every fast JS chart library throws away accessibility (canvas/WebGL with no keyboard nav,
 no screen-reader output, no find-in-page). Every accessible one (SVG/DOM-per-point) falls
-over at scale. Sightline is a validation MVP built to prove you can have both: a
+over at scale. fcharts is a validation MVP built to prove you can have both: a
 **min/max downsample renderer** on `<canvas>` (frame cost ≈ O(viewport width),
 independent of point count) plus a **real-DOM accessibility layer** overlaid on top.
 
@@ -22,27 +22,27 @@ independent of point count) plus a **real-DOM accessibility layer** overlaid on 
 ## Install
 
 ```sh
-npm install sightline          # ESM, for bundlers (Vite, webpack, esbuild…)
+npm install fcharts          # ESM, for bundlers (Vite, webpack, esbuild…)
 ```
 
 ```html
-<!-- Zero build: drop in the UMD bundle (global namespace `Sightline`) -->
-<script src="https://unpkg.com/sightline/dist/sightline.umd.cjs"></script>
-<script>const { Sightline } = window.Sightline;</script>
+<!-- Zero build: drop in the UMD bundle (global namespace `fcharts`) -->
+<script src="https://unpkg.com/fcharts/dist/fcharts.umd.cjs"></script>
+<script>const { FChart } = window.fcharts;</script>
 ```
 
 Evaluating without publishing? Build a local, installable tarball: `pnpm pack:sdk` →
-`sightline-0.1.0.tgz`, then `npm install ./sightline-0.1.0.tgz`. Or open
+`fcharts-0.1.0.tgz`, then `npm install ./fcharts-0.1.0.tgz`. Or open
 [`examples/quickstart.html`](./examples/quickstart.html) directly (no server, no build).
 
 ## Quickstart
 
 ```ts
-import { Sightline } from 'sightline';
+import { FChart } from 'fcharts-js';
 
 const el = document.getElementById('chart')!; // a sized container
 
-const chart = new Sightline(el, {
+const chart = new FChart(el, {
   series: [
     { name: 'Pressure', color: '#16a34a' },
     { name: 'Temperature', color: '#d97706', type: 'area' },
@@ -84,7 +84,7 @@ hidden data table is in the accessibility tree (and find-in-page-able in Chromiu
 ## API
 
 ```ts
-new Sightline(el: HTMLElement, config: SightlineConfig)
+new FChart(el: HTMLElement, config: FChartConfig)
 
 chart.setData({ x, y })          // replace data, reset the view
 chart.update({ series, options }) // patch series/options in place
@@ -104,7 +104,7 @@ three ways:
 - `chart.summary()` → `ChartSummary` (per-series min/max/first/last/mean, change, trend).
 - a one-line natural-language description on the focusable surface (`aria-describedby`), so
   screen readers and agents get the values and trend on focus.
-- an embedded `<script type="application/json" data-sightline>` block any DOM scraper can
+- an embedded `<script type="application/json" data-fcharts>` block any DOM scraper can
   parse — where a `<canvas>` chart is an opaque bitmap.
 
 ### Config
@@ -119,7 +119,7 @@ interface SeriesConfig {
   fillAlpha?: number;       // area fill, default 0.15
 }
 
-interface SightlineOptions {
+interface FChartOptions {
   ariaLabel?: string;
   xLabel?: string; yLabel?: string;
   legend?: boolean;         // default true
@@ -131,7 +131,7 @@ interface SightlineOptions {
   formatY?: (v: number) => string;
   reducedMotion?: boolean;  // auto-detected from prefers-reduced-motion
   highContrast?: boolean;   // auto-detected from prefers-contrast
-  strings?: Partial<SightlineStrings>;  // localize the fixed UI text (legend, keyboard help,
+  strings?: Partial<FChartStrings>;  // localize the fixed UI text (legend, keyboard help,
                                         // data summary, table caption) for non-English pages
 }
 ```
@@ -141,13 +141,13 @@ interface SightlineOptions {
 A handful of CSS custom properties on the container (or `:root`) cover theming:
 
 ```css
-.sl-root {
-  --sl-ink: #e7edf3;            /* DOM text */
-  --sl-tick-color: #7d8b99;     /* axis tick labels */
-  --sl-grid: rgba(255,255,255,.07);   /* canvas grid lines */
-  --sl-axis: rgba(255,255,255,.14);   /* canvas axis/border */
-  --sl-cursor: rgba(255,255,255,.4);  /* canvas crosshair */
-  --sl-focus: #6ee7a8;          /* keyboard focus ring */
+.fc-root {
+  --fc-ink: #e7edf3;            /* DOM text */
+  --fc-tick-color: #7d8b99;     /* axis tick labels */
+  --fc-grid: rgba(255,255,255,.07);   /* canvas grid lines */
+  --fc-axis: rgba(255,255,255,.14);   /* canvas axis/border */
+  --fc-cursor: rgba(255,255,255,.4);  /* canvas crosshair */
+  --fc-focus: #6ee7a8;          /* keyboard focus ring */
 }
 ```
 
@@ -165,7 +165,7 @@ the *proof*, kept current automatically. (Both live in this repo; the Pack is a 
   and Section 508 editions, as Markdown + HTML + JSON, from one dependency-free generator. Sample:
   [`compliance/samples/`](./compliance/samples/). Editions, the functional-performance derivation,
   and the DRAFT/attestation model are in [`compliance/vpat-editions.md`](./compliance/vpat-editions.md).
-- **A CI accessibility gate** (`sightline-audit`) that runs the conformance engine against your
+- **A CI accessibility gate** (`fcharts-audit`) that runs the conformance engine against your
   real configured chart on every commit and **fails the build on any regression** below the
   baseline — the thing a whole-site scanner does badly: prove a complex interactive component stays
   per-point accessible. See [`compliance/conformance-test-plan.md`](./compliance/conformance-test-plan.md)
@@ -193,7 +193,7 @@ jobs:
         with: { node-version: '24' }
       - run: npm ci
       - run: npx playwright install --with-deps chromium   # dev/peer dep, CI-only
-      - run: npx sightline-audit --fixture ./a11y/fixture.ts --edition en301549 --out ./compliance-out
+      - run: npx fcharts-audit --fixture ./a11y/fixture.ts --edition en301549 --out ./compliance-out
       - if: always()
         uses: actions/upload-artifact@v4
         with: { name: accessibility-conformance-report, path: ./compliance-out }
@@ -209,8 +209,8 @@ src/
   core/        scales · ticks · downsample (min/max pyramid) · scheduler · model
   a11y/        cursor · live-region · legend · table-alt · ticks · summary · strings · styles
   renderers/   canvas2d · html-in-canvas · detect · renderer (interface)
-  compliance/  WCAG baseline · conformance engine · contrast · ACR generator · sightline-audit CLI
-  sightline.ts public class — wires core + renderer + a11y
+  compliance/  WCAG baseline · conformance engine · contrast · ACR generator · fcharts-audit CLI
+  fchart.ts public class — wires core + renderer + a11y
 ```
 
 `core/` and `compliance/` import no rendering API; `compliance/` (the paid Pack) imports Playwright
@@ -225,7 +225,7 @@ same `Renderer` interface later without touching the public API.
 pnpm install          # pnpm 11+ (cooldown + script-blocking for supply-chain safety)
 pnpm test             # unit tests on Node's built-in test runner (no test framework dep)
 pnpm typecheck
-pnpm build            # dist/sightline.js (ESM) + .d.ts
+pnpm build            # dist/fcharts.js (ESM) + .d.ts
 pnpm dev              # serve the benchmark page
 pnpm bench            # headless FPS + axe-core run (Chromium) → bench/results.json
 node bench/harness.ts firefox   # or `webkit` — cross-browser run → results-<engine>.json

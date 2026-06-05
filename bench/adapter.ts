@@ -5,7 +5,7 @@ export interface ChartAdapter {
   readonly id: string;
   readonly label: string;
   /** Category, for the results narrative. */
-  readonly kind: 'sightline' | 'fast-inaccessible' | 'accessible-slow';
+  readonly kind: 'fchart' | 'fast-inaccessible' | 'accessible-slow';
   /** The DOM subtree to scope axe-core and functional a11y checks to. */
   readonly el: HTMLElement;
   /** Render synchronously to the x-domain [d0, d1]. The hot path under measurement. */

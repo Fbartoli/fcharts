@@ -49,7 +49,7 @@ export class TableAlt {
   constructor(doc: Document = document) {
     this.doc = doc;
     this.el = doc.createElement('div');
-    this.el.className = 'sl-sr-only sl-table-alt';
+    this.el.className = 'fc-sr-only fc-table-alt';
     this.table = doc.createElement('table');
     this.el.append(this.table);
   }

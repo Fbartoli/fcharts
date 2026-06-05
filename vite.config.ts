@@ -2,10 +2,10 @@ import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 
 const here = import.meta.dirname;
-const coreEntry = resolve(here, 'src/sightline.ts');
+const coreEntry = resolve(here, 'src/fchart.ts');
 
 // `vite` (serve)                       → serves the benchmark page (bench/ is the only HTML root).
-// `vite build`                         → core library: dist/sightline.js (ESM) + .umd.cjs.
+// `vite build`                         → core library: dist/fcharts.js (ESM) + .umd.cjs.
 // `SIGHTLINE_ENTRY=react vite build`   → the React adapter: dist/react.js (ESM; react + core external).
 // `SIGHTLINE_ENTRY=compliance vite build` → the Compliance Pack: dist/compliance/{index,cli}.js (Node ESM).
 export default defineConfig(({ command }) => {
@@ -43,7 +43,7 @@ export default defineConfig(({ command }) => {
   }
   if (process.env.SIGHTLINE_ENTRY === 'react') {
     // Second build pass (after the core): keep React AND the core out of the bundle so a consumer
-    // who imports both `sightline` and `sightline/react` ships one copy of the engine, not two.
+    // who imports both `sightline` and `fcharts-js/react` ships one copy of the engine, not two.
     // emptyOutDir:false so we don't wipe the core build that ran first.
     return {
       build: {
@@ -59,14 +59,14 @@ export default defineConfig(({ command }) => {
         rollupOptions: {
           external: ['react', 'react/jsx-runtime', coreEntry],
           // Rewrite the externalized core import to the sibling built file consumers receive.
-          output: { paths: { [coreEntry]: './sightline.js' } },
+          output: { paths: { [coreEntry]: './fcharts.js' } },
         },
       },
     };
   }
   if (process.env.SIGHTLINE_ENTRY === 'compliance') {
     // Third build pass: the Compliance Pack as Node ESM. Node refuses to strip types under
-    // node_modules, so the bin + the `sightline/compliance` subpath must ship compiled JS, not the
+    // node_modules, so the bin + the `fcharts-js/compliance` subpath must ship compiled JS, not the
     // raw .ts source. Playwright/Vite/Node builtins stay external (optional peers at the consumer).
     return {
       build: {
@@ -96,8 +96,8 @@ export default defineConfig(({ command }) => {
       minify: 'esbuild',
       lib: {
         entry: coreEntry,
-        name: 'Sightline',
-        fileName: 'sightline',
+        name: 'FChart',
+        fileName: 'fcharts',
         // ESM for bundlers; UMD so prospects can drop a <script> tag with zero build.
         formats: ['es', 'umd'],
       },

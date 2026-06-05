@@ -9,7 +9,7 @@ export class LiveRegion {
 
   constructor(doc: Document = document) {
     this.el = doc.createElement('span');
-    this.el.className = 'sl-sr-only';
+    this.el.className = 'fc-sr-only';
     this.el.setAttribute('aria-live', 'polite');
     this.el.setAttribute('aria-atomic', 'true');
   }
