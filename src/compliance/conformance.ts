@@ -10,7 +10,7 @@
  */
 import type { Page } from 'playwright';
 import type { AxeViolation, CheckReport, CheckResult, CheckStatus } from './types.ts';
-import { ratioOf, AA_NORMAL } from './contrast.ts';
+import { ratioOf, AA_NORMAL, AA_NON_TEXT } from './contrast.ts';
 
 export interface ConformanceOptions {
   /** Documented host background for hybrid contrast checks. Default '#ffffff'. */
@@ -126,6 +126,16 @@ export async function runConformance(
           const r = b.getBoundingClientRect();
           return { w: r.width, h: r.height };
         }),
+        // Each swatch's non-colour encoding (the dashed <line> / area <rect>) + its colour, so the
+        // gate can prove (a) colour is not the only channel (1.4.1) and (b) mark contrast (1.4.11).
+        swatches: legendButtons.map((b) => {
+          const g = b.querySelector('.sl-swatch')?.firstElementChild ?? null;
+          return {
+            tag: g?.tagName.toLowerCase() ?? '',
+            dash: g?.getAttribute('stroke-dasharray') ?? '',
+            color: g?.getAttribute('stroke') || g?.getAttribute('fill') || '',
+          };
+        }),
       },
       hasLive: !!live,
       css,
@@ -165,11 +175,32 @@ export async function runConformance(
   // 2.4.3: no positive tabindex, and the legend precedes the surface in DOM (meaningful order).
   results.push(status(dom.noPositiveTabindex && dom.legendBeforeSurface, 'focus-order', ['2.4.3'],
     'positive tabindex present, or legend is not before the surface in DOM order'));
+  // 1.4.1 folded in: with >=2 series each swatch must be distinct beyond colour (dash pattern for
+  // lines, or the area <rect> shape) — i.e. mutually unique by (tag|dash), so a colour-blind or
+  // grayscale user can still map legend → mark. A single series needs no differentiator.
+  const swEnc = dom.legend.swatches.map((s) => `${s.tag}|${s.dash}`);
+  const colourNotSoleChannel =
+    dom.legend.count < 2 || new Set(swEnc).size === dom.legend.count;
   results.push(
     dom.legend.count === 0
       ? na('legend-semantics', ['1.3.1', '4.1.2', '1.4.1', '3.2.4', '2.5.2'], 'no legend rendered')
-      : status(dom.legend.allButtons && dom.legend.allPressed && dom.legend.stateHidden,
-          'legend-semantics', ['1.3.1', '4.1.2', '1.4.1', '3.2.4', '2.5.2'], 'legend buttons missing type=button / aria-pressed / aria-hidden state'),
+      : status(dom.legend.allButtons && dom.legend.allPressed && dom.legend.stateHidden && colourNotSoleChannel,
+          'legend-semantics', ['1.3.1', '4.1.2', '1.4.1', '3.2.4', '2.5.2'],
+          `legend buttons missing type=button / aria-pressed / aria-hidden state, or swatches not distinct beyond colour (${swEnc.join(', ')})`),
+  );
+  // contrast-marks (1.4.11): each series mark clears 3:1 vs the documented background. The legend
+  // swatch uses the series colour, so we read it as a DOM-observable proxy for the canvas mark.
+  const markRatios = dom.legend.swatches
+    .map((s) => s.color)
+    .filter(Boolean)
+    .map((c) => ({ c, r: ratioOf(c, bg) }));
+  const markBad = markRatios.filter((m) => m.r !== null && m.r < AA_NON_TEXT);
+  results.push(
+    markRatios.length === 0
+      ? na('contrast-marks', ['1.4.11'], 'no coloured swatches to measure')
+      : status(markBad.length === 0, 'contrast-marks', ['1.4.11'],
+          `series mark below ${AA_NON_TEXT}:1 vs ${bg}: ${markBad.map((m) => `${m.c} ${m.r?.toFixed(2)}:1`).join(', ')}`,
+          `all ${markRatios.length} marks >= ${AA_NON_TEXT}:1 vs ${bg}`),
   );
   results.push(status(dom.hasLive, 'live-region-present', ['4.1.3'], 'no aria-live=polite aria-atomic region'));
   results.push(
@@ -310,6 +341,89 @@ export async function runConformance(
       : status(tickRatio >= AA_NORMAL, 'contrast-default-text', ['1.4.3'],
           `tick contrast ${tickRatio.toFixed(2)}:1 vs ${bg} < ${AA_NORMAL}:1`, `${tickRatio.toFixed(2)}:1 vs ${bg}`),
   );
+
+  // reflow-adaptive (1.4.10, R7): narrowing the chart thins the x-tick density so labels do not
+  // collide (effectiveTickCount). Count ticks wide, shrink the container, count again, restore.
+  const tickXCount = async (): Promise<number> => (await xTicks()).length;
+  const wideTicks = await tickXCount();
+  const setRootWidth = (w: string): Promise<void> =>
+    page.evaluate(({ s, w: width }) => {
+      const r = document.querySelector(s) as HTMLElement | null;
+      if (r) r.style.width = width;
+    }, { s: sel, w });
+  await setRootWidth('320px');
+  await page.waitForTimeout(240); // ResizeObserver + table debounce + frame
+  const narrowTicks = await tickXCount();
+  await setRootWidth('900px');
+  await page.waitForTimeout(240);
+  results.push(status(wideTicks > 0 && narrowTicks > 0 && narrowTicks < wideTicks, 'reflow-adaptive', ['1.4.10'],
+    `x-tick density did not thin when narrowed (wide=${wideTicks}, narrow=${narrowTicks})`,
+    `wide=${wideTicks} -> narrow=${narrowTicks}`));
+
+  // resize-text-rem (1.4.4, R7): the tick font is in rem, so doubling the root font-size doubles
+  // it (a px font would not move). Read, scale the root, re-read, restore.
+  const tickFontPx = async (): Promise<number> =>
+    page.evaluate((s) => {
+      const t = document.querySelector(`${s} .sl-tick`);
+      return t ? parseFloat(getComputedStyle(t).fontSize) : 0;
+    }, sel);
+  const fontBefore = await tickFontPx();
+  await page.evaluate(() => { document.documentElement.style.fontSize = '32px'; });
+  await page.waitForTimeout(60);
+  const fontAfter = await tickFontPx();
+  await page.evaluate(() => { document.documentElement.style.fontSize = ''; });
+  await page.waitForTimeout(40);
+  results.push(status(fontBefore > 0 && fontAfter >= fontBefore * 1.8, 'resize-text-rem', ['1.4.4'],
+    `tick font did not scale with root font size (${fontBefore}px -> ${fontAfter}px); fonts may be px not rem`,
+    `${fontBefore}px -> ${fontAfter}px @ 2x root`));
+
+  // single-pointer-pan (2.5.7, R4): once zoomed in, the pan pagers appear and a single click
+  // shifts the visible window (no dragging required).
+  await page.focus(`${sel} [role="application"]`);
+  await page.keyboard.press('+');
+  await page.keyboard.press('+');
+  await page.waitForTimeout(80);
+  const ticksPrePan = await xTicks();
+  const pan = await page.evaluate((s) => {
+    const pagers = [...document.querySelectorAll(`${s} .sl-pager`)] as HTMLButtonElement[];
+    const visible = pagers.filter((b) => b.offsetParent !== null);
+    return {
+      count: pagers.length,
+      allButtons: pagers.every((b) => b.tagName === 'BUTTON' && b.getAttribute('type') === 'button'),
+      visible: visible.length,
+      enabled: visible.filter((b) => !b.disabled).length,
+    };
+  }, sel);
+  if (pan.enabled > 0) await page.click(`${sel} .sl-pager:not(:disabled)`);
+  await page.waitForTimeout(80);
+  const ticksPostPan = await xTicks();
+  results.push(status(
+    pan.count === 2 && pan.allButtons && pan.visible >= 1 && pan.enabled >= 1 &&
+      JSON.stringify(ticksPrePan) !== JSON.stringify(ticksPostPan),
+    'single-pointer-pan', ['2.5.7'],
+    `pagers count=${pan.count} buttons=${pan.allButtons} visible=${pan.visible} enabled=${pan.enabled}; click ${JSON.stringify(ticksPrePan) !== JSON.stringify(ticksPostPan) ? 'panned' : 'did NOT pan'}`));
+
+  // forced-colors-canvas (forced-colors / 1.4.11, R12): turning forced-colors on must change the
+  // canvas bitmap (it repaints in system colors) — proving the canvas participates, not just the DOM.
+  const canvasSig = async (): Promise<string> =>
+    page.evaluate((s) => {
+      const c = document.querySelector(`${s} canvas.sl-canvas`) as HTMLCanvasElement | null;
+      try {
+        return c ? c.toDataURL() : '';
+      } catch {
+        return '';
+      }
+    }, sel);
+  const sigBefore = await canvasSig();
+  await page.emulateMedia({ forcedColors: 'active' });
+  await page.waitForTimeout(160);
+  const sigAfter = await canvasSig();
+  await page.emulateMedia({ forcedColors: 'none' });
+  await page.waitForTimeout(80);
+  results.push(status(sigBefore.length > 0 && sigAfter.length > 0 && sigBefore !== sigAfter,
+    'forced-colors-canvas', ['forced-colors', '1.4.11'],
+    'canvas bitmap did not change under forced-colors:active (did not participate)',
+    'canvas repainted in system colors under forced-colors'));
 
   // Static / unit-covered checks the live page cannot prove (recorded as n/a, see baseline).
   results.push(na('no-canvas-text', ['1.4.5'], 'static source check (no fillText/strokeText); covered by baseline'));

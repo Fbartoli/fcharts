@@ -11,15 +11,14 @@ These files are an **auto-generated chart-layer ACR** for Sightline, produced by
 
 **This is the procurement lead magnet:** a geography-correct, per-criterion conformance report for
 the chart layer, generated — not hand-written — from the committed evidence map
-([`../scope-and-evidence-map.md`](../scope-and-evidence-map.md)). Baseline: **28 Supports / 7
+([`../scope-and-evidence-map.md`](../scope-and-evidence-map.md)). Baseline: **33 Supports / 2
 Partially Supports / 20 Not Applicable** across the 55 WCAG 2.2 Level A + AA success criteria.
 
 ## Why it says "DRAFT"
 
 The report is intentionally **unsigned (DRAFT)**. The generator refuses to fabricate the human
-attestations — perceptual judgments (color-blind distinguishability), real screen-reader behavior
-(NVDA/JAWS/VoiceOver), and integration-context checks (host background, host layout) — that no
-machine can soundly prove. Those rows are listed under *Attestation*; a real auditor signs them
+attestations — real screen-reader behavior (NVDA/JAWS/VoiceOver) and integration-context checks
+(host background behind the text, host page layout/scroll) — that no machine can soundly prove. Those rows are listed under *Attestation*; a real auditor signs them
 with `--attest`, which lifts the DRAFT watermark. Honest by construction: the same reason the
 validation MVP refused to call "passes axe" the same thing as "accessible"
 ([`../../FINDINGS.md`](../../FINDINGS.md) caveat #1).

@@ -21,20 +21,25 @@ test('baseline: every canonical WCAG 2.2 A/AA SC present exactly once, no extras
   assert.deepEqual([...nums].sort(), [...CANON].sort());
 });
 
-test('baseline: WCAG tally is the committed 28 / 7 / 20', () => {
+test('baseline: WCAG tally is the committed 33 / 2 / 20', () => {
   const t: Partial<Record<Conformance, number>> = {};
   for (const c of wcag) t[c.conformance] = (t[c.conformance] ?? 0) + 1;
-  assert.equal(t['Supports'], 28);
-  assert.equal(t['Partially Supports'], 7);
+  assert.equal(t['Supports'], 33);
+  assert.equal(t['Partially Supports'], 2);
   assert.equal(t['Not Applicable'], 20);
   assert.equal(t['Does Not Support'] ?? 0, 0);
 });
 
-test('baseline: two adaptation rows (reduced-motion Supports, forced-colors Partially)', () => {
+test('baseline: the 2 remaining Partially Supports are the host-dependent pair', () => {
+  const partial = wcag.filter((c) => c.conformance === 'Partially Supports').map((c) => c.num).sort();
+  assert.deepEqual(partial, ['1.4.3', '2.4.11']); // text-on-host-bg, focus-not-obscured
+});
+
+test('baseline: two adaptation rows (reduced-motion + forced-colors, both Supports)', () => {
   const adapt = CRITERIA.filter((c) => c.adaptation);
   assert.equal(adapt.length, 2);
   assert.equal(adapt.find((c) => c.num === 'reduced-motion')?.conformance, 'Supports');
-  assert.equal(adapt.find((c) => c.num === 'forced-colors')?.conformance, 'Partially Supports');
+  assert.equal(adapt.find((c) => c.num === 'forced-colors')?.conformance, 'Supports');
 });
 
 test('baseline: applicability and conformance agree', () => {

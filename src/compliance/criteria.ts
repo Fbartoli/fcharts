@@ -2,8 +2,10 @@
  * WCAG 2.2 AA conformance baseline for the Sightline chart component.
  *
  * Transcribed from `compliance/scope-and-evidence-map.md` (document 1 of the Compliance Pack),
- * reflecting the post-remediation source: 28 Supports / 7 Partially Supports / 20 Not Applicable,
- * plus 2 user-preference adaptations (reduced-motion = Supports, forced-colors = Partially).
+ * reflecting the post-remediation source (incl. the R4–R12 accessibility backlog): 33 Supports /
+ * 2 Partially Supports / 20 Not Applicable, plus 2 user-preference adaptations (reduced-motion and
+ * forced-colors, both = Supports). The 2 Partially are host-dependent (1.4.3 text-on-host-bg,
+ * 2.4.11 focus-not-obscured).
  *
  * This array is the committed source of truth for the auto-generated VPAT/ACR. Every row carries
  * its conformance verdict, a VPAT "Remarks and Explanations" cell, how the claim is verified
@@ -182,17 +184,19 @@ export const CRITERIA: CriterionRow[] = [
     name: 'Use of Color',
     level: 'A',
     applicability: 'applicable',
-    conformance: 'Partially Supports',
+    conformance: 'Supports',
     remarks:
-      'Legend, table, and readout give color-free series identity, but on the canvas series are ' +
-      'distinguished by color only (no per-series dash/marker), so two close lines cannot be told ' +
-      'apart by a color-blind user (deferred R5). The non-color identity channels are checked ' +
-      'automatically; on-canvas distinguishability is a perceptual attestation. (verified: hybrid)',
-    verification: 'hybrid',
-    attestationRequired: true,
+      'Colour is never the sole differentiator. R5 auto-assigns a distinct dash pattern per series ' +
+      '(canvas setLineDash) when the integrator gives none, and the legend swatch mirrors it (a ' +
+      'dashed <line>, or a <rect> for area) — so two series are told apart by dash/shape, not only ' +
+      'hue. Legend, table, and readout already give colour-free identity. The legend-semantics ' +
+      'check asserts the swatches are mutually distinct beyond colour. (verified: automated)',
+    verification: 'automated',
+    attestationRequired: false,
     evidence: [
-      { detail: 'Color-free identity in legend (swatch + name + state)', ref: 'src/a11y/legend.ts:40-52' },
-      { detail: 'Envelope stroke uses s.color only, no setLineDash', ref: 'src/renderers/canvas2d.ts:143-147' },
+      { detail: 'Auto per-series dash so colour is not the only channel', ref: 'src/core/model.ts:82-100' },
+      { detail: 'Canvas envelope strokes with the series dash', ref: 'src/renderers/canvas2d.ts:186-193' },
+      { detail: 'Legend swatch mirrors the dash (line) or shape (area)', ref: 'src/a11y/legend.ts:67-92' },
     ],
   },
   {
@@ -214,15 +218,16 @@ export const CRITERIA: CriterionRow[] = [
     conformance: 'Partially Supports',
     remarks:
       'Library DOM text passes AA on a light background (ticks 7.56:1, body 10.31:1, readout ' +
-      '16.98:1) and the legend hidden state no longer dims text (R8). Residual gaps are ' +
-      'integrator-dependent: author-supplied canvas series colors (no default palette) and the ' +
-      'effective host background. (verified: hybrid)',
+      '16.98:1) and the legend hidden state no longer dims text (R8). The one residual gap is ' +
+      'inherently integrator-dependent: the effective host background behind the tick/legend text ' +
+      'is the host page’s, so the on-host ratio is theirs to confirm (the readout sets its own ' +
+      'background, so it is host-independent). (verified: hybrid)',
     verification: 'hybrid',
     attestationRequired: true,
     evidence: [
       { detail: 'Tick #4b5563 = 7.56:1; body #374151 = 10.31:1 vs #fff', ref: 'src/a11y/styles.ts:16' },
       { detail: 'Readout #f9fafb on #111827 = 16.98:1 (host-independent)', ref: 'src/a11y/styles.ts:28-32' },
-      { detail: 'Canvas strokes use config.color, no default palette', ref: 'src/core/model.ts:55-65' },
+      { detail: 'Tick/legend text inherits the host background (integrator-confirmed)', ref: 'src/a11y/styles.ts:16,43' },
     ],
   },
   {
@@ -230,17 +235,17 @@ export const CRITERIA: CriterionRow[] = [
     name: 'Resize Text',
     level: 'AA',
     applicability: 'applicable',
-    conformance: 'Partially Supports',
+    conformance: 'Supports',
     remarks:
-      'Container is fluid so full-page browser zoom (the path WCAG accepts) works. Library gap: ' +
-      'tick/axis-title/legend/readout font sizes are absolute px, so text-only zoom does not ' +
-      'enlarge them (deferred R7); clip/overlap at 200% page-zoom needs human verification. ' +
-      '(verified: hybrid)',
-    verification: 'hybrid',
-    attestationRequired: true,
+      'R7 expresses every label font (tick, axis title, legend, legend state, readout) in rem, so ' +
+      'text-only zoom — raising the root font size without page zoom — enlarges them, and the ' +
+      'fluid container re-measures so the chart follows. The resize-text-rem check proves the tick ' +
+      'font scales with the root font size. (verified: automated)',
+    verification: 'automated',
+    attestationRequired: false,
     evidence: [
-      { detail: 'Fluid container re-measures on zoom', ref: 'src/sightline.ts:217-218,346-357' },
-      { detail: 'Label fonts fixed in px (11/10/12.5/12)', ref: 'src/a11y/styles.ts:16,20,42,31' },
+      { detail: 'Label fonts in rem (.6875/.625/.78/.625/.75rem)', ref: 'src/a11y/styles.ts:16,20,43,53,31' },
+      { detail: 'Fluid container re-measures on zoom', ref: 'src/sightline.ts:407-418' },
     ],
   },
   {
@@ -265,17 +270,20 @@ export const CRITERIA: CriterionRow[] = [
     name: 'Reflow',
     level: 'AA',
     applicability: 'applicable',
-    conformance: 'Partially Supports',
+    conformance: 'Supports',
     remarks:
-      'Fluid canvas with no library min-width, reflowing wrap legend, and the 2-D chart-geometry ' +
-      'exception cover reflow. Library gap: fixed-px nowrap tick labels can overlap at ~320 CSS ' +
-      'px / high zoom (deferred R7); whether they overlap in a given layout needs human ' +
-      'verification. (verified: hybrid)',
+      'Fluid canvas with no library min-width, a reflowing wrap legend, and the 2-D ' +
+      'chart-geometry exception. R7 closed the tick-overlap gap: effectiveTickCount thins tick ' +
+      'density as the plot narrows (≥1 label per 64/28 px) so labels do not collide at ~320 CSS ' +
+      'px or high zoom. The reflow-adaptive check proves the x-tick count drops when narrowed. ' +
+      'Whether the integrator’s surrounding container scrolls in 2-D remains theirs. ' +
+      '(verified: hybrid)',
     verification: 'hybrid',
     attestationRequired: true,
     evidence: [
       { detail: 'Legend wraps (flex-wrap:wrap), no imposed min-width', ref: 'src/a11y/styles.ts:38' },
-      { detail: '.sl-tick fixed 11px white-space:nowrap', ref: 'src/a11y/styles.ts:16' },
+      { detail: 'effectiveTickCount thins tick density at narrow widths', ref: 'src/core/ticks.ts:48-53' },
+      { detail: 'Adaptive density wired into the frame', ref: 'src/sightline.ts:473-474' },
     ],
   },
   {
@@ -283,18 +291,20 @@ export const CRITERIA: CriterionRow[] = [
     name: 'Non-text Contrast',
     level: 'AA',
     applicability: 'applicable',
-    conformance: 'Partially Supports',
+    conformance: 'Supports',
     remarks:
-      'Focus ring --sl-focus #2563eb = 5.17:1 on white. Gaps: default grid (1.16:1), axis/border ' +
-      '(1.41:1), and cursor crosshair (1.96:1) are below 3:1, and data-mark contrast is ' +
-      'author-determined (no default palette); highContrast thickens strokes but does not reach ' +
-      '3:1 (deferred R6). (verified: hybrid)',
+      'The essential graphical objects — the data marks — clear 3:1: R6 added an 8-colour default ' +
+      'palette each verified ≥3:1 on BOTH a light and a dark chart background (palette.test.ts), ' +
+      'assigned by index when the integrator gives no colour, and the contrast-marks check re-proves ' +
+      'each legend swatch ≥3:1 vs the documented background. Focus ring #2563eb = 5.17:1. Gridlines ' +
+      'are decorative reference lines (not the 1.4.11 object). If the integrator overrides the ' +
+      'palette with a low-contrast colour, that becomes their attestation. (verified: hybrid)',
     verification: 'hybrid',
     attestationRequired: true,
     evidence: [
+      { detail: 'Default palette ≥3:1 on light AND dark (unit-tested)', ref: 'src/core/model.ts:60-76' },
       { detail: 'Focus ring #2563eb = 5.17:1 on white', ref: 'src/a11y/styles.ts:25' },
-      { detail: 'Grid/axis/cursor alphas below 3:1', ref: 'src/renderers/canvas2d.ts:29-32' },
-      { detail: 'Series marks use author colors, no default palette', ref: 'src/core/model.ts:55-65' },
+      { detail: 'Forced-colors remaps marks to system colors', ref: 'src/renderers/canvas2d.ts:99-101,186' },
     ],
   },
   {
@@ -612,16 +622,18 @@ export const CRITERIA: CriterionRow[] = [
     name: 'Dragging Movements',
     level: 'AA',
     applicability: 'applicable',
-    conformance: 'Partially Supports',
+    conformance: 'Supports',
     remarks:
-      "The chart's one dragging operation — drag-to-pan — has no single-pointer non-dragging " +
-      'alternative (the keyboard path satisfies 2.1.1 not 2.5.7, and wheel-zoom changes ' +
-      'magnification not lateral position). Library-closable but deferred (R4). (verified: hybrid)',
-    verification: 'hybrid',
-    attestationRequired: true,
+      'R4 added pan pagers: two real ‹/› buttons that step the visible window earlier/later with a ' +
+      'single-pointer click — the non-dragging alternative to drag-to-pan that 2.5.7 requires. They ' +
+      'appear when the view is zoomed in (panning has an effect) and, being buttons, are keyboard- ' +
+      'and AT-operable too. The single-pointer-pan check zooms in, then confirms the pagers are ' +
+      'present and a click shifts the domain. (verified: automated)',
+    verification: 'automated',
+    attestationRequired: false,
     evidence: [
-      { detail: 'Drag-pan has no single-pointer non-dragging path', ref: 'src/sightline.ts:554-560' },
-      { detail: 'Keyboard panToInclude satisfies 2.1.1 only', ref: 'src/sightline.ts:526-534' },
+      { detail: 'Pan pagers: single-pointer buttons step the window', ref: 'src/a11y/pagers.ts:1-44' },
+      { detail: 'panPage() shifts the domain ~one page', ref: 'src/sightline.ts:724-742' },
     ],
   },
   {
@@ -877,19 +889,20 @@ export const CRITERIA: CriterionRow[] = [
     level: 'AA',
     adaptation: true,
     applicability: 'applicable',
-    conformance: 'Partially Supports',
+    conformance: 'Supports',
     remarks:
-      'The DOM overlay adapts and the focus indicator is preserved (forced-colors:active gives the ' +
-      'surface an outline:2px solid Highlight; DOM text/buttons remap to system colors). Inherent ' +
-      'gap: the canvas bitmap cannot participate in forced-colors, so series/grid/crosshair stay ' +
-      'author-supplied — the DOM data alternatives carry the user through (deferred R12). ' +
-      '(verified: hybrid)',
-    verification: 'hybrid',
-    attestationRequired: true,
+      'R12 made the canvas participate in forced colors. The renderer probes the system palette ' +
+      '(CanvasText/Canvas/GrayText/Highlight) when forced-colors:active and repaints the grid, ' +
+      'axes, series, and crosshair in those colors instead of author colors; a media listener ' +
+      'tracks live toggles. The DOM overlay already adapts and the focus ring uses Highlight. The ' +
+      'forced-colors-canvas check confirms the bitmap actually changes when forced colors turn on. ' +
+      '(verified: automated)',
+    verification: 'automated',
+    attestationRequired: false,
     evidence: [
+      { detail: 'Renderer reads system colors + repaints marks under forced-colors', ref: 'src/renderers/canvas2d.ts:37-54,99-101' },
+      { detail: 'Live forced-colors media listener triggers a repaint', ref: 'src/sightline.ts:261-270' },
       { detail: 'forced-colors outline + remapped DOM colors', ref: 'src/a11y/styles.ts:55-59' },
-      { detail: 'Canvas marks not remapped by forced-colors', ref: 'src/renderers/canvas2d.ts:24-34' },
-      { detail: 'DOM data alternatives remain in adapting DOM', ref: 'src/a11y/table-alt.ts:75-110' },
     ],
   },
 ];

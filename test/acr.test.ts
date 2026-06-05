@@ -18,16 +18,16 @@ const base = (edition: EditionKey, signed?: { signer: string; date: string }): B
   signed,
 });
 
-test('tally: WCAG rows count to 28 Supports / 7 Partially / 20 Not Applicable', () => {
+test('tally: WCAG rows count to 33 Supports / 2 Partially / 20 Not Applicable', () => {
   const wcag = CRITERIA.filter((c) => !c.adaptation);
   const t = tally(wcag);
-  assert.equal(t.total['Supports'], 28);
-  assert.equal(t.total['Partially Supports'], 7);
+  assert.equal(t.total['Supports'], 33);
+  assert.equal(t.total['Partially Supports'], 2);
   assert.equal(t.total['Not Applicable'], 20);
   // by-level columns sum back to the totals
   const sum = (k: 'Supports' | 'Partially Supports' | 'Not Applicable'): number =>
     (t.byLevel.A[k] ?? 0) + (t.byLevel.AA[k] ?? 0);
-  assert.equal(sum('Supports'), 28);
+  assert.equal(sum('Supports'), 33);
   assert.equal(sum('Not Applicable'), 20);
 });
 
@@ -42,8 +42,8 @@ test('functional performance is DERIVED and never contradicts the SCs', () => {
   const fp = buildModel(base('en301549')).sections.find((s) => s.id === 'fp')!.rows;
   const by = Object.fromEntries(fp.map((r) => [r.name, r.conformance]));
   assert.equal(by['Usage without vision'], 'Supports'); // 1.1.1/1.3.1/2.1.1/4.1.2/4.1.3 all Support
-  assert.equal(by['Usage without perception of color'], 'Partially Supports'); // 1.4.1 is Partially
-  assert.equal(by['Usage with limited manipulation or strength'], 'Partially Supports'); // 2.5.7
+  assert.equal(by['Usage without perception of color'], 'Supports'); // 1.4.1 now Supports (R5 dash)
+  assert.equal(by['Usage with limited manipulation or strength'], 'Supports'); // 2.5.7 now Supports (R4 pagers)
   assert.equal(by['Usage without hearing'], 'Supports'); // no audio
 });
 
@@ -56,7 +56,7 @@ test('Section 508 FP omits the statements 508 lacks (photosensitive, privacy)', 
 test('renderAcr json round-trips and carries the full model', () => {
   const m = buildModel(base('en301549'));
   const parsed = JSON.parse(renderAcr(m, 'json'));
-  assert.equal(parsed.summary.total['Supports'], 28);
+  assert.equal(parsed.summary.total['Supports'], 33);
   assert.equal(parsed.criteria.length, CRITERIA.length);
 });
 
@@ -65,7 +65,7 @@ test('renderAcr markdown has principle tables, summary, and the legal block', ()
   for (const h of ['## Perceivable', '## Operable', '## Understandable', '## Robust', '## Summary', '## Legal']) {
     assert.ok(md.includes(h), `missing ${h}`);
   }
-  assert.ok(md.includes('28 Supports'));
+  assert.ok(md.includes('33 Supports'));
   assert.ok(md.includes('1.4.11 Non-text Contrast'));
 });
 

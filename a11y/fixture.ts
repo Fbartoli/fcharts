@@ -12,11 +12,10 @@ export function mountChart(el: HTMLElement): () => void {
   const x = Float64Array.from({ length: N }, (_, i) => i);
   const pressure = Float64Array.from(x, (i) => 40 + Math.sin(i * 9e-4) * 26);
   const temperature = Float64Array.from(x, (i) => 5 + Math.sin(i * 2.1e-3) * 18);
+  // Colors and dashes are omitted on purpose so the gate exercises Sightline's defaults: the
+  // contrast-checked DEFAULT_PALETTE (1.4.11) and the auto-assigned per-series dash (1.4.1).
   const chart = new Sightline(el, {
-    series: [
-      { name: 'Pressure', color: '#16a34a' },
-      { name: 'Temperature', color: '#d97706', type: 'area' },
-    ],
+    series: [{ name: 'Pressure' }, { name: 'Temperature' }],
     options: { ariaLabel: 'Sensor telemetry', xLabel: 'sample', yLabel: 'value' },
   });
   chart.setData({ x, y: [pressure, temperature] });

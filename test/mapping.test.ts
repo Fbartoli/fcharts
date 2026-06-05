@@ -91,7 +91,6 @@ const GATE_EXEMPT: Record<string, string> = {
   '2.2.1': 'source: no time limits — the only timers are output coalescers (no setInterval/deadline)',
   '2.3.1': 'source: no flashing/animation mechanism (render-on-demand, single clear+repaint)',
   '2.4.11': 'hybrid/host: not entirely obscuring its own focus is geometry/host-dependent (attested)',
-  '2.5.7': 'hybrid: the deferred single-pointer non-drag pan gap (R4) — no positive auto-check',
 };
 
 test('coverage: every applicable automated/hybrid criterion has a serving check or is exempt', () => {

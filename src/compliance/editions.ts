@@ -89,8 +89,8 @@ const FP_STATEMENTS: readonly FpStatement[] = [
     note: 'Resizes and reflows; some contrast/zoom aspects depend on the host background and theme.' },
   { en: '4.2.3', s508: '302.3', name: 'Usage without perception of color',
     derivedFrom: ['1.4.1'],
-    note: 'Series identity is available without color via the legend, data table, and readout; ' +
-      'on-canvas marks are color-only, so the data table is the non-color alternative.' },
+    note: 'Series carry a distinct dash pattern (mirrored in the legend swatch) in addition to ' +
+      'color, and identity is also available via the legend, data table, and readout.' },
   { en: '4.2.4', s508: '302.4', name: 'Usage without hearing', derivedFrom: [],
     note: 'No audio content is produced.' },
   { en: '4.2.5', s508: '302.5', name: 'Usage with limited hearing', derivedFrom: [],

@@ -9,14 +9,19 @@
 > applicable claim (each verifier tried to *downgrade* the claim and confirmed the cited
 > `file:line` evidence), then a completeness critic checked coverage and consistency.
 
-> **Update (remediation applied).** After this map was first written (baseline: 21 Supports /
-> 14 Partially / 20 N/A), the 8 library-closable gaps in the backlog (§11) were fixed in the MIT
-> renderer and verified end-to-end (axe stays 0, thesis holds, all unit tests pass). Seven
-> criteria moved **Partially → Supports** — 1.3.1, 1.4.13, 2.1.1, 2.4.6, 2.5.8, 3.1.2, 4.1.2 —
-> and 1.4.3's legend-opacity sub-gap was closed (it stays Partially because host background and
-> author colors remain integrator-dependent). **The tables and per-criterion detail below
-> reflect the current, post-remediation source.** New baseline: **28 Supports / 7 Partially /
-> 20 N/A.**
+> **Update (remediation applied, two waves).** After this map was first written (baseline:
+> 21 Supports / 14 Partially / 20 N/A), the library-closable gaps in the backlog (§11) were fixed
+> in the MIT renderer and verified end-to-end (axe stays 0, thesis holds, all unit tests pass).
+> Wave 1 (cheap fixes) moved seven criteria **Partially → Supports** — 1.3.1, 1.4.13, 2.1.1,
+> 2.4.6, 2.5.8, 3.1.2, 4.1.2 — and closed 1.4.3's legend-opacity sub-gap. Wave 2 (the R4–R12
+> accessibility backlog) closed the rest: **1.4.1** (per-series dash, R5), **1.4.4** (rem fonts,
+> R7), **1.4.10** (adaptive tick density, R7), **1.4.11** (contrast-checked default palette, R6),
+> **2.5.7** (single-pointer pan pagers, R4), and the **forced-colors** adaptation (canvas reads +
+> repaints in system colors, R12) all moved **Partially → Supports**, each re-proven by a live
+> gate check (legend dash-distinctness, resize-text-rem, reflow-adaptive, contrast-marks,
+> single-pointer-pan, forced-colors-canvas). **The tables and per-criterion detail below reflect
+> the current, post-remediation source.** New baseline: **33 Supports / 2 Partially / 20 N/A**
+> (the 2 Partially — 1.4.3 and 2.4.11 — are inherently host/integrator-dependent).
 
 This is **document 1 of 4** in the Compliance Pack design:
 
@@ -125,8 +130,10 @@ identically to Sightline. So each evidence item is tagged with how it is verifie
 - **`automated`** — a machine check can prove/disprove it on **every commit**. This is one of:
   an axe rule, a DOM-structure assertion (attributes/roles/element presence), a **computed
   contrast ratio** (only when *both* foreground and background are known to the library), a
-  **functional probe** (focus the surface, press a key, assert the live region changed), or a
-  source/CSS assertion (e.g. "no `setLineDash` per series", "a `forced-colors` rule exists").
+  **functional probe** (focus the surface, press a key, assert the live region changed; narrow the
+  chart and assert the tick density thins; toggle forced-colors and assert the canvas repaints), or
+  a source/CSS assertion (e.g. "the legend swatches are distinct beyond color", "a `forced-colors`
+  rule exists").
 - **`hybrid`** — partly automatable, partly attested. The structural part is CI-checkable; the
   effective outcome depends on something CI cannot see (the host background, inherited
   line-height, whether an AT actually speaks the announcement).
@@ -149,20 +156,19 @@ Across the **55** WCAG 2.2 Level A + AA success criteria, scoped to the chart co
 
 | Conformance | Count | Criteria |
 |---|---|---|
-| **Supports** | 28 | 1.1.1, 1.3.1, 1.3.2, 1.3.3, 1.3.4, 1.4.5, 1.4.12, 1.4.13, 2.1.1, 2.1.2, 2.1.4, 2.2.1, 2.2.2, 2.3.1, 2.4.3, 2.4.6, 2.4.7, 2.5.1, 2.5.2, 2.5.3, 2.5.8, 3.1.2, 3.2.1, 3.2.2, 3.2.4, 3.3.2, 4.1.2, 4.1.3 |
-| **Partially Supports** | 7 | 1.4.1, 1.4.3, 1.4.4, 1.4.10, 1.4.11, 2.4.11, 2.5.7 |
+| **Supports** | 33 | 1.1.1, 1.3.1, 1.3.2, 1.3.3, 1.3.4, 1.4.1, 1.4.4, 1.4.5, 1.4.10, 1.4.11, 1.4.12, 1.4.13, 2.1.1, 2.1.2, 2.1.4, 2.2.1, 2.2.2, 2.3.1, 2.4.3, 2.4.6, 2.4.7, 2.5.1, 2.5.2, 2.5.3, 2.5.7, 2.5.8, 3.1.2, 3.2.1, 3.2.2, 3.2.4, 3.3.2, 4.1.2, 4.1.3 |
+| **Partially Supports** | 2 | 1.4.3, 2.4.11 |
 | **Not Applicable** | 20 | 1.2.1–1.2.5, 1.3.5, 1.4.2, 2.4.1, 2.4.2, 2.4.4, 2.4.5, 2.5.4, 3.1.1, 3.2.3, 3.2.6, 3.3.1, 3.3.3, 3.3.4, 3.3.7, 3.3.8 |
 
 Plus two **user-preference adaptations** (beyond strict A/AA, reported as good practice):
-**reduced-motion = Supports**, **forced-colors = Partially Supports** (the canvas bitmap cannot
-participate in forced-colors; the DOM overlay and data alternatives do — see §10).
+**reduced-motion = Supports** and **forced-colors = Supports** (R12: the renderer now reads the
+system palette and repaints the canvas marks, grid, and crosshair in system colors under
+`forced-colors:active`; the DOM overlay and data alternatives also adapt — see §10).
 
-**The 8 library-closable gaps are now fixed** (§11). The remaining 7 Partially Supports are
-either inherently integrator-dependent (host background, author series colors, host page layout)
-or need larger renderer work deferred from the cheap-fix batch (per-series dash/marker, a
-default palette, adaptive tick thinning, a single-pointer pan affordance — backlog R4–R7, R12).
-They are reported as remarks + attestation lines. No applicable criterion is rated
-"Does Not Support".
+**All library-closable gaps are now fixed** (§11, waves 1 and 2). The remaining 2 Partially
+Supports are inherently integrator-dependent: **1.4.3** (the host background behind the tick/legend
+text is the host page's) and **2.4.11** (host sticky/overlay UI could obscure focus). Both are
+reported as remarks + attestation lines. No applicable criterion is rated "Does Not Support".
 
 ---
 
@@ -180,12 +186,12 @@ Detailed rationale + `file:line` evidence per criterion follows in §7–§8.
 | 1.3.2 | A | Meaningful Sequence | Supports | A | DOM appended in reading order; no CSS reorder; table reads x-then-series in ascending order. |
 | 1.3.3 | A | Sensory Characteristics | Supports | H | Instructions name keys (not shape/position); series identified by name, not color/location. |
 | 1.3.4 | AA | Orientation | Supports | A | No orientation lock; fluid 100% layout re-measured by `ResizeObserver`. |
-| 1.4.1 | A | Use of Color | **Partially** | A | Legend/table/readout give color-free identity, **but on the canvas series are distinguished by color only** (no dash/marker). |
-| 1.4.3 | AA | Contrast (Minimum) | **Partially** | H | Library-default DOM text passes on a light background and the legend "hidden" state no longer dims text (R8); **canvas series colors (author-supplied) and the effective host background remain integrator-controlled**. |
-| 1.4.4 | AA | Resize Text | **Partially** | H | Container is fluid (page-zoom works); **label fonts are fixed px**, so text-only zoom does not enlarge them. |
+| 1.4.1 | A | Use of Color | Supports | A | Each series gets a distinct **dash pattern** (R5), mirrored in the legend swatch, so color is never the sole channel; legend/table/readout already give color-free identity. |
+| 1.4.3 | AA | Contrast (Minimum) | **Partially** | H | Library-default DOM text passes on a light background and the legend "hidden" state no longer dims text (R8); **the effective host background behind the tick/legend text remains integrator-controlled** (the readout sets its own background). |
+| 1.4.4 | AA | Resize Text | Supports | A | Label fonts are in **rem** (R7), so text-only zoom enlarges them; the fluid container re-measures so the chart follows. |
 | 1.4.5 | AA | Images of Text | Supports | A | All readable text is real DOM text; the canvas renders **no** `fillText`/`strokeText`. |
-| 1.4.10 | AA | Reflow | **Partially** | H | Fluid canvas + reflowing legend; 2-D chart geometry is exempt; **fixed-px tick labels can overlap at narrow widths**. |
-| 1.4.11 | AA | Non-text Contrast | **Partially** | H | Focus ring is 5.17:1 on white; **default grid/axis/cursor are below 3:1 and series-mark contrast is author-determined**. |
+| 1.4.10 | AA | Reflow | Supports | H | Fluid canvas + reflowing legend; 2-D chart geometry is exempt; **adaptive tick density** (R7) thins labels as the plot narrows so they don't overlap. |
+| 1.4.11 | AA | Non-text Contrast | Supports | H | Focus ring 5.17:1; data marks use a **default palette verified ≥3:1 on light and dark** (R6); gridlines are decorative. Integrator color overrides become their attestation. |
 | 1.4.12 | AA | Text Spacing | Supports | A | No fixed line-height/letter/word-spacing on text; no `overflow:hidden` clip on visible text. |
 | 1.4.13 | AA | Content on Hover or Focus | Supports | A | Readout is Hoverable + Persistent, and now Dismissible — Escape clears it without moving focus (R3). |
 
@@ -206,7 +212,7 @@ Detailed rationale + `file:line` evidence per criterion follows in §7–§8.
 | 2.5.1 | A | Pointer Gestures | Supports | M | Drag-pan is single-pointer, not path-based; zoom is wheel; no multipoint gesture. |
 | 2.5.2 | A | Pointer Cancellation | Supports | A | No action on down-event; pan is reversible before release; legend activates on up-event. |
 | 2.5.3 | A | Label in Name | Supports | A | Legend button's accessible name contains its visible label text. |
-| 2.5.7 | AA | Dragging Movements | **Partially** | H | **Drag-pan has no single-pointer non-dragging alternative** (keyboard does not satisfy 2.5.7; wheel zooms, it does not pan). |
+| 2.5.7 | AA | Dragging Movements | Supports | A | **Pan pagers** (R4): single-pointer ‹/› buttons step the window earlier/later — the non-dragging alternative to drag-pan; shown when zoomed in. |
 | 2.5.8 | AA | Target Size (Minimum) | Supports | A | Surface is large; legend buttons now carry `min-height:24px;min-width:24px;line-height:1.1` (R9), guaranteeing 24×24 regardless of host fonts. |
 
 ### Understandable
@@ -231,7 +237,7 @@ Detailed rationale + `file:line` evidence per criterion follows in §7–§8.
 | Feature | Name | Claim | V | One-line basis |
 |---|---|---|---|---|
 | reduced-motion | `prefers-reduced-motion` | Supports | A | The only transition (readout fade) is disabled; `reducedMotion` flag auto-detected and plumbed; no looping motion exists. |
-| forced-colors | Windows High Contrast Mode | **Partially** | H | DOM overlay + focus ring adapt; **canvas marks cannot be remapped to system colors** and series are color-only. |
+| forced-colors | Windows High Contrast Mode | Supports | A | DOM overlay + focus ring adapt, and the renderer now **reads the system palette and repaints the canvas** (marks, grid, crosshair) in system colors under `forced-colors:active` (R12). |
 
 ---
 
@@ -302,25 +308,24 @@ canvas is `inset:0` 100%/100% (`:14`), and a `ResizeObserver` re-measures and re
 container resize (`src/sightline.ts:217-218,346-357`). No `@media (orientation)`,
 `transform:rotate`, or `screen.orientation` lock exists. *(automated)*
 
-### 1.4.1 Use of Color (A) — Partially Supports
+### 1.4.1 Use of Color (A) — Supports
 
-Non-color channels carry series identity: the legend pairs an `aria-hidden` swatch with visible
-**name** text + a "shown"/"hidden" word (`src/a11y/legend.ts:40-52,69-75`), the data table labels
-each value column by series name (`src/a11y/table-alt.ts:75-82`), and the readout/announcements
-name the series. *(automated)*
+Color is never the sole differentiator. **R5** auto-assigns a distinct dash pattern per series
+when the integrator gives none (`src/core/model.ts:82-100`; index 0 stays solid, then a cycle of
+8 distinct patterns), and the canvas envelope strokes with that pattern
+(`src/renderers/canvas2d.ts:186-193`). The legend swatch mirrors it — a dashed `<line>`, or a
+`<rect>` for area series (`src/a11y/legend.ts:67-92`) — so two series are told apart by dash/shape
+in grayscale, not only by hue. Non-color identity is also carried by the legend name + shown/hidden
+word, the data table's per-series column labels, and the readout/announcements. *(automated)*
 
-**Gap (library, automated → perceptual):** on the canvas, the envelope stroke uses only
-`s.color` with no `setLineDash` and no per-series marker (`src/renderers/canvas2d.ts:143-147`;
-the only dashed stroke is the *shared* cursor crosshair). Two overlapping/close series cannot be
-told apart by a color-blind user looking only at the canvas. The text channels are *alternatives
-to* the canvas, not color-independent differentiation of the marks themselves. → **Remediation
-R5 (§11)**. Whether two on-canvas lines are distinguishable is a perceptual judgment.
-*(manual-attestation)*
+The `legend-semantics` gate check asserts the swatches are mutually distinct beyond color
+(`new Set(tag|dash).size === count`), so a regression that collapsed the dash channel would fail
+the gate. *(automated)*
 
-**Author responsibility:** choose series colors differing in more than hue (vary lightness);
-label close series directly.
+**Author responsibility:** if you pass explicit `dash` patterns (opting out of the auto-cycle),
+keep them distinct across series; or vary series color in more than hue.
 
-### 1.4.3 Contrast (Minimum) (AA) — Partially Supports
+### 1.4.3 Contrast (Minimum) (AA) — Partially Supports (host-dependent)
 
 Library-controlled DOM text passes AA **on a light background** (computed vs `#ffffff`):
 
@@ -332,12 +337,11 @@ Library-controlled DOM text passes AA **on a light background** (computed vs `#f
   (`:28-32`); *(automated)*
 - `prefers-contrast:more` darkens ticks to `#1f2937` = **14.68:1** (`:50-54`). *(automated)*
 
-**Gaps (remaining, integrator-dependent):** (1) canvas series strokes use `config.color` with
-**no default palette** (`src/core/model.ts:55-65`), so data-mark contrast vs the chart background
-is the integrator's choice and not machine-verifiable *(manual-attestation)*; (2) the DOM text
-sits on a transparent surface, so its real contrast depends on the **host background** the
-integrator places behind the chart *(hybrid — the px color is checkable, the effective background
-is not)*. → remaining backlog **R6**.
+**Gap (remaining, inherently integrator-dependent):** the DOM tick/legend text sits on a
+transparent surface, so its real contrast depends on the **host background** the integrator places
+behind the chart *(hybrid — the px color is checkable, the effective background is not)*. (Data-mark
+contrast is 1.4.11, not 1.4.3, and is now covered by the default palette — see 1.4.11.) This is the
+one library text-contrast item that no machine can close, so 1.4.3 stays Partially.
 
 **Closed by R8:** the legend "hidden" state no longer reduces text opacity (it previously dropped
 `--sl-ink` to ~2.35:1). The off state is now conveyed by `aria-pressed` + a strikethrough name +
@@ -347,14 +351,15 @@ a dimmed (decorative, `aria-hidden`) swatch, keeping the label text at full cont
 **Author responsibility:** pick series colors ≥3:1 against the chart background; keep the host
 background above 4.5:1 for the DOM text (or override `--sl-tick-color`/`--sl-ink`).
 
-### 1.4.4 Resize Text (AA) — Partially Supports
+### 1.4.4 Resize Text (AA) — Supports
 
 The container is fluid and re-measures on zoom (`src/a11y/styles.ts:9-14`,
-`src/sightline.ts:217-218,346-357`), and all label text is real DOM text. Full-page browser zoom
-(the path WCAG accepts) works. **Gap (library, hybrid):** tick (11px), axis-title (10px), legend
-(12.5px), readout (12px) font sizes are absolute px (`src/a11y/styles.ts:16,20,42,31`), so a
-user's *text-only* zoom does not enlarge them; whether 200% page-zoom causes any clip/overlap in
-a given layout needs human verification. → **Remediation R7 (§11)**.
+`src/sightline.ts:407-418`), and all label text is real DOM text. **R7** expresses every label
+font in **rem** — tick `.6875rem`, axis-title `.625rem`, legend `.78rem`, legend-state `.625rem`,
+readout `.75rem` (`src/a11y/styles.ts:16,20,43,53,31`) — so a user's *text-only* zoom (raising the
+root font size) enlarges them, and the fluid container reflows to follow. Full-page browser zoom
+also works. The `resize-text-rem` gate check raises the root font to 2× and confirms the tick font
+scales with it (11px → 22px). *(automated)*
 
 ### 1.4.5 Images of Text (AA) — Supports
 
@@ -365,32 +370,34 @@ search confirms **zero** `fillText`/`strokeText`/`measureText`/`ctx.font`
 (`src/renderers/canvas2d.ts:59-220`). *(automated)* (The optional HTML-in-Canvas compositor is a
 guarded visual no-op; the real DOM text remains the source of truth.)
 
-### 1.4.10 Reflow (AA) — Partially Supports
+### 1.4.10 Reflow (AA) — Supports
 
 The component is fluid with no library-imposed `min-width`; the legend reflows
 (`.sl-legend ul{flex-wrap:wrap}`, `src/a11y/styles.ts:38`); 2-D chart geometry is covered by the
-criterion's "content requiring two-dimensional layout" exception. **Gap (library, hybrid):**
-`.sl-tick` is fixed `font-size:11px;white-space:nowrap` (`:16`), so dense tick labels can overlap
-rather than reflow at ~320 CSS px / high zoom. → **Remediation R7 (§11)**. *(Note: the hidden
-data table is a screen-reader alternative — clipped to 1px — and does not count as a visual reflow
-surface for a sighted low-vision user; the reflow argument rests on the fluid canvas + reflowing
-legend + the 2-D exemption.)*
+criterion's "content requiring two-dimensional layout" exception. **R7** closed the tick-overlap
+gap: `effectiveTickCount` (`src/core/ticks.ts:48-53`, wired in at `src/sightline.ts:473-474`) thins
+tick density as the plot narrows (≥1 label per 64 px on x, 28 px on y), so labels do not collide at
+~320 CSS px or high zoom. The `reflow-adaptive` gate check narrows the chart and confirms the
+x-tick count drops (8 → 3). *(hybrid — the library's part is automated; whether the integrator's
+surrounding container scrolls in 2-D is theirs.)* *(Note: the hidden data table is a screen-reader
+alternative clipped to 1px and does not count as a visual reflow surface.)*
 
-### 1.4.11 Non-text Contrast (AA) — Partially Supports
+### 1.4.11 Non-text Contrast (AA) — Supports
 
-The library's keyboard focus indicator meets the 3:1 threshold: `--sl-focus #2563eb` = **5.17:1
-on white** (`src/a11y/styles.ts:25`), with a real `outline` added under `prefers-contrast:more`
-(`:53`) and a system-color `Highlight` outline under `forced-colors:active` (`:58`). *(automated,
-scoped to a light background — #2563eb is ~2.0:1 on a dark host; the forced-colors/contrast
-outlines are the only background-independent indicators and fire only on user request.)*
+The essential graphical objects — the data marks — clear 3:1. **R6** added an 8-color
+`DEFAULT_PALETTE` (`src/core/model.ts:60-76`), each hue verified **≥3:1 against both a light
+(#ffffff) and a dark (#0c1016 / #1f2937) chart background** (`test/palette.test.ts`), assigned by
+series index when the integrator gives no color. The `contrast-marks` gate check reads each legend
+swatch's color (the DOM-observable proxy for the canvas mark) and confirms ≥3:1 vs the documented
+background. The keyboard focus indicator also meets it: `--sl-focus #2563eb` = **5.17:1 on white**
+(`src/a11y/styles.ts:25`), with a real `outline` under `prefers-contrast:more` and a system-color
+`Highlight` outline under `forced-colors:active`. *(hybrid)*
 
-**Gaps:** the graphical objects that convey data are below 3:1 by default — grid
-`rgba(128,128,128,0.13)` = **1.16:1**, axis/border `0.30` = **1.41:1**, cursor crosshair `0.55`
-= **1.96:1** on white (`src/renderers/canvas2d.ts:29-32,117`) *(hybrid)*; and the primary data
-marks use author-supplied colors with no default palette, so their ≥3:1 contrast is the
-integrator's choice (`src/core/model.ts:55-65`) *(manual-attestation)*. `highContrast` thickens
-strokes +0.75px and promotes the grid to the axis color (`canvas2d.ts:101,144`) but **does not
-reach 3:1**. → **Remediation R6 (§11)**.
+Gridlines, the axis line, and the cursor crosshair are **decorative reference lines**, not the
+graphical objects required to understand the data, so they fall under the 1.4.11 exception and are
+intentionally low-contrast; under `forced-colors:active` they are repainted in system colors anyway
+(R12). **Author responsibility:** if you override the palette with a low-contrast color, that ≥3:1
+becomes your attestation — which is why the row is hybrid rather than fully automated.
 
 ### 1.4.12 Text Spacing (AA) — Supports
 
@@ -527,14 +534,16 @@ is computed from the same visible series-name text node it displays (the swatch 
 verifiable by axe's `label-in-name` rule. *(automated)* The surface (`role="application"`) renders
 no visible text label, so it has nothing to assess. *(manual-attestation)*
 
-### 2.5.7 Dragging Movements (AA) — Partially Supports
+### 2.5.7 Dragging Movements (AA) — Supports
 
-Legend toggles are single taps and wheel-zoom is non-dragging. **Gap (library, hybrid):** the
-chart's one dragging operation — **drag-to-pan** (`src/sightline.ts:554-560`) — has **no
-single-pointer, non-dragging alternative**. 2.5.7 specifically requires a single-*pointer*
-alternative; the keyboard `panToInclude` path (`:526-534`) satisfies 2.1.1, not 2.5.7, and
-wheel-zoom changes magnification, not lateral position. Dragging is not "essential" here (panning
-is expressible as taps/clicks). → **Remediation R4 (§11)**.
+Legend toggles are single taps and wheel-zoom is non-dragging. **R4** closed the drag-pan gap: the
+chart renders **pan pagers** — two real ‹/› `<button>`s (`src/a11y/pagers.ts:1-44`) that step the
+visible window ~one page earlier/later on a single-pointer click via `panPage()`
+(`src/sightline.ts:724-742`), the single-*pointer*, non-dragging alternative 2.5.7 requires. They
+appear once the view is zoomed in (panning has an effect) and, being buttons, are keyboard- and
+AT-operable too. The `single-pointer-pan` gate check zooms in, then confirms the pagers are present
+and that a click shifts the visible domain. *(automated)* (Drag-pan still exists as a convenience;
+the keyboard path additionally satisfies 2.1.1.)
 
 ### 2.5.8 Target Size (Minimum) (AA) — Supports
 
@@ -660,59 +669,63 @@ because no animation exists to gate; the flag is plumbed for future animated tra
 should confirm rapid drag-pan/wheel-zoom view changes feel acceptable to a motion-sensitive user —
 manual-attestation.)*
 
-### forced-colors (Windows High Contrast Mode) — Partially Supports
+### forced-colors (Windows High Contrast Mode) — Supports
 
 The DOM overlay adapts and the focus indicator is preserved: `@media (forced-colors:active)` gives
 the surface an `outline:2px solid Highlight` (forced-colors ignores box-shadow)
 (`src/a11y/styles.ts:55-59`); DOM tick text + native legend buttons are remapped to system colors
 automatically (`:16,50-54`). *(automated)*
 
-**Gap (inherent + library, manual-attestation):** a `<canvas>` bitmap **does not participate in
-CSS forced-colors** — the series lines, grid, envelopes, and cursor crosshair are *not* remapped to
-system colors and stay author-supplied (`src/renderers/canvas2d.ts:24-34,101,143-144`). Because
-series are distinguished by color only, a forced-colors user can find the visual chart
-unreadable. **Mitigation:** the full data is available non-visually regardless — the hidden data
-table, the text-labeled legend, the live region, and the natural-language + JSON summaries all live
-in adapting DOM (`src/a11y/table-alt.ts:75-110`, `legend.ts:69-76`, `live-region.ts:11-22`,
-`summary.ts:88-105`). This is why it is Partially Supports, not Does Not Support.
-→ **Remediation R12 (§11)**.
+**R12 made the canvas participate too.** A `<canvas>` bitmap does not inherit CSS forced-colors, so
+the renderer now does it explicitly: when `forced-colors:active`, `readForcedColors` probes the
+system palette (CanvasText / Canvas / GrayText / Highlight) via a styled probe element
+(`src/renderers/canvas2d.ts:37-54`) and the render path repaints the grid, axes, series, and cursor
+crosshair in those system colors instead of author colors (`:99-101,143,159,186,247`). A media
+listener tracks live toggles and re-renders (`src/sightline.ts:261-270`). The data also remains
+available non-visually (data table, legend, live region, JSON summary). The `forced-colors-canvas`
+gate check toggles forced-colors on and confirms the canvas bitmap actually changes (it repaints in
+system colors). *(automated)*
 
 ---
 
 ## 11. Remediation backlog
 
-The original backlog split into **library-closable** (small changes to the MIT renderer that raise
-the conformance level and are CI-checkable) and **deferred / inherently integrator-dependent**
-(reported as remarks + attestation). The 7 cheap library-closable items are **done** (commit
-`7bf4fcd`, verified end-to-end); R4 and R6 were deferred as larger renderer work.
+The backlog split into **library-closable** (changes to the MIT renderer that raise the conformance
+level and are CI-checkable) and **inherently integrator-dependent** (reported as remarks +
+attestation). **All library-closable items are now done** across two waves — wave 1 (R1–R3,
+R8–R11, the cheap fixes, commit `7bf4fcd`) and wave 2 (R4–R7, R12, the accessibility backlog) —
+each verified end-to-end (axe stays 0, thesis holds, all unit tests pass, and the live gate gained
+a check that re-proves each upgrade).
 
-### Library-closable — done (✅) and deferred
+### Library-closable — all done (✅)
 
 | ID | Closes | Status | Fix |
 |---|---|---|---|
 | **R1** | 1.3.1, 2.4.6 | ✅ done | `TableUpdate.xLabel` threaded from `scheduleTableUpdate()` into `buildHead`, so the x-column header uses the configured label (falls back to `"x"`). |
 | **R2** | 2.1.1 | ✅ done | Keyboard zoom: `zoomFactor()` (`+`/`=`/`-`/`_`) + `zoomAroundCursor()` mirror wheel-zoom centered on the cursor; help text + unit tests added. |
 | **R3** | 1.4.13 | ✅ done | Escape branch in `onKeyDown` → `dismissCursor()` clears readout + crosshair without blurring. |
+| **R4** | 2.5.7 | ✅ done | Pan pagers: single-pointer ‹/› `<button>`s (`a11y/pagers.ts`) step the window via `panPage()`; shown when zoomed. Gate check: `single-pointer-pan`. |
+| **R5** | 1.4.1 | ✅ done | Auto per-series dash (`AUTO_DASH` in `core/model.ts`), drawn on the canvas + mirrored in the legend swatch, so color is not the only channel. Gate check: `legend-semantics` (swatch distinctness). |
+| **R6** | 1.4.11 | ✅ done | 8-color `DEFAULT_PALETTE`, each ≥3:1 on light AND dark (`palette.test.ts`), assigned by index. Gate check: `contrast-marks`. |
+| **R7** | 1.4.4, 1.4.10 | ✅ done | px→rem label fonts (text-only zoom scales) + `effectiveTickCount` adaptive tick density (no overlap when narrow). Gate checks: `resize-text-rem`, `reflow-adaptive`. |
 | **R8** | 1.4.3 | ✅ done | Legend "hidden" state no longer reduces text opacity; uses `aria-pressed` + strikethrough + dimmed (decorative) swatch. |
 | **R9** | 2.5.8 | ✅ done | `min-height:24px;min-width:24px;line-height:1.1` on `.sl-legend button`. |
 | **R10** | 3.1.2 | ✅ done | `strings` option (`SightlineStrings` token-templates) localizes every fixed UI string. |
 | **R11** | 4.1.2 | ✅ done | Focused sample exposed as a queryable value via a lockstep `aria-describedby` target; legend state span `aria-hidden`. |
-| **R4** | 2.5.7 | ⏸ deferred | Single-pointer non-dragging pan affordance (overlay prev/next buttons or click-margin-to-page) — a UI feature, not a one-liner. |
-| **R6** | 1.4.3, 1.4.11 | ⏸ deferred | Contrast-checked default series palette + higher default `--sl-grid`/`--sl-axis` alpha — a design decision (the library ships no palette today). |
+| **R12** | forced-colors | ✅ done | Renderer probes the system palette and repaints the canvas (marks/grid/crosshair) under `forced-colors:active`; media listener tracks live toggles. Gate check: `forced-colors-canvas`. |
 
-### Deferred / inherently integrator-dependent (remarks + attestation)
+### Inherently integrator-dependent (remarks + attestation, never automated passes)
 
-| ID | SC(s) | Why it stays a remark |
-|---|---|---|
-| **R5** | 1.4.1 | Per-series dash/marker channel would close color-only differentiation on the canvas — a feature add (design decision), not a one-line fix. |
-| **R7** | 1.4.4, 1.4.10 | Adaptive tick thinning/rotation at narrow widths; partially mitigated by px→rem fonts, but full reflow-at-200% needs design work. |
-| **R12** | forced-colors | Re-painting canvas marks from `getComputedStyle` system colors (or the R5 dash channel) is a meaningful renderer change; today the DOM data alternatives carry the user through. |
-| — | 1.4.3, 1.4.11, 2.4.11 | Host background, author-supplied series colors, and host-page sticky/overlay layout are outside the component boundary by definition — always remarks + attestation, never automated passes. |
+| SC(s) | Why it stays a remark |
+|---|---|
+| **1.4.3** | The effective host background behind the tick/legend text is the host page's — the px color is checkable, the rendered ratio on the host is not. |
+| **2.4.11** | Whether host-page sticky/overlay UI obscures the chart's focus is outside the component boundary. |
+| (1.4.11 override) | If the integrator replaces the default palette with a low-contrast color, that ≥3:1 is their attestation — the default palette itself is verified. |
 
-> **Outcome:** closing R1/R2/R3/R8/R9/R10/R11 moved 1.3.1, 1.4.13, 2.1.1, 2.4.6, 2.5.8, 3.1.2,
-> 4.1.2 from Partially Supports → **Supports** and closed 1.4.3's legend sub-gap — **21 → 28
-> Supports**. The 7 remaining Partially Supports depend on integrator choices (host background,
-> author colors, host layout) or the deferred renderer features R4–R7/R12.
+> **Outcome:** wave 1 (R1–R3, R8–R11) moved 1.3.1, 1.4.13, 2.1.1, 2.4.6, 2.5.8, 3.1.2, 4.1.2 →
+> **Supports** (21 → 28); wave 2 (R4–R7, R12) moved 1.4.1, 1.4.4, 1.4.10, 1.4.11, 2.5.7, and the
+> forced-colors adaptation → **Supports** (28 → 33). The 2 remaining Partially Supports (1.4.3,
+> 2.4.11) are inherently host/integrator-dependent.
 
 ---
 
