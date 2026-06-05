@@ -43,10 +43,7 @@ export class Legend {
       button.dataset.series = String(s.index);
       button.addEventListener('click', () => this.onToggle(s.index));
 
-      const swatch = this.doc.createElement('span');
-      swatch.className = 'sl-swatch';
-      swatch.setAttribute('aria-hidden', 'true');
-      swatch.style.background = s.color;
+      const swatch = this.swatch(s);
 
       const name = this.doc.createElement('span');
       name.className = 'sl-legend-name';
@@ -64,6 +61,37 @@ export class Legend {
       return button;
     });
     this.sync(series);
+  }
+
+  /**
+   * Inline-SVG swatch that mirrors the mark: a line with the series' dash pattern (or a filled
+   * rect for area). This makes the legend a colour-free mapping too — series differ by dash, not
+   * only hue (WCAG 1.4.1) — and exactly matches what the canvas draws.
+   */
+  private swatch(s: ResolvedSeries): SVGElement {
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = this.doc.createElementNS(NS, 'svg');
+    svg.setAttribute('class', 'sl-swatch');
+    svg.setAttribute('viewBox', '0 0 18 10');
+    svg.setAttribute('aria-hidden', 'true');
+    if (s.type === 'area') {
+      const rect = this.doc.createElementNS(NS, 'rect');
+      for (const [k, v] of [['x', '1'], ['y', '2'], ['width', '16'], ['height', '7'], ['rx', '1']]) {
+        rect.setAttribute(k, v);
+      }
+      rect.setAttribute('fill', s.color);
+      rect.setAttribute('fill-opacity', String(Math.max(0.35, s.fillAlpha)));
+      rect.setAttribute('stroke', s.color);
+      svg.append(rect);
+    } else {
+      const line = this.doc.createElementNS(NS, 'line');
+      for (const [k, v] of [['x1', '1'], ['y1', '5'], ['x2', '17'], ['y2', '5']]) line.setAttribute(k, v);
+      line.setAttribute('stroke', s.color);
+      line.setAttribute('stroke-width', '2');
+      if (s.dash.length) line.setAttribute('stroke-dasharray', s.dash.join(' '));
+      svg.append(line);
+    }
+    return svg;
   }
 
   /** Reflect current visibility into aria-pressed and the visible state label. */

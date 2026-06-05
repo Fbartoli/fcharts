@@ -146,8 +146,11 @@ export function createCanvas2DRenderer(canvas: HTMLCanvasElement): Renderer {
     ctx.strokeStyle = s.color;
     ctx.lineWidth = scene.highContrast ? s.width + 0.75 : s.width;
     ctx.lineJoin = 'round';
+    // Per-series dash so colour isn't the only channel (WCAG 1.4.1). [] = solid.
+    ctx.setLineDash(s.dash);
     ctx.globalAlpha = 0.95;
     ctx.stroke();
+    ctx.setLineDash([]);
     ctx.globalAlpha = 1;
   }
 

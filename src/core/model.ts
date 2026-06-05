@@ -23,6 +23,9 @@ export interface SeriesConfig {
   width?: number;
   /** Fill opacity for `area` series, 0..1. Default 0.15. */
   fillAlpha?: number;
+  /** Dash pattern for the stroke (canvas `setLineDash`). Omit to auto-assign a distinct pattern
+   *  per series so colour is not the only differentiator (WCAG 1.4.1). `[]` forces solid. */
+  dash?: number[];
 }
 
 /** Columnar dataset: one shared, non-decreasing x array and one y array per series. */
@@ -50,6 +53,8 @@ export interface ResolvedSeries {
   visible: boolean;
   width: number;
   fillAlpha: number;
+  /** Resolved dash pattern; `[]` = solid. */
+  dash: number[];
 }
 
 /**
@@ -70,8 +75,19 @@ export const DEFAULT_PALETTE = [
   '#65a30d', // lime
 ] as const;
 
+/**
+ * Distinct dash patterns auto-assigned by series index when no explicit dash is given and there
+ * is more than one series, so colour is never the only channel (WCAG 1.4.1). Index 0 stays solid.
+ */
+const AUTO_DASH: readonly (readonly number[])[] = [
+  [], [6, 4], [2, 3], [9, 4, 2, 4], [4, 4], [1, 3], [7, 3, 1, 3], [3, 7],
+];
+
 /** Apply defaults to user series configs. Pure; safe to call per update. */
 export function resolveSeries(configs: readonly SeriesConfig[]): ResolvedSeries[] {
+  // All-or-nothing: auto-assign dashes only when the integrator specified none (an explicit dash
+  // on any series opts out of the auto-cycle).
+  const auto = configs.length > 1 && !configs.some((c) => c.dash !== undefined);
   return configs.map((c, index) => ({
     index,
     name: c.name,
@@ -80,6 +96,7 @@ export function resolveSeries(configs: readonly SeriesConfig[]): ResolvedSeries[
     visible: c.visible ?? true,
     width: c.width ?? 1.25,
     fillAlpha: c.fillAlpha ?? 0.15,
+    dash: c.dash ?? (auto ? [...AUTO_DASH[index % AUTO_DASH.length]] : []),
   }));
 }
 

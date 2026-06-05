@@ -48,7 +48,7 @@ const CSS = `
    below the 4.5:1 contrast minimum (WCAG 1.4.3). */
 .sl-legend button[aria-pressed="false"] .sl-swatch{opacity:.35}
 .sl-legend button[aria-pressed="false"] .sl-legend-name{text-decoration:line-through}
-.sl-swatch{width:11px;height:11px;border-radius:3px;flex:none}
+.sl-swatch{width:18px;height:10px;flex:none;overflow:visible}
 .sl-legend-name{white-space:nowrap}
 .sl-legend-state{font-size:10px;font-weight:500}
 @media (prefers-reduced-motion:reduce){.sl-readout{transition:none}}
