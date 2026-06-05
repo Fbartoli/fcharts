@@ -10,18 +10,26 @@
   },
   "sideEffects": false,
   "files": [
-    "dist"
+    "dist",
+    "src/compliance"
   ],
   "main": "./dist/sightline.js",
   "module": "./dist/sightline.js",
   "types": "./dist/index.d.ts",
   "unpkg": "./dist/sightline.umd.cjs",
   "jsdelivr": "./dist/sightline.umd.cjs",
+  "bin": {
+    "sightline-audit": "./src/compliance/cli.ts"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/sightline.js",
       "require": "./dist/sightline.umd.cjs"
+    },
+    "./compliance": {
+      "types": "./src/compliance/index.ts",
+      "import": "./src/compliance/index.ts"
     }
   },
   "scripts": {
@@ -35,6 +43,16 @@
     "bench": "node bench/harness.ts",
     "a11y-audit": "node src/compliance/cli.ts --fixture ./a11y/fixture.ts --edition en301549 --out ./compliance-out",
     "size": "node scripts/size.mjs"
+  },
+  "peerDependencies": {
+    "axe-core": "^4.10.0",
+    "playwright": "^1.49.0",
+    "vite": "^6.0.0"
+  },
+  "peerDependenciesMeta": {
+    "axe-core": { "optional": true },
+    "playwright": { "optional": true },
+    "vite": { "optional": true }
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
