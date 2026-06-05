@@ -62,6 +62,8 @@ export interface SightlineOptions {
   reducedMotion?: boolean;
   /** Force high-contrast behavior (otherwise auto-detected). */
   highContrast?: boolean;
+  /** Force forced-colors (Windows High Contrast) behavior (otherwise auto-detected + live). */
+  forcedColors?: boolean;
   /** Localize the library's fixed UI strings (legend, keyboard help, summary, caption). */
   strings?: Partial<SightlineStrings>;
 }
@@ -153,6 +155,7 @@ export class Sightline {
       reducedMotion:
         config.options?.reducedMotion ?? prefers(this.doc, '(prefers-reduced-motion: reduce)'),
       highContrast: config.options?.highContrast ?? prefers(this.doc, '(prefers-contrast: more)'),
+      forcedColors: config.options?.forcedColors ?? prefers(this.doc, '(forced-colors: active)'),
       ariaLabel: config.options?.ariaLabel,
       xLabel: config.options?.xLabel,
       yLabel: config.options?.yLabel,
@@ -242,6 +245,17 @@ export class Sightline {
     this.scheduler = new RenderScheduler(() => this.frame());
 
     this.attachEvents();
+    // Live forced-colors (Windows High Contrast) tracking, unless the integrator pinned it.
+    if (config.options?.forcedColors === undefined) {
+      this.doc.defaultView?.matchMedia?.('(forced-colors: active)').addEventListener?.(
+        'change',
+        (e) => {
+          this.options.forcedColors = e.matches;
+          this.requestRender();
+        },
+        { signal: this.listeners.signal },
+      );
+    }
     this.resizeObserver = new ResizeObserver(() => this.measure());
     this.resizeObserver.observe(this.plot);
 
@@ -437,6 +451,7 @@ export class Sightline {
       cursor: this.cursorActive ? this.cursor : null,
       reducedMotion: this.options.reducedMotion,
       highContrast: this.options.highContrast,
+      forcedColors: this.options.forcedColors,
     };
     this.renderer.render(scene);
     if (this.path === 'html-in-canvas') this.compositeTicks();

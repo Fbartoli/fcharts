@@ -21,6 +21,38 @@ interface ThemeColors {
   ring: string;
 }
 
+/** System colors for Windows High Contrast / forced-colors mode (the bitmap can't auto-adapt). */
+interface SystemColors {
+  text: string;
+  grid: string;
+  accent: string;
+  bg: string;
+}
+
+/**
+ * Read forced-colors system colors via a connected probe, or null when forced-colors is inactive.
+ * A `<canvas>` bitmap does not participate in forced-colors, so we repaint the marks with these
+ * (all series in the system text color, distinguished by their dash patterns — see R5).
+ */
+function readForcedColors(canvas: HTMLCanvasElement): SystemColors | null {
+  const view = canvas.ownerDocument.defaultView;
+  if (!view?.matchMedia('(forced-colors: active)').matches) return null;
+  const probe = canvas.ownerDocument.createElement('span');
+  probe.style.cssText =
+    'position:absolute;width:0;height:0;color:CanvasText;' +
+    'background-color:Canvas;border-color:GrayText;outline-color:Highlight';
+  (canvas.parentElement ?? canvas.ownerDocument.body).append(probe);
+  const cs = getComputedStyle(probe);
+  const sys: SystemColors = {
+    text: cs.color,
+    grid: cs.borderColor,
+    bg: cs.backgroundColor,
+    accent: cs.outlineColor,
+  };
+  probe.remove();
+  return sys;
+}
+
 function readTheme(canvas: HTMLCanvasElement): ThemeColors {
   const cs = getComputedStyle(canvas);
   const v = (name: string, fallback: string): string =>
@@ -45,6 +77,9 @@ export function createCanvas2DRenderer(canvas: HTMLCanvasElement): Renderer {
   let cssH = 0;
   let dpr = 0;
   let theme = readTheme(canvas);
+  // System colors, read only when forced-colors toggles on (reading forces layout, so not per-frame).
+  let forced: SystemColors | null = null;
+  let forcedActive = false;
   const buf = { min: new Float32Array(0), max: new Float32Array(0) };
 
   function syncSize(scene: RenderScene): void {
@@ -61,6 +96,10 @@ export function createCanvas2DRenderer(canvas: HTMLCanvasElement): Renderer {
 
   function render(scene: RenderScene): void {
     syncSize(scene);
+    if (scene.forcedColors !== forcedActive || (scene.forcedColors && !forced)) {
+      forced = scene.forcedColors ? readForcedColors(canvas) : null;
+      forcedActive = scene.forcedColors;
+    }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, cssW, cssH);
 
@@ -101,7 +140,7 @@ export function createCanvas2DRenderer(canvas: HTMLCanvasElement): Renderer {
     const bottom = m.top + plotH;
 
     ctx.lineWidth = 1;
-    ctx.strokeStyle = scene.highContrast ? theme.axis : theme.grid;
+    ctx.strokeStyle = forced ? forced.grid : scene.highContrast ? theme.axis : theme.grid;
     ctx.beginPath();
     for (const value of scene.yTicks) {
       const py = Math.round(scene.yScale(value)) + 0.5;
@@ -117,7 +156,7 @@ export function createCanvas2DRenderer(canvas: HTMLCanvasElement): Renderer {
     }
     ctx.stroke();
 
-    ctx.strokeStyle = theme.axis;
+    ctx.strokeStyle = forced ? forced.text : theme.axis;
     ctx.strokeRect(left + 0.5, top + 0.5, plotW - 1, plotH - 1);
   }
 
@@ -143,7 +182,8 @@ export function createCanvas2DRenderer(canvas: HTMLCanvasElement): Renderer {
       }
       ctx.lineTo(x, pMin);
     }
-    ctx.strokeStyle = s.color;
+    // Under forced-colors every series uses the system text color; the dash distinguishes them.
+    ctx.strokeStyle = forced ? forced.text : s.color;
     ctx.lineWidth = scene.highContrast ? s.width + 0.75 : s.width;
     ctx.lineJoin = 'round';
     // Per-series dash so colour isn't the only channel (WCAG 1.4.1). [] = solid.
@@ -185,7 +225,7 @@ export function createCanvas2DRenderer(canvas: HTMLCanvasElement): Renderer {
     }
     ctx.lineTo(lastX, baseline);
     ctx.closePath();
-    ctx.fillStyle = s.color;
+    ctx.fillStyle = forced ? forced.text : s.color;
     ctx.globalAlpha = s.fillAlpha;
     ctx.fill();
     ctx.globalAlpha = 1;
@@ -204,7 +244,7 @@ export function createCanvas2DRenderer(canvas: HTMLCanvasElement): Renderer {
     if (px < left - 2 || px > right + 2) return;
 
     ctx.save();
-    ctx.strokeStyle = theme.cursor;
+    ctx.strokeStyle = forced ? forced.text : theme.cursor;
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 3]);
     ctx.beginPath();
@@ -217,10 +257,10 @@ export function createCanvas2DRenderer(canvas: HTMLCanvasElement): Renderer {
 
     ctx.beginPath();
     ctx.arc(px, py, 4.5, 0, Math.PI * 2);
-    ctx.fillStyle = s.color;
+    ctx.fillStyle = forced ? forced.accent : s.color;
     ctx.fill();
     ctx.lineWidth = 2;
-    ctx.strokeStyle = theme.ring;
+    ctx.strokeStyle = forced ? forced.bg : theme.ring;
     ctx.stroke();
     ctx.restore();
   }

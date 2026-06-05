@@ -31,6 +31,8 @@ export interface RenderScene {
   cursor: CursorState | null;
   reducedMotion: boolean;
   highContrast: boolean;
+  /** Windows High Contrast / forced-colors active — repaint marks in system colors. */
+  forcedColors: boolean;
 }
 
 export interface Renderer {
