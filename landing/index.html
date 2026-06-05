@@ -71,6 +71,15 @@
     .demo-head .pill{font-size:11px;color:var(--muted);border:1px solid var(--line-2);
       border-radius:999px;padding:3px 9px}
     .demo-head .pill b{color:var(--accent);font-weight:600}
+    .live-btn{margin-left:auto;display:inline-flex;align-items:center;gap:7px;cursor:pointer;
+      font:inherit;font-size:12.5px;font-weight:600;color:var(--ink);padding:6px 12px;border-radius:8px;
+      border:1px solid var(--btn-line);background:transparent}
+    .live-btn:hover{border-color:var(--btn-line-hover)}
+    .live-btn .live-dot{width:8px;height:8px;border-radius:50%;background:var(--faint);flex:none}
+    .live-btn[aria-pressed="true"]{color:var(--accent);border-color:var(--accent)}
+    .live-btn[aria-pressed="true"] .live-dot{background:var(--accent);animation:livepulse 1.1s ease-in-out infinite}
+    @keyframes livepulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(110,231,168,.5)}50%{opacity:.6;box-shadow:0 0 0 4px rgba(110,231,168,0)}}
+    @media(prefers-reduced-motion:reduce){.live-btn[aria-pressed="true"] .live-dot{animation:none}}
     .card{border:1px solid var(--line);border-radius:16px;background:var(--panel);overflow:hidden;
       box-shadow:0 24px 60px rgba(0,0,0,.45)}
     .chart-host{position:relative;height:440px}
@@ -205,6 +214,10 @@
           <span class="t">Live · NDX intraday</span>
           <span class="pill"><b id="tick-count">120,000</b> ticks rendered</span>
           <span class="pill">render: <b id="path-badge">DOM-overlay</b></span>
+          <button id="go-live" class="live-btn" type="button" aria-pressed="false"
+            title="Append live ticks through the streaming API">
+            <span class="live-dot" id="live-dot" aria-hidden="true"></span><span id="live-label">Go live</span>
+          </button>
         </div>
         <div class="card"><div class="chart-host"><div id="hero-chart"></div></div></div>
         <p class="demo-hint">Drag to pan · scroll to zoom · click the chart and use

@@ -69,6 +69,85 @@ function mount(): void {
       chart.renderPath === 'dom-overlay' ? 'DOM-overlay · no flags' : 'HTML-in-Canvas';
   }
   populateAgentPanel(el);
+  wireLiveStream(chart, el, x, price, vwap);
+}
+
+/**
+ * Demo of the streaming `append` API. "Go live" continues the price walk and the chart follows the
+ * live tail. Accessibility: user-initiated + pausable (WCAG 2.2.2), pauses when the tab is hidden,
+ * and — because this is auto-updating motion — a `prefers-reduced-motion` user gets a discrete
+ * "add a batch on click" affordance instead of a continuous animation. The agent panel is re-read
+ * from the chart's DOM (~1×/s) while live so it doesn't go stale.
+ */
+function wireLiveStream(
+  chart: FChart,
+  el: HTMLElement,
+  x: Float64Array,
+  price: Float64Array,
+  vwap: Float64Array,
+): void {
+  const btn = document.getElementById('go-live');
+  const label = document.getElementById('live-label');
+  const count = document.getElementById('tick-count');
+  if (!btn || !label) return;
+  const dt = SESSION_MS / TICKS;
+  const window_ = dt * 600; // show ~the last 600 ticks, so the motion is visible
+  let t = x[x.length - 1];
+  let p = price[price.length - 1];
+  let v = vwap[vwap.length - 1];
+  let n = TICKS;
+  let timer = 0;
+  let sinceRefresh = 0;
+  const reduced = (): boolean => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const step = (): void => {
+    t += dt;
+    p += (Math.random() - 0.5) * 0.06 + Math.sin(t / 7e6) * 0.0015; // bounded random walk + drift
+    v += (p - v) * 0.02; // a smooth running average (demo VWAP)
+    chart.append(t, [p, v]);
+    n += 1;
+    if (count) count.textContent = n.toLocaleString();
+  };
+
+  const stop = (): void => {
+    if (!timer) return;
+    clearInterval(timer);
+    timer = 0;
+    label.textContent = 'Go live';
+    btn.setAttribute('aria-pressed', 'false');
+    populateAgentPanel(el); // settle the panel to the final state
+  };
+  const start = (): void => {
+    chart.renderSync([t - window_, t]); // zoom to a trailing window before streaming
+    timer = window.setInterval(() => {
+      step();
+      if (++sinceRefresh >= 6) {
+        sinceRefresh = 0;
+        populateAgentPanel(el); // keep the "read live from the DOM" panel actually live (~1×/s)
+      }
+    }, 160);
+    label.textContent = 'Pause';
+    btn.setAttribute('aria-pressed', 'true');
+  };
+  // Reduced motion: no continuous animation — each click appends a batch in a single discrete update.
+  const batch = (): void => {
+    chart.renderSync([t - window_, t]);
+    for (let i = 0; i < 40; i++) step();
+    populateAgentPanel(el);
+    label.textContent = 'Add more';
+  };
+
+  btn.addEventListener('click', () => {
+    if (reduced()) {
+      batch();
+      return;
+    }
+    if (timer) stop();
+    else start();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stop(); // don't stream an offscreen tab
+  });
 }
 
 /**

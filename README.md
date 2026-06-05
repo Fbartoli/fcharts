@@ -22,17 +22,17 @@ independent of point count) plus a **real-DOM accessibility layer** overlaid on 
 ## Install
 
 ```sh
-npm install fcharts          # ESM, for bundlers (Vite, webpack, esbuild…)
+npm install fcharts-js       # ESM, for bundlers (Vite, webpack, esbuild…)
 ```
 
 ```html
 <!-- Zero build: drop in the UMD bundle (global namespace `fcharts`) -->
-<script src="https://unpkg.com/fcharts/dist/fcharts.umd.cjs"></script>
+<script src="https://unpkg.com/fcharts-js/dist/fcharts.umd.cjs"></script>
 <script>const { FChart } = window.fcharts;</script>
 ```
 
 Evaluating without publishing? Build a local, installable tarball: `pnpm pack:sdk` →
-`fcharts-0.1.0.tgz`, then `npm install ./fcharts-0.1.0.tgz`. Or open
+`fcharts-js-0.1.0.tgz`, then `npm install ./fcharts-js-0.1.0.tgz`. Or open
 [`examples/quickstart.html`](./examples/quickstart.html) directly (no server, no build).
 
 ## Quickstart
@@ -63,6 +63,28 @@ chart.setData({ x, y: [pressure, temperature, vibration] });
 The container just needs a size (e.g. `#chart { width: 100%; height: 420px }`). Styles are
 injected automatically — no CSS import required.
 
+## Real-time / streaming
+
+For live data, `append` adds one sample without rebuilding anything — amortized **O(1)** (only
+the tail of the min/max pyramid updates), so cost stays flat as the series grows to 100k+ points.
+
+```ts
+// x must be >= the current last x (non-decreasing); one y per series.
+setInterval(() => {
+  lastX += 1;
+  lastPrice += (Math.random() - 0.5) * 0.5;
+  chart.append(lastX, [lastPrice]);
+}, 100);
+```
+
+The y-domain auto-fits new highs/lows, and the view **follows the live tail** when it's already
+showing it — a zoomed window slides (keeping its width), a full-history view expands. If the user
+has panned back into history, the view stays put so they can keep reading the past.
+
+> **Accessibility:** the library never auto-updates on its own, so driving `append` on a timer
+> makes *auto-updating content* — give users a **Pause/Stop control** and respect
+> `prefers-reduced-motion` (WCAG 2.2.2). The landing-page hero demonstrates this.
+
 ## Interaction
 
 | Input | Action |
@@ -87,6 +109,7 @@ hidden data table is in the accessibility tree (and find-in-page-able in Chromiu
 new FChart(el: HTMLElement, config: FChartConfig)
 
 chart.setData({ x, y })          // replace data, reset the view
+chart.append(x, [y0, y1, …])      // append one sample, O(1) — real-time/streaming
 chart.update({ series, options }) // patch series/options in place
 chart.renderSync(domain?)         // synchronous render (programmatic zoom / capture)
 chart.summary()                   // structured ChartSummary (see "Agent-readable")
@@ -158,9 +181,9 @@ the *proof*, kept current automatically. (Both live in this repo; the Pack is a 
 `src/compliance/`, never bundled into the core chart.)
 
 - **A per-criterion WCAG 2.2 AA evidence map** for the chart layer, adversarially verified, with
-  `file:line` evidence: **28 Supports / 7 Partially Supports / 20 Not Applicable** across the 55
-  Level A + AA success criteria. The honest 7 partials are integrator-dependent (host background,
-  author series colors, host page layout). See [`compliance/scope-and-evidence-map.md`](./compliance/scope-and-evidence-map.md).
+  `file:line` evidence: **33 Supports / 2 Partially Supports / 20 Not Applicable** across the 55
+  Level A + AA success criteria. The honest 2 partials are inherently integrator-dependent (1.4.3
+  text on the host background, 2.4.11 focus not obscured by host UI). See [`compliance/scope-and-evidence-map.md`](./compliance/scope-and-evidence-map.md).
 - **An auto-generated VPAT/ACR** (Accessibility Conformance Report) — EN 301 549 (EU/EAA), WCAG,
   and Section 508 editions, as Markdown + HTML + JSON, from one dependency-free generator. Sample:
   [`compliance/samples/`](./compliance/samples/). Editions, the functional-performance derivation,

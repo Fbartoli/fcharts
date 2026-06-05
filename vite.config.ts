@@ -96,7 +96,7 @@ export default defineConfig(({ command }) => {
       minify: 'esbuild',
       lib: {
         entry: coreEntry,
-        name: 'FChart',
+        name: 'fcharts',
         fileName: 'fcharts',
         // ESM for bundlers; UMD so prospects can drop a <script> tag with zero build.
         formats: ['es', 'umd'],

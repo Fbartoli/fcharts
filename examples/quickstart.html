@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sightline — quickstart</title>
+  <title>fcharts — quickstart</title>
   <style>
     :root {
-      --sl-ink: #cfd8e3; --sl-tick-color: #8794a3; --sl-grid: rgba(110,231,168,.07);
-      --sl-axis: rgba(255,255,255,.14); --sl-cursor: rgba(255,255,255,.4); --sl-ring: #0b0f14;
-      --sl-focus: #6ee7a8; --sl-legend-border: rgba(255,255,255,.16);
-      --sl-readout-bg: #10151d; --sl-readout-ink: #e8eef4; --sl-readout-border: rgba(255,255,255,.16);
+      --fc-ink: #cfd8e3; --fc-tick-color: #8794a3; --fc-grid: rgba(110,231,168,.07);
+      --fc-axis: rgba(255,255,255,.14); --fc-cursor: rgba(255,255,255,.4); --fc-ring: #0b0f14;
+      --fc-focus: #6ee7a8; --fc-legend-border: rgba(255,255,255,.16);
+      --fc-readout-bg: #10151d; --fc-readout-ink: #e8eef4; --fc-readout-border: rgba(255,255,255,.16);
     }
     body { margin: 0; background: #0b0f14; color: #cfd8e3; font: 15px system-ui, sans-serif; padding: 24px; }
     h1 { font-size: 18px; margin: 0 0 4px; } h1 b { color: #6ee7a8; }
@@ -19,17 +19,17 @@
   </style>
 </head>
 <body>
-  <h1>SIGHT<b>LINE</b> — quickstart</h1>
+  <h1>f<b>charts</b> — quickstart</h1>
   <p>Drag to pan · scroll to zoom · click the chart then use arrow keys (values are announced).
     Open DevTools and run
-    <code>JSON.parse(document.querySelector('script[data-sightline]').textContent)</code>
+    <code>JSON.parse(document.querySelector('script[data-fcharts]').textContent)</code>
     to see the data an AI agent reads.</p>
   <div id="chart"></div>
 
-  <!-- Zero build: drop in the UMD bundle. (For bundlers: `import { Sightline } from 'sightline'`.) -->
-  <script src="../dist/sightline.umd.cjs"></script>
+  <!-- Zero build: drop in the UMD bundle. (For bundlers: `import { FChart } from 'fcharts-js'`.) -->
+  <script src="../dist/fcharts.umd.cjs"></script>
   <script>
-    const { Sightline } = window.Sightline; // UMD global is the namespace
+    const { FChart } = window.fcharts; // UMD global is the namespace
 
     const N = 50_000;
     const x = Float64Array.from({ length: N }, (_, i) => i);
@@ -43,7 +43,7 @@
       vwap[i] = b;
     }
 
-    const chart = new Sightline(document.getElementById('chart'), {
+    const chart = new FChart(document.getElementById('chart'), {
       series: [
         { name: 'Price', color: '#6ee7a8', type: 'area', fillAlpha: 0.12 },
         { name: 'VWAP', color: '#fbbf24' },
@@ -55,6 +55,9 @@
     // The machine-readable summary an agent / screen reader gets:
     console.log('render path:', chart.renderPath);
     console.log('summary:', chart.summary());
+
+    // Real-time? `chart.append(x, [y0, y1])` adds a sample in O(1) — see the README streaming section.
+    // (If you stream on a timer, give users a Pause control — WCAG 2.2.2.)
   </script>
 </body>
 </html>

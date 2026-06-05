@@ -349,9 +349,13 @@ export class FChart {
    * buckets update), never an O(n) rebuild. `x` must be >= the current last x; `ys` must have one
    * value per series.
    *
-   * The y-domain auto-fits the new data. The view follows the live tail when it was already
-   * showing it — a zoomed window slides (keeping its width), a full-history view expands — but if
-   * you've panned back into history it stays put so you can keep reading the past.
+   * When the view is following the live tail, the y-domain auto-fits the new data and the view
+   * tracks it — a zoomed window slides (keeping its width), a full-history view expands. If you've
+   * panned back into history it stays put — same view, same axis — so you can keep reading the past.
+   *
+   * Accessibility: `append` updates content on its own, so if you drive it on a timer you are
+   * creating auto-updating content — provide a Pause/Stop control (WCAG 2.2.2). The library never
+   * auto-updates by itself, so the cadence and its controls are yours.
    */
   append(xv: number, ys: readonly number[]): FChart {
     const prevN = this.data.n;
@@ -361,7 +365,8 @@ export class FChart {
     const atLeftEdge = this.domain[0] <= lo + 1e-9;
 
     this.data.push(xv, ys);
-    this.refreshDerived(); // recompute y-domain + summary/table/pagers from the updated stats
+    // Rescale the y-axis only when following the tail; a paused historical view keeps its axis.
+    this.refreshDerived(following);
 
     if (following) {
       if (atLeftEdge) {
@@ -369,10 +374,23 @@ export class FChart {
       } else {
         const w = this.domain[1] - this.domain[0]; // a zoomed window → slide, keep its width
         this.applyDomain([xv - w, xv]);
+        this.keepCursorInView();
       }
     }
     this.requestRender();
     return this;
+  }
+
+  /** After a follow-slide, if the keyboard cursor scrolled out of view, snap it back + announce. */
+  private keepCursorInView(): void {
+    if (!this.cursorActive || this.data.n === 0) return;
+    const cx = this.data.x[this.cursor.index];
+    if (cx < this.domain[0] || cx > this.domain[1]) {
+      const mid = (this.domain[0] + this.domain[1]) / 2;
+      this.cursor = { series: this.cursor.series, index: nearestIndex(this.data.x, mid) };
+      this.updateActiveSample();
+      this.queueAnnounce();
+    }
   }
 
   /**
@@ -436,12 +454,18 @@ export class FChart {
     return i < 0 ? 0 : i;
   }
 
-  /** Recompute the (fixed) y-domain and refresh the surface label, ticks, and table. */
-  private refreshDerived(): void {
-    const visible = this.series.map((s) => s.visible);
-    const [yMin, yMax] = this.data.yExtent(visible);
-    const pad = (yMax - yMin) * this.options.yPadding;
-    this.yDomain = [yMin - pad, yMax + pad];
+  /**
+   * Recompute the y-domain and refresh the surface label, ticks, and table.
+   * @param rescaleY - When false, keep the current y-domain (used by `append` when the user has
+   *   panned into history, so an out-of-view sample doesn't yank the axis they're reading).
+   */
+  private refreshDerived(rescaleY = true): void {
+    if (rescaleY) {
+      const visible = this.series.map((s) => s.visible);
+      const [yMin, yMax] = this.data.yExtent(visible);
+      const pad = (yMax - yMin) * this.options.yPadding;
+      this.yDomain = [yMin - pad, yMax + pad];
+    }
     this.surface.setAttribute('aria-label', this.describeChart());
     this.updateSummary();
     this.updateActiveSample();
