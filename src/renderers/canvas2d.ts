@@ -26,8 +26,11 @@ function readTheme(canvas: HTMLCanvasElement): ThemeColors {
   const v = (name: string, fallback: string): string =>
     cs.getPropertyValue(name).trim() || fallback;
   return {
-    grid: v('--sl-grid', 'rgba(128,128,128,0.13)'),
-    axis: v('--sl-axis', 'rgba(128,128,128,0.30)'),
+    // Grid/axis are decorative aids (not the "graphical object required to understand" that
+    // 1.4.11 governs — that's the series marks, see DEFAULT_PALETTE). Raised from 0.13/0.30 for
+    // legible defaults; a translucent gray line can't reach 3:1 on white and isn't required to.
+    grid: v('--sl-grid', 'rgba(128,128,128,0.20)'),
+    axis: v('--sl-axis', 'rgba(128,128,128,0.40)'),
     cursor: v('--sl-cursor', 'rgba(128,128,128,0.55)'),
     ring: v('--sl-ring', 'rgba(255,255,255,0.85)'),
   };

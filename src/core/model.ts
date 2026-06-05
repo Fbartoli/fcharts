@@ -12,8 +12,9 @@ export type NumberArray = Float64Array | readonly number[];
 export interface SeriesConfig {
   /** Human-readable name (announced to screen readers, shown in legend/tooltip). */
   name: string;
-  /** CSS color for the line/area. */
-  color: string;
+  /** CSS color for the line/area. Optional — falls back to the contrast-checked
+   *  {@link DEFAULT_PALETTE} by series index. */
+  color?: string;
   /** `line` (stroked envelope) or `area` (filled to baseline). Default `line`. */
   type?: 'line' | 'area';
   /** Whether the series starts visible. Default true. */
@@ -51,12 +52,30 @@ export interface ResolvedSeries {
   fillAlpha: number;
 }
 
+/**
+ * Default series palette — 8 hues each verified at >= 3:1 non-text contrast (WCAG 1.4.11)
+ * against BOTH a white (#ffffff) and a dark (#0c1016 / #1f2937) chart background, so the marks
+ * are distinguishable on either theme without the integrator choosing colors. Assigned by
+ * series index when `SeriesConfig.color` is omitted. (Color alone is never the sole channel —
+ * see the per-series dash/marker option.)
+ */
+export const DEFAULT_PALETTE = [
+  '#0284c7', // blue
+  '#ea580c', // orange
+  '#16a34a', // green
+  '#dc2626', // red
+  '#c026d3', // magenta
+  '#0d9488', // teal
+  '#db2777', // pink
+  '#65a30d', // lime
+] as const;
+
 /** Apply defaults to user series configs. Pure; safe to call per update. */
 export function resolveSeries(configs: readonly SeriesConfig[]): ResolvedSeries[] {
   return configs.map((c, index) => ({
     index,
     name: c.name,
-    color: c.color,
+    color: c.color || DEFAULT_PALETTE[index % DEFAULT_PALETTE.length],
     type: c.type ?? 'line',
     visible: c.visible ?? true,
     width: c.width ?? 1.25,
