@@ -30,12 +30,16 @@
     "./compliance": {
       "types": "./src/compliance/index.ts",
       "import": "./src/compliance/index.ts"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js"
     }
   },
   "scripts": {
     "dev": "vite",
     "landing": "SIGHTLINE_ROOT=landing vite",
-    "build": "vite build && tsc -p tsconfig.build.json && node scripts/fix-dts.mjs",
+    "build": "vite build && SIGHTLINE_ENTRY=react vite build && tsc -p tsconfig.build.json && node scripts/fix-dts.mjs",
     "pack:sdk": "pnpm build && pnpm pack",
     "preview": "vite preview",
     "test": "node --test test/*.test.ts",
@@ -47,15 +51,26 @@
   "peerDependencies": {
     "axe-core": "^4.10.0",
     "playwright": "^1.49.0",
+    "react": ">=18",
     "vite": "^6.0.0"
   },
   "peerDependenciesMeta": {
-    "axe-core": { "optional": true },
-    "playwright": { "optional": true },
-    "vite": { "optional": true }
+    "axe-core": {
+      "optional": true
+    },
+    "playwright": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "@types/react": "^19.2.16",
     "axe-core": "^4.10.2",
     "playwright": "^1.49.1",
     "typescript": "^5.7.2",
