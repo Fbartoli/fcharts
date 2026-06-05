@@ -29,8 +29,11 @@
       border: 1px solid var(--accent); background: rgba(110,231,168,.14); color: var(--accent); }
     button#run[disabled] { opacity: .5; cursor: wait; }
     .controls .hint { color: var(--muted); font-size: 12.5px; }
-    .charts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-    @media (max-width: 1000px) { .charts { grid-template-columns: 1fr; } }
+    /* Four equal columns; wrap to 2×2 then 1-up on narrower viewports. Every cell stays the
+       same width as its row-mates, so no renderer is handed a different size. */
+    .charts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    @media (max-width: 1280px) { .charts { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 720px) { .charts { grid-template-columns: 1fr; } }
     .chart-cell h3 { margin: 0 0 8px; font-size: 13px; display: flex; align-items: baseline; gap: 8px; }
     .chart-cell h3 span { color: var(--faint); font-size: 11px; font-weight: 500;
       text-transform: uppercase; letter-spacing: .08em; }
@@ -66,7 +69,7 @@
 <body>
   <header>
     <h1>SIGHT<b>LINE</b> — benchmark vs competition</h1>
-    <p>Same 100k-point × 3-series dataset, three renderers, a 5-second automated pan/zoom.
+    <p>Same 100k-point × 3-series dataset, four renderers, a 5-second automated pan/zoom.
       The thesis holds if Sightline is the only column that is fast <em>and</em> accessible.</p>
   </header>
   <main>
@@ -83,6 +86,10 @@
       <section class="chart-cell">
         <h3>uPlot <span>fast · inaccessible</span></h3>
         <div class="frame"><div id="cell-uplot"></div></div>
+      </section>
+      <section class="chart-cell">
+        <h3>Highcharts + Boost <span>fast (WebGL) · no data table</span></h3>
+        <div class="frame"><div id="cell-highcharts"></div></div>
       </section>
       <section class="chart-cell">
         <h3>Naive SVG <span>accessible · slow</span></h3>

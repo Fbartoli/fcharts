@@ -21,6 +21,9 @@ importers:
       axe-core:
         specifier: ^4.10.2
         version: 4.11.4
+      highcharts:
+        specifier: ^12.6.0
+        version: 12.6.0
       playwright:
         specifier: ^1.49.1
         version: 1.60.0
@@ -370,6 +373,17 @@ packages:
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
 
+  highcharts@12.6.0:
+    resolution: {integrity: sha512-zWwoXECOakJT2huBMqIZOjDNLLgyZFCcfZqTj2g6cvYOGxjF3nvooC+rIaF5aKiharluyGKNflfRNrzOAIjdRg==}
+    peerDependencies:
+      jspdf: ^4.1.0
+      svg2pdf.js: ^2.7.0
+    peerDependenciesMeta:
+      jspdf:
+        optional: true
+      svg2pdf.js:
+        optional: true
+
   nanoid@3.3.12:
     resolution: {integrity: sha512-ZB9RH/39qpq5Vu6Y+NmUaFhQR6pp+M2Xt76XBnEwDaGcVAqhlvxrl3B2bKS5D3NH3QR76v3aSrKaF/Kiy7lEtQ==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
@@ -671,6 +685,8 @@ snapshots:
 
   fsevents@2.3.3:
     optional: true
+
+  highcharts@12.6.0: {}
 
   nanoid@3.3.12: {}
 

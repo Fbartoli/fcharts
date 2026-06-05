@@ -10,6 +10,7 @@ import { makeDataset, type Dataset } from './dataset.ts';
 import type { ChartAdapter, AdapterFactory } from './adapter.ts';
 import { createSightline } from './baselines/sightline-chart.ts';
 import { createUplot } from './baselines/uplot-chart.ts';
+import { createHighcharts } from './baselines/highcharts-chart.ts';
 import { createNaiveSvg } from './baselines/naive-svg.ts';
 
 interface PerfResult {
@@ -55,6 +56,7 @@ export interface BenchResults {
 const FACTORIES: { factory: AdapterFactory; cell: string }[] = [
   { factory: createSightline, cell: 'cell-sightline' },
   { factory: createUplot, cell: 'cell-uplot' },
+  { factory: createHighcharts, cell: 'cell-highcharts' },
   { factory: createNaiveSvg, cell: 'cell-svg' },
 ];
 
