@@ -343,22 +343,30 @@ export async function runConformance(
   );
 
   // reflow-adaptive (1.4.10, R7): narrowing the chart thins the x-tick density so labels do not
-  // collide (effectiveTickCount). Count ticks wide, shrink the container, count again, restore.
+  // collide (effectiveTickCount). Narrow RELATIVE to the current width (so it works whatever size
+  // the host gives the chart — a 336px bench cell or a 900px fixture), then restore.
   const tickXCount = async (): Promise<number> => (await xTicks()).length;
-  const wideTicks = await tickXCount();
   const setRootWidth = (w: string): Promise<void> =>
     page.evaluate(({ s, w: width }) => {
       const r = document.querySelector(s) as HTMLElement | null;
       if (r) r.style.width = width;
     }, { s: sel, w });
-  await setRootWidth('320px');
-  await page.waitForTimeout(240); // ResizeObserver + table debounce + frame
-  const narrowTicks = await tickXCount();
-  await setRootWidth('900px');
-  await page.waitForTimeout(240);
-  results.push(status(wideTicks > 0 && narrowTicks > 0 && narrowTicks < wideTicks, 'reflow-adaptive', ['1.4.10'],
-    `x-tick density did not thin when narrowed (wide=${wideTicks}, narrow=${narrowTicks})`,
-    `wide=${wideTicks} -> narrow=${narrowTicks}`));
+  const curWidth = await page.evaluate(
+    (s) => (document.querySelector(s) as HTMLElement | null)?.getBoundingClientRect().width ?? 0, sel);
+  const wideTicks = await tickXCount();
+  const narrowPx = Math.max(160, Math.round(curWidth * 0.4));
+  if (curWidth < 240) {
+    results.push(na('reflow-adaptive', ['1.4.10'], `container already narrow (${Math.round(curWidth)}px) — cannot narrow further`));
+  } else {
+    await setRootWidth(`${narrowPx}px`);
+    await page.waitForTimeout(260); // ResizeObserver + table debounce + frame
+    const narrowTicks = await tickXCount();
+    await setRootWidth(''); // restore the host/stylesheet width
+    await page.waitForTimeout(240);
+    results.push(status(wideTicks > 0 && narrowTicks > 0 && narrowTicks < wideTicks, 'reflow-adaptive', ['1.4.10'],
+      `x-tick density did not thin when narrowed (${Math.round(curWidth)}px→${narrowPx}px: wide=${wideTicks}, narrow=${narrowTicks})`,
+      `${Math.round(curWidth)}px→${narrowPx}px: ticks ${wideTicks}→${narrowTicks}`));
+  }
 
   // resize-text-rem (1.4.4, R7): the tick font is in rem, so doubling the root font-size doubles
   // it (a px font would not move). Read, scale the root, re-read, restore.
