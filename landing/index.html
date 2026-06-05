@@ -8,14 +8,16 @@
   <style>
     :root{
       --bg:#06080c; --panel:#0c1016; --panel-2:#10151d; --ink:#e8eef4; --muted:#8794a3;
-      --faint:#5a6675; --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.14);
+      --faint:#5a6675; --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.22);
+      /* Border for interactive controls (buttons, legend, pagers): >=3:1 on --bg per WCAG 1.4.11. */
+      --btn-line:rgba(255,255,255,.45); --btn-line-hover:rgba(255,255,255,.72);
       --accent:#6ee7a8; --accent-dim:rgba(110,231,168,.12); --amber:#fbbf24; --danger:#f87171;
       --sky:#38bdf8;
       /* Sightline theme */
       --sl-ink:#cfd8e3; --sl-tick-color:#8794a3; --sl-axis-title:#5a6675;
       --sl-grid:rgba(110,231,168,.06); --sl-axis:rgba(255,255,255,.12);
       --sl-cursor:rgba(255,255,255,.4); --sl-ring:#06080c; --sl-focus:#6ee7a8;
-      --sl-legend-border:rgba(255,255,255,.16); --sl-legend-border-hover:rgba(255,255,255,.4);
+      --sl-legend-border:rgba(255,255,255,.45); --sl-legend-border-hover:rgba(255,255,255,.72);
       --sl-readout-bg:#10151d; --sl-readout-ink:#e8eef4; --sl-readout-border:rgba(255,255,255,.16);
     }
     *{box-sizing:border-box}
@@ -34,8 +36,8 @@
       padding:11px 18px;border-radius:10px;cursor:pointer;border:1px solid transparent;transition:.15s}
     .btn-primary{background:var(--accent);color:#04210f;border-color:var(--accent)}
     .btn-primary:hover{filter:brightness(1.08)}
-    .btn-ghost{background:transparent;color:var(--ink);border-color:var(--line-2)}
-    .btn-ghost:hover{border-color:var(--faint)}
+    .btn-ghost{background:transparent;color:var(--ink);border-color:var(--btn-line)}
+    .btn-ghost:hover{border-color:var(--btn-line-hover)}
 
     /* nav */
     nav{position:sticky;top:0;z-index:20;backdrop-filter:blur(10px);
@@ -44,8 +46,10 @@
     .logo{font-weight:800;font-size:18px;letter-spacing:-.02em}
     .logo b{color:var(--accent)}
     nav .links{display:flex;gap:22px;margin-left:auto;align-items:center}
-    nav .links a{color:var(--muted);font-size:14px;font-weight:500}
-    nav .links a:hover{color:var(--ink)}
+    /* :not(.btn) so the muted nav-link color doesn't override a button's own (it has higher
+       specificity than .btn-primary, which made the "Get early access" CTA grey-on-green ~2:1). */
+    nav .links a:not(.btn){color:var(--muted);font-size:14px;font-weight:500}
+    nav .links a:not(.btn):hover{color:var(--ink)}
     @media(max-width:760px){nav .links a:not(.btn){display:none}}
 
     /* hero */
