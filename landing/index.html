@@ -123,6 +123,12 @@
     .fcard h3{font-size:16px;margin-bottom:8px}
     .fcard p{color:var(--muted);font-size:14px;margin:0}
     .fcard .ic{font-size:20px}
+    .report-proof{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:22px;
+      padding:16px 20px;border:1px solid var(--line-2);border-radius:12px;background:var(--panel)}
+    .report-proof p{margin:0;color:var(--muted);font-size:14px;max-width:64ch}
+    .report-proof b{color:var(--ink)}
+    .report-proof .btn{flex:none;white-space:nowrap;margin-left:auto}
+    @media(max-width:640px){.report-proof .btn{margin-left:0}}
 
     /* agent-readable */
     .agent-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:36px;align-items:start}
@@ -265,8 +271,15 @@
           <h3>Found late, fixed expensive</h3>
           <p>When accessibility surfaces weeks before close, it's emergency remediation or a dropped
             feature. Built in from the start it's nearly free — Sightline ships it by default, with
-            the conformance evidence attached.</p>
+            the <a href="/acr-en301549.html" target="_blank" rel="noopener">conformance evidence</a>
+            attached.</p>
         </div>
+      </div>
+      <div class="report-proof">
+        <p>Every chart ships with its conformance evidence — a per-criterion
+          <b>VPAT/ACR</b> for the chart layer, <b>generated</b> from the committed audit on every
+          build, not hand-written. The same report your procurement team asks for.</p>
+        <a class="btn btn-ghost" href="/acr-en301549.html" target="_blank" rel="noopener">View a sample report →</a>
       </div>
     </div>
   </section>

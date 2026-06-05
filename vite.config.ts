@@ -17,6 +17,9 @@ export default defineConfig(({ command }) => {
       // Per-root dep cache so the bench and landing dev servers can run at once without
       // clobbering each other's optimized deps (a shared node_modules/.vite races -> 504s).
       cacheDir: resolve(here, 'node_modules', `.vite-${sub}`),
+      // Serve the committed sample ACR(s) on the landing origin (single source, no duplication),
+      // so the marketing page can link to the real generated VPAT/ACR at /acr-en301549.html.
+      publicDir: sub === 'landing' ? resolve(here, 'compliance/samples') : false,
       server: { port: 5180 },
     };
   }
