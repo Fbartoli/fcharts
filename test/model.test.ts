@@ -25,10 +25,14 @@ test('ChartData: stats skip non-finite y (NaN/Infinity) so summaries stay real n
   for (const v of Object.values(d.stats[0])) assert.ok(Number.isFinite(v));
 });
 
-test('ChartData: keeps a Float64Array x without copying', () => {
+test('ChartData: owns its buffers (copies input) so append never mutates caller data', () => {
   const x = Float64Array.from([0, 1, 2]);
   const d = new ChartData({ x, y: [[1, 2, 3]] });
-  assert.equal(d.x, x); // same reference — no defensive copy for typed arrays
+  assert.deepEqual([...d.x], [0, 1, 2]); // same values
+  assert.notEqual(d.x, x); // but a distinct, chart-owned buffer (a length-n view over capacity)
+  assert.equal(d.x.length, 3);
+  x[0] = 99; // mutating the caller's array must not affect the chart
+  assert.equal(d.x[0], 0);
 });
 
 test('ChartData: throws on mismatched series length (fail fast, clear message)', () => {

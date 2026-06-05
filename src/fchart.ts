@@ -345,6 +345,37 @@ export class FChart {
   }
 
   /**
+   * Append one sample for real-time/streaming data — amortized O(1) (only the tail pyramid
+   * buckets update), never an O(n) rebuild. `x` must be >= the current last x; `ys` must have one
+   * value per series.
+   *
+   * The y-domain auto-fits the new data. The view follows the live tail when it was already
+   * showing it — a zoomed window slides (keeping its width), a full-history view expands — but if
+   * you've panned back into history it stays put so you can keep reading the past.
+   */
+  append(xv: number, ys: readonly number[]): FChart {
+    const prevN = this.data.n;
+    const prevLast = prevN > 0 ? this.data.x[prevN - 1] : xv;
+    const lo = prevN > 0 ? this.data.x[0] : xv;
+    const following = prevN === 0 || this.domain[1] >= prevLast - 1e-9;
+    const atLeftEdge = this.domain[0] <= lo + 1e-9;
+
+    this.data.push(xv, ys);
+    this.refreshDerived(); // recompute y-domain + summary/table/pagers from the updated stats
+
+    if (following) {
+      if (atLeftEdge) {
+        this.applyDomain([lo, xv]); // a full-history view → grow the right edge
+      } else {
+        const w = this.domain[1] - this.domain[0]; // a zoomed window → slide, keep its width
+        this.applyDomain([xv - w, xv]);
+      }
+    }
+    this.requestRender();
+    return this;
+  }
+
+  /**
    * Render immediately and synchronously, optionally to a given x-domain. Bypasses the
    * rAF scheduler — useful for programmatic zoom, print/offscreen capture, and
    * deterministic benchmarking.

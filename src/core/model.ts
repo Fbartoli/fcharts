@@ -4,7 +4,7 @@
  *
  * All of this is computed once per `setData`, never per frame.
  */
-import { buildPyramid, type MinMaxPyramid } from './downsample.ts';
+import { StreamingPyramid } from './downsample.ts';
 
 export type NumberArray = Float64Array | readonly number[];
 
@@ -123,11 +123,12 @@ function toF64(a: NumberArray): Float64Array {
 }
 
 /**
- * Per-series stats over the finite samples. Non-finite values (NaN/±Infinity) are skipped
- * so the stats — and the machine-readable JSON built from them — are always real numbers
- * rather than the `null` that `JSON.stringify` would emit for NaN/Infinity.
+ * Per-series stats over the finite samples, plus the running sum/count needed to keep the mean
+ * correct under incremental `push`. Non-finite values (NaN/±Infinity) are skipped so the stats —
+ * and the machine-readable JSON built from them — are always real numbers, not the `null` that
+ * `JSON.stringify` emits for NaN/Infinity.
  */
-function statsOf(y: Float64Array): SeriesStats {
+function initStats(y: Float64Array): { stats: SeriesStats; sum: number; count: number } {
   let min = Infinity;
   let max = -Infinity;
   let sum = 0;
@@ -144,38 +145,113 @@ function statsOf(y: Float64Array): SeriesStats {
     sum += v;
     count++;
   }
-  if (count === 0) return { min: 0, max: 0, first: 0, last: 0, mean: 0 };
-  return { min, max, first, last, mean: sum / count };
+  if (count === 0) return { stats: { min: 0, max: 0, first: 0, last: 0, mean: 0 }, sum: 0, count: 0 };
+  return { stats: { min, max, first, last, mean: sum / count }, sum, count };
+}
+
+/** Copy `src` into a fresh buffer of length `cap` (cap >= src.length). Never aliases caller data. */
+function toCapacity(src: Float64Array, cap: number): Float64Array {
+  const out = new Float64Array(cap);
+  out.set(src);
+  return out;
 }
 
 /**
- * Immutable, render-ready view of a dataset.
+ * Render-ready view of a dataset, with O(log n) `push` for streaming/real-time appends.
  *
- * Note: `x` must be non-decreasing (the downsampler binary-searches it). This is the
- * caller's contract and is not re-validated per `setData` for performance.
+ * `x`/`y[i]` are exact-length (`=== n`) views over doubling-capacity backing buffers, so
+ * `x.length === n` holds for the binary search while appends stay amortized O(1). `x` must be
+ * non-decreasing; `push` enforces it, the batch constructor trusts the caller (perf).
  */
 export class ChartData {
-  readonly x: Float64Array;
-  readonly y: readonly Float64Array[];
-  readonly n: number;
-  readonly pyramids: readonly MinMaxPyramid[];
-  readonly stats: readonly SeriesStats[];
+  x: Float64Array;
+  y: Float64Array[];
+  n: number;
+  readonly pyramids: StreamingPyramid[];
+  readonly stats: SeriesStats[];
+
+  private xBuf: Float64Array;
+  private yBuf: Float64Array[];
+  private cap: number;
+  private readonly sums: Float64Array; // per-series running sum of finite values
+  private readonly counts: Int32Array; // per-series finite-value count
 
   constructor(data: FChartData) {
-    this.x = toF64(data.x);
-    this.n = this.x.length;
-    this.y = data.y.map((series, i) => {
+    const x = toF64(data.x);
+    const n = x.length;
+    const yArrs = data.y.map((series, i) => {
       const arr = toF64(series);
-      if (arr.length !== this.n) {
+      if (arr.length !== n) {
         throw new Error(
-          `fcharts: series ${i} has ${arr.length} points but x has ${this.n}. ` +
+          `fcharts: series ${i} has ${arr.length} points but x has ${n}. ` +
             'Every y array must match the length of x.',
         );
       }
       return arr;
     });
-    this.stats = this.y.map(statsOf);
-    this.pyramids = this.y.map(buildPyramid);
+    this.cap = Math.max(n, 1);
+    this.xBuf = toCapacity(x, this.cap);
+    this.yBuf = yArrs.map((a) => toCapacity(a, this.cap));
+    this.n = n;
+    this.x = this.xBuf.subarray(0, n);
+    this.y = this.yBuf.map((b) => b.subarray(0, n));
+    this.sums = new Float64Array(yArrs.length);
+    this.counts = new Int32Array(yArrs.length);
+    this.stats = yArrs.map((a, i) => {
+      const r = initStats(a);
+      this.sums[i] = r.sum;
+      this.counts[i] = r.count;
+      return r.stats;
+    });
+    this.pyramids = yArrs.map((a) => new StreamingPyramid(a));
+  }
+
+  /**
+   * Append one sample. `x` must be >= the current last x (non-decreasing). Updates the data,
+   * the per-series min/max pyramids (O(log n) each), and the stats — never an O(n) rebuild.
+   */
+  push(xv: number, ys: readonly number[]): void {
+    if (ys.length !== this.yBuf.length) {
+      throw new Error(`fcharts: append got ${ys.length} y-values but the chart has ${this.yBuf.length} series.`);
+    }
+    if (this.n > 0 && xv < this.xBuf[this.n - 1]) {
+      throw new Error('fcharts: append x must be >= the current last x (x is non-decreasing).');
+    }
+    if (this.n === this.cap) this.grow();
+    const i = this.n;
+    this.xBuf[i] = xv;
+    for (let s = 0; s < this.yBuf.length; s++) {
+      const v = ys[s];
+      this.yBuf[s][i] = v;
+      this.pyramids[s].push(v);
+      this.accumStat(s, v);
+    }
+    this.n = i + 1;
+    this.x = this.xBuf.subarray(0, this.n);
+    for (let s = 0; s < this.yBuf.length; s++) this.y[s] = this.yBuf[s].subarray(0, this.n);
+  }
+
+  private grow(): void {
+    this.cap = Math.max(this.cap * 2, 8);
+    this.xBuf = toCapacity(this.xBuf.subarray(0, this.n), this.cap);
+    this.yBuf = this.yBuf.map((b) => toCapacity(b.subarray(0, this.n), this.cap));
+  }
+
+  private accumStat(s: number, v: number): void {
+    if (!Number.isFinite(v)) return;
+    const st = this.stats[s];
+    if (this.counts[s] === 0) {
+      st.first = v;
+      st.min = v;
+      st.max = v;
+    } else {
+      if (v < st.min) st.min = v;
+      if (v > st.max) st.max = v;
+    }
+    st.last = v;
+    this.sums[s] += v;
+    this.counts[s] += 1;
+    st.mean = this.sums[s] / this.counts[s];
   }
 
   /** Full x-domain [first, last]; falls back to [0, 1] when empty. */

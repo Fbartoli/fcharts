@@ -83,6 +83,94 @@ function combineLevel(prev: PyramidLevel): PyramidLevel {
   return { bucketSize: prev.bucketSize * 2, min, max };
 }
 
+/**
+ * A min/max pyramid that supports O(log n) incremental `push` for streaming/real-time data,
+ * instead of an O(n) rebuild per appended sample. Built once from a batch (O(n)); each `push`
+ * updates only the single tail bucket at each level. Storage grows by doubling per level.
+ *
+ * Structurally a {@link MinMaxPyramid} (so the read path treats it identically) — but its level
+ * arrays may carry spare capacity, so readers must derive the bucket count from `n`, not from
+ * `level.min.length` (see {@link planDownsample}/`accumulateLevel`).
+ */
+export class StreamingPyramid {
+  n: number;
+  readonly levels: { bucketSize: number; min: Float32Array; max: Float32Array }[];
+
+  constructor(y: Float64Array) {
+    const batch = buildPyramid(y);
+    this.n = batch.n;
+    // Copy each level into a buffer with headroom so the first appends don't reallocate.
+    this.levels = batch.levels.map((l) => ({
+      bucketSize: l.bucketSize,
+      min: withHeadroom(l.min),
+      max: withHeadroom(l.max),
+    }));
+    if (this.levels.length === 0) {
+      this.levels.push({ bucketSize: 2, min: new Float32Array(4), max: new Float32Array(4) });
+    }
+  }
+
+  /** Append one raw value (at index === current n) and fix up the affected bucket per level. */
+  push(v: number): void {
+    const idx = this.n;
+    this.n = idx + 1;
+
+    // Level 0 aggregates raw pairs.
+    const b0 = idx >> 1;
+    this.ensureCap(0, b0 + 1);
+    const L0 = this.levels[0];
+    if ((idx & 1) === 0) {
+      L0.min[b0] = v;
+      L0.max[b0] = v;
+    } else {
+      // Match buildLevel0's `a < c ? a : c` semantics exactly (incl. NaN propagation) so a
+      // streamed pyramid is byte-identical to a batch rebuild.
+      L0.min[b0] = L0.min[b0] < v ? L0.min[b0] : v;
+      L0.max[b0] = L0.max[b0] > v ? L0.max[b0] : v;
+    }
+
+    // Propagate up: each higher level's tail bucket = combine of its two children below.
+    for (let k = 1; ; k++) {
+      const prevCount = Math.ceil(this.n / (1 << k)); // bucket count of level k-1
+      if (prevCount <= 1) break; // level k-1 is the apex; no parent needed
+      if (k >= this.levels.length) {
+        this.levels.push({ bucketSize: 1 << (k + 1), min: new Float32Array(4), max: new Float32Array(4) });
+      }
+      const prev = this.levels[k - 1];
+      const cur = this.levels[k];
+      const bk = idx >> (k + 1);
+      this.ensureCap(k, bk + 1);
+      const c0 = bk << 1;
+      const c1 = c0 + 1;
+      if (c1 < prevCount) {
+        cur.min[bk] = Math.min(prev.min[c0], prev.min[c1]);
+        cur.max[bk] = Math.max(prev.max[c0], prev.max[c1]);
+      } else {
+        cur.min[bk] = prev.min[c0];
+        cur.max[bk] = prev.max[c0];
+      }
+    }
+  }
+
+  private ensureCap(level: number, need: number): void {
+    const l = this.levels[level];
+    if (l.min.length >= need) return;
+    const cap = Math.max(need, l.min.length * 2, 4);
+    const min = new Float32Array(cap);
+    const max = new Float32Array(cap);
+    min.set(l.min);
+    max.set(l.max);
+    l.min = min;
+    l.max = max;
+  }
+}
+
+function withHeadroom(arr: Float32Array): Float32Array {
+  const out = new Float32Array(Math.max(arr.length * 2, 4));
+  out.set(arr);
+  return out;
+}
+
 /** First index i with x[i] >= target (binary search; x must be non-decreasing). */
 export function lowerBound(x: Float64Array, target: number): number {
   let lo = 0;
@@ -141,7 +229,10 @@ export function planDownsample(
 
   const level = pickLevel(pyramid, pointsPerCol);
   const b0 = Math.floor(i0 / level.bucketSize);
-  const b1 = Math.min(level.min.length - 1, Math.floor(i1 / level.bucketSize));
+  // Bucket count from n (= x.length), not level.min.length, so a streaming pyramid's spare
+  // capacity isn't read as real buckets. Equal to level.min.length for a batch pyramid.
+  const lastBucket = Math.ceil(x.length / level.bucketSize) - 1;
+  const b1 = Math.min(lastBucket, Math.floor(i1 / level.bucketSize));
   return { mode: 'level', i0, i1, level, iterations: Math.max(0, b1 - b0 + 1) };
 }
 
@@ -209,7 +300,7 @@ function accumulateLevel(
   const bs = level.bucketSize;
   const n = x.length;
   const b0 = Math.floor(i0 / bs);
-  const b1 = Math.min(level.min.length - 1, Math.floor(i1 / bs));
+  const b1 = Math.min(Math.ceil(n / bs) - 1, Math.floor(i1 / bs));
   for (let b = b0; b <= b1; b++) {
     const start = b * bs;
     const end = start + bs - 1 < n ? start + bs - 1 : n - 1;
