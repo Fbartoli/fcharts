@@ -14,6 +14,9 @@ export default defineConfig(({ command }) => {
     const sub = process.env.SIGHTLINE_ROOT ?? 'bench';
     return {
       root: resolve(here, sub),
+      // Per-root dep cache so the bench and landing dev servers can run at once without
+      // clobbering each other's optimized deps (a shared node_modules/.vite races -> 504s).
+      cacheDir: resolve(here, 'node_modules', `.vite-${sub}`),
       server: { port: 5180 },
     };
   }
