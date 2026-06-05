@@ -78,6 +78,10 @@
     .btn:hover{border-color:var(--faint)}
     .btn-accent{background:var(--accent);color:#04210f;border-color:var(--accent)}
     .btn-accent:hover{filter:brightness(1.08)}
+    #live-toggle[aria-pressed="true"]{color:var(--accent);border-color:var(--accent)}
+    .live-status{font-size:11.5px;color:var(--muted);margin:9px 0 0;line-height:1.45}
+    .live-status code{font-family:ui-monospace,monospace;color:var(--accent);font-size:11px}
+    .live-status.on{color:var(--accent)} .live-status.err{color:var(--danger)}
 
     /* stage */
     .stage{padding:22px 24px;min-width:0}
@@ -115,6 +119,16 @@
 
   <div class="layout">
     <aside class="controls" aria-label="Chart configuration">
+      <div class="group">
+        <h3>Live data (Binance)</h3>
+        <div class="field"><label for="live-symbol">Symbol</label>
+          <input type="text" id="live-symbol" value="btcusdt" autocomplete="off" spellcheck="false"
+            aria-describedby="live-status" /></div>
+        <button class="btn" id="live-toggle" type="button" aria-pressed="false">▶&nbsp;Connect live</button>
+        <p class="live-status" id="live-status" role="status" aria-live="polite">Streams real trades
+          straight into the chart via <code>chart.append()</code> — your browser connects to Binance.</p>
+      </div>
+
       <div class="group">
         <h3>Title &amp; axes</h3>
         <div class="field"><label for="opt-title">Chart title (accessible name)</label>

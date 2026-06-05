@@ -52,6 +52,16 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getEl
 const chartEl = $('chart');
 let chart: FChart | null = null;
 
+// --- live (Binance) streaming state ---
+let ws: WebSocket | null = null;
+let liveChart: FChart | null = null;
+let live = false;
+let lastT = 0;
+let firstT = 0;
+let trades = 0;
+let windowed = false;
+const LIVE_WINDOW = 120_000; // once >2 min of trades exist, show a trailing 2-min window (ms)
+
 // --- data generators (cached; regenerated only when shape / point-count / series-count change) ---
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
@@ -127,6 +137,7 @@ function scheduleRebuild(): void {
 }
 
 function rebuild(): void {
+  if (live) return; // a live (Binance) chart owns the host; config changes don't rebuild it
   chart?.destroy();
   const options: FChartOptions = { ...readOptions(), strings: locale === 'fr' ? FR : undefined };
   chart = new FChart(chartEl, {
@@ -151,6 +162,93 @@ function refreshPanels(): void {
   $('badge-path').innerHTML = `render: <b>${chart.renderPath}</b>`;
   $('code').textContent = buildSnippet();
   $('summary').textContent = JSON.stringify(chart.summary(), null, 2);
+}
+
+// --- live (Binance) trade stream → chart.append() ---
+function setLiveStatus(msg: string, cls: '' | 'on' | 'err'): void {
+  const s = $('live-status');
+  s.textContent = msg;
+  s.classList.toggle('on', cls === 'on');
+  s.classList.toggle('err', cls === 'err');
+}
+
+const fmtUsd = (v: number): string => '$' + v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+function connectLive(): void {
+  const raw = ($('live-symbol') as HTMLInputElement).value.trim().toLowerCase();
+  if (!/^[a-z0-9]{4,20}$/.test(raw)) {
+    setLiveStatus('Enter a Binance symbol like btcusdt, ethusdt, solusdt.', 'err');
+    return;
+  }
+  const sym = raw.toUpperCase();
+  live = true;
+  cancelAnimationFrame(raf);
+  chart?.destroy();
+  chart = null;
+  lastT = 0;
+  firstT = 0;
+  trades = 0;
+  windowed = false;
+
+  liveChart = new FChart(chartEl, {
+    series: [{ name: `${sym} price`, color: PALETTE[0], type: 'area', fillAlpha: 0.12 }],
+    options: {
+      ariaLabel: `${sym} live trade price`,
+      xLabel: 'time',
+      yLabel: 'price',
+      formatX: (t) => new Date(t).toLocaleTimeString(),
+      formatY: fmtUsd,
+    },
+  });
+  liveChart.setData({ x: [], y: [[]] });
+  $('live-toggle').setAttribute('aria-pressed', 'true');
+  $('live-toggle').innerHTML = '❚❚&nbsp;Disconnect';
+  $('badge-points').innerHTML = `<b>live</b> · ${sym}`;
+  $('badge-path').innerHTML = `render: <b>${liveChart.renderPath}</b>`;
+  setLiveStatus(`Connecting to ${sym}…`, '');
+
+  try {
+    ws = new WebSocket(`wss://stream.binance.com:9443/ws/${raw}@trade`);
+  } catch {
+    setLiveStatus('Could not open a WebSocket connection.', 'err');
+    disconnectLive();
+    return;
+  }
+  ws.onopen = () => setLiveStatus(`● Live — streaming ${sym} trades`, 'on');
+  ws.onmessage = (ev) => {
+    const m = JSON.parse(ev.data as string) as { T: number; p: string };
+    if (m.T < lastT) return; // skip out-of-order ticks (append requires non-decreasing x)
+    const price = Number(m.p);
+    liveChart?.append(m.T, [price]);
+    lastT = m.T;
+    trades += 1;
+    if (firstT === 0) firstT = m.T;
+    if (!windowed && m.T - firstT > LIVE_WINDOW) {
+      liveChart?.renderSync([m.T - LIVE_WINDOW, m.T]); // switch from expand to a sliding window
+      windowed = true;
+    }
+    setLiveStatus(`● Live — ${sym} ${fmtUsd(price)} · ${trades.toLocaleString()} trades`, 'on');
+  };
+  ws.onerror = () =>
+    setLiveStatus(`Couldn't reach Binance for ${sym}. Check the symbol or your network.`, 'err');
+  ws.onclose = () => {
+    if (live) setLiveStatus(`Disconnected from ${sym}.`, 'err');
+  };
+}
+
+function disconnectLive(): void {
+  live = false;
+  if (ws) {
+    ws.onclose = null; // a deliberate close, not an error
+    ws.close();
+    ws = null;
+  }
+  liveChart?.destroy();
+  liveChart = null;
+  $('live-toggle').setAttribute('aria-pressed', 'false');
+  $('live-toggle').innerHTML = '▶&nbsp;Connect live';
+  setLiveStatus('Streams real trades into the chart via append() — your browser connects to Binance.', '');
+  rebuild(); // restore the configured chart
 }
 
 // --- generated config snippet (omits default-valued fields for clean copy/paste) ---
@@ -325,6 +423,15 @@ function wire(): void {
 
   $('copy-config').addEventListener('click', () => copy($('code').textContent ?? '', $('copy-config')));
   $('copy-summary').addEventListener('click', () => copy($('summary').textContent ?? '', $('copy-summary')));
+
+  $('live-toggle').onclick = () => (live ? disconnectLive() : connectLive());
+  $('live-symbol').addEventListener('keydown', (e) => {
+    if ((e as KeyboardEvent).key === 'Enter' && !live) connectLive();
+  });
+  // Don't keep an offscreen tab hammering the socket; reconnect on return is one click.
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && live) disconnectLive();
+  });
 }
 
 function copy(textToCopy: string, btn: HTMLElement): void {
