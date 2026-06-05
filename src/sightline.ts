@@ -35,6 +35,7 @@ import { LiveRegion } from './a11y/live-region.ts';
 import { AxisTicks } from './a11y/ticks.ts';
 import { Legend } from './a11y/legend.ts';
 import { Pagers } from './a11y/pagers.ts';
+import { Sonifier } from './a11y/sonify.ts';
 import { TableAlt } from './a11y/table-alt.ts';
 import { buildSummary, describeSummary, type ChartSummary } from './a11y/summary.ts';
 import { handlesKey, panToInclude, stepCursor, zoomFactor } from './a11y/cursor.ts';
@@ -65,6 +66,9 @@ export interface SightlineOptions {
   highContrast?: boolean;
   /** Force forced-colors (Windows High Contrast) behavior (otherwise auto-detected + live). */
   forcedColors?: boolean;
+  /** Play an audible tone for the focused value as the keyboard cursor moves (audio charts).
+   *  Off by default. */
+  sonify?: boolean;
   /** Localize the library's fixed UI strings (legend, keyboard help, summary, caption). */
   strings?: Partial<SightlineStrings>;
 }
@@ -130,6 +134,7 @@ export class Sightline {
   private readonly axisTicks: AxisTicks;
   private readonly legend: Legend | null;
   private readonly pagers: Pagers;
+  private readonly sonifier: Sonifier | null;
   private readonly tableAlt: TableAlt;
   private readonly summaryEl: HTMLElement;
   private readonly activeSample: HTMLElement;
@@ -158,6 +163,7 @@ export class Sightline {
         config.options?.reducedMotion ?? prefers(this.doc, '(prefers-reduced-motion: reduce)'),
       highContrast: config.options?.highContrast ?? prefers(this.doc, '(prefers-contrast: more)'),
       forcedColors: config.options?.forcedColors ?? prefers(this.doc, '(forced-colors: active)'),
+      sonify: config.options?.sonify ?? false,
       ariaLabel: config.options?.ariaLabel,
       xLabel: config.options?.xLabel,
       yLabel: config.options?.yLabel,
@@ -197,6 +203,8 @@ export class Sightline {
       ? new Legend(this.series, (i) => this.toggleSeries(i), this.strings, this.doc)
       : null;
     this.pagers = new Pagers((dir) => this.panPage(dir), this.strings, this.doc);
+    const view = this.doc.defaultView;
+    this.sonifier = this.options.sonify && view ? new Sonifier(view) : null;
 
     this.canvas = this.doc.createElement('canvas');
     this.canvas.className = 'sl-canvas';
@@ -338,6 +346,7 @@ export class Sightline {
     this.tableAlt.destroy();
     this.legend?.destroy();
     this.pagers.destroy();
+    this.sonifier?.destroy();
     this.liveRegion.destroy();
     this.plot.remove();
     this.root.classList.remove('sl-root');
@@ -555,6 +564,14 @@ export class Sightline {
     this.activeSample.textContent = this.cursorActive ? (this.currentSampleText() ?? '') : '';
   }
 
+  /** Sound the focused value (pitch maps the value within its series range), if sonify is on. */
+  private sonifyCursor(): void {
+    const s = this.series[this.cursor.series];
+    if (!this.sonifier || !s || !s.visible || this.data.n === 0) return;
+    const st = this.data.stats[s.index];
+    this.sonifier.play(this.data.y[s.index][this.cursor.index], st.min, st.max);
+  }
+
   /** Coalesce announcements during rapid movement (key-repeat, hover) to the settled point. */
   private queueAnnounce(): void {
     const view = this.doc.defaultView;
@@ -605,6 +622,7 @@ export class Sightline {
     this.cursorActive = true;
     this.updateActiveSample();
     this.announceNow();
+    this.sonifyCursor();
     this.requestRender();
   }
 
@@ -638,6 +656,7 @@ export class Sightline {
     this.cursor = next;
     this.cursorActive = true;
     this.updateActiveSample();
+    this.sonifyCursor();
     const [b0, b1] = this.domain;
     this.domain = panToInclude(this.domain, this.data.x[this.cursor.index]);
     if (this.domain[0] !== b0 || this.domain[1] !== b1) {
