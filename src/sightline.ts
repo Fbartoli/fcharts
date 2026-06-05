@@ -34,6 +34,7 @@ import { injectStyles } from './a11y/styles.ts';
 import { LiveRegion } from './a11y/live-region.ts';
 import { AxisTicks } from './a11y/ticks.ts';
 import { Legend } from './a11y/legend.ts';
+import { Pagers } from './a11y/pagers.ts';
 import { TableAlt } from './a11y/table-alt.ts';
 import { buildSummary, describeSummary, type ChartSummary } from './a11y/summary.ts';
 import { handlesKey, panToInclude, stepCursor, zoomFactor } from './a11y/cursor.ts';
@@ -128,6 +129,7 @@ export class Sightline {
   private readonly liveRegion: LiveRegion;
   private readonly axisTicks: AxisTicks;
   private readonly legend: Legend | null;
+  private readonly pagers: Pagers;
   private readonly tableAlt: TableAlt;
   private readonly summaryEl: HTMLElement;
   private readonly activeSample: HTMLElement;
@@ -194,6 +196,7 @@ export class Sightline {
     this.legend = this.options.legend
       ? new Legend(this.series, (i) => this.toggleSeries(i), this.strings, this.doc)
       : null;
+    this.pagers = new Pagers((dir) => this.panPage(dir), this.strings, this.doc);
 
     this.canvas = this.doc.createElement('canvas');
     this.canvas.className = 'sl-canvas';
@@ -235,6 +238,7 @@ export class Sightline {
       this.canvas,
       ...(ticksAsCanvasChild ? [] : [this.axisTicks.el]),
       this.surface,
+      this.pagers.el,
       this.readout.el,
       this.tableAlt.el,
       this.summaryEl,
@@ -333,6 +337,7 @@ export class Sightline {
     this.axisTicks.destroy();
     this.tableAlt.destroy();
     this.legend?.destroy();
+    this.pagers.destroy();
     this.liveRegion.destroy();
     this.plot.remove();
     this.root.classList.remove('sl-root');
@@ -364,6 +369,7 @@ export class Sightline {
     this.surface.setAttribute('aria-label', this.describeChart());
     this.updateSummary();
     this.updateActiveSample();
+    this.updatePagers();
     this.ticksDirty = true;
     this.scheduleTableUpdate();
   }
@@ -659,6 +665,30 @@ export class Sightline {
     this.setDomain([cx - (cx - d0) * factor, cx + (d1 - cx) * factor]);
   }
 
+  /** Single-pointer pan: shift the visible window ~one page earlier/later (WCAG 2.5.7). */
+  private panPage(dir: -1 | 1): void {
+    const [d0, d1] = this.domain;
+    const shift = dir * (d1 - d0) * 0.9;
+    this.setDomain([d0 + shift, d1 + shift]);
+    // Override #5: keep the cursor in view after the pan, and announce the new sample.
+    if (this.cursorActive && this.data.n > 0) {
+      const cx = this.data.x[this.cursor.index];
+      if (cx < this.domain[0] || cx > this.domain[1]) {
+        const mid = (this.domain[0] + this.domain[1]) / 2;
+        this.cursor = { series: this.cursor.series, index: nearestIndex(this.data.x, mid) };
+        this.updateActiveSample();
+        this.queueAnnounce();
+        this.requestRender();
+      }
+    }
+  }
+
+  /** Show/disable the pan pagers based on whether (and which way) the view can pan. */
+  private updatePagers(): void {
+    const [lo, hi] = this.data.xExtent();
+    this.pagers.update(this.domain[0] <= lo, this.domain[1] >= hi);
+  }
+
   private onWheel(e: WheelEvent): void {
     e.preventDefault();
     const px = e.clientX - this.plot.getBoundingClientRect().left;
@@ -750,6 +780,7 @@ export class Sightline {
     this.domain = [a, b];
     this.ticksDirty = true;
     this.scheduleTableUpdate();
+    this.updatePagers();
     return true;
   }
 

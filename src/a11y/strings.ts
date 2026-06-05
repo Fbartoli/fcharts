@@ -35,6 +35,9 @@ export interface SightlineStrings {
   trendUp: string;
   trendDown: string;
   trendFlat: string;
+  /** Accessible labels for the single-pointer pan buttons. No tokens. */
+  pagerPrev: string;
+  pagerNext: string;
 }
 
 export const DEFAULT_STRINGS: SightlineStrings = {
@@ -56,6 +59,8 @@ export const DEFAULT_STRINGS: SightlineStrings = {
   trendUp: 'up {pct}%',
   trendDown: 'down {pct}%',
   trendFlat: 'flat',
+  pagerPrev: 'Pan to earlier data',
+  pagerNext: 'Pan to later data',
 };
 
 /** Fill `{token}` placeholders from `vars`. Unknown tokens are left intact (so typos are visible). */

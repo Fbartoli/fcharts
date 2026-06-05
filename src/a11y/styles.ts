@@ -51,6 +51,14 @@ const CSS = `
 .sl-swatch{width:18px;height:10px;flex:none;overflow:visible}
 .sl-legend-name{white-space:nowrap}
 .sl-legend-state{font-size:.625rem;font-weight:500}
+/* Single-pointer pan affordance (WCAG 2.5.7) — real buttons, >=24x24 target (2.5.8). */
+.sl-pagers{position:absolute;right:10px;bottom:8px;display:flex;gap:6px;z-index:6}
+.sl-pager{min-width:28px;min-height:28px;display:inline-flex;align-items:center;justify-content:center;
+  cursor:pointer;border:1px solid var(--sl-legend-border,rgba(0,0,0,.15));border-radius:7px;
+  background:var(--sl-legend-bg,rgba(127,127,127,.10));color:inherit;font:inherit;font-size:1rem;
+  line-height:1;opacity:.55;transition:opacity .1s}
+.sl-pager:hover,.sl-pager:focus-visible{opacity:1}
+.sl-pager:disabled{opacity:.2;cursor:default}
 @media (prefers-reduced-motion:reduce){.sl-readout{transition:none}}
 @media (prefers-contrast:more){
   .sl-tick{color:var(--sl-tick-color,#1f2937)}
