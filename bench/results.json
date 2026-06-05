@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-05T15:25:19.932Z",
+  "generatedAt": "2026-06-05T15:46:31.050Z",
   "browser": "chromium",
   "datasetN": 100000,
   "durationMs": 5000,
@@ -10,10 +10,10 @@
       "kind": "sightline",
       "nodeCount": 262,
       "frames": 600,
-      "fps": 119.99040076793854,
-      "frameMs": 0.05625,
+      "fps": 120,
+      "frameMs": 0.0495,
       "deferredDraw": false,
-      "peakHeapMB": 24.173133850097656,
+      "peakHeapMB": 21.875237464904785,
       "axe": {
         "serious": 0,
         "ids": []
@@ -29,11 +29,11 @@
       "label": "uPlot",
       "kind": "fast-inaccessible",
       "nodeCount": 35,
-      "frames": 600,
-      "fps": 120,
-      "frameMs": 0.00030000001192092895,
+      "frames": 601,
+      "fps": 120.00319476059266,
+      "frameMs": 0.00020000001788139342,
       "deferredDraw": true,
-      "peakHeapMB": 21.87120246887207,
+      "peakHeapMB": 19.573267936706543,
       "axe": {
         "serious": 0,
         "ids": []
@@ -48,12 +48,12 @@
       "id": "highcharts",
       "label": "Highcharts + Boost",
       "kind": "fast-inaccessible",
-      "nodeCount": 687,
-      "frames": 85,
-      "fps": 16.723066026599515,
-      "frameMs": 82.3999999910593,
+      "nodeCount": 711,
+      "frames": 89,
+      "fps": 17.47942730325824,
+      "frameMs": 78.76249998807907,
       "deferredDraw": false,
-      "peakHeapMB": 40.98367691040039,
+      "peakHeapMB": 38.435845375061035,
       "axe": {
         "serious": 0,
         "ids": []
@@ -70,10 +70,10 @@
       "kind": "accessible-slow",
       "nodeCount": 50213,
       "frames": 81,
-      "fps": 16.012968527597653,
-      "frameMs": 50.36666667461395,
+      "fps": 16.03960396039604,
+      "frameMs": 50.599999994039536,
       "deferredDraw": false,
-      "peakHeapMB": 22.994047164916992,
+      "peakHeapMB": 20.697535514831543,
       "axe": {
         "serious": 0,
         "ids": []
@@ -88,15 +88,15 @@
   "scaling": [
     {
       "n": 10000,
-      "frameMs": 0.06880000001192092
+      "frameMs": 0.06982499998807908
     },
     {
       "n": 100000,
-      "frameMs": 0.08827500000596046
+      "frameMs": 0.08809999999403953
     },
     {
       "n": 250000,
-      "frameMs": 0.08364999997615814
+      "frameMs": 0.08625
     }
   ],
   "preciseHeap": true,
