@@ -23,6 +23,24 @@ export default defineConfig(({ command }) => {
       server: { port: 5180 },
     };
   }
+  if (process.env.SIGHTLINE_ENTRY === 'site') {
+    // Static marketing site build (landing + playground + the sample ACR), deployed to Cloudflare
+    // Pages alongside functions/. Not a lib build — this is a real multi-page app build.
+    return {
+      root: resolve(here, 'landing'),
+      publicDir: resolve(here, 'compliance/samples'), // ships /acr-en301549.html with the site
+      build: {
+        outDir: resolve(here, 'dist-site'),
+        emptyOutDir: true,
+        rollupOptions: {
+          input: {
+            main: resolve(here, 'landing/index.html'),
+            playground: resolve(here, 'landing/playground.html'),
+          },
+        },
+      },
+    };
+  }
   if (process.env.SIGHTLINE_ENTRY === 'react') {
     // Second build pass (after the core): keep React AND the core out of the bundle so a consumer
     // who imports both `sightline` and `sightline/react` ships one copy of the engine, not two.

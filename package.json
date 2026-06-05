@@ -39,6 +39,8 @@
     "dev": "vite",
     "landing": "SIGHTLINE_ROOT=landing vite",
     "build": "vite build && SIGHTLINE_ENTRY=react vite build && SIGHTLINE_ENTRY=compliance vite build && tsc -p tsconfig.build.json && node scripts/fix-dts.mjs",
+    "build:site": "SIGHTLINE_ENTRY=site vite build",
+    "preview:site": "pnpm build:site && npx wrangler pages dev dist-site",
     "pack:sdk": "pnpm build && pnpm pack",
     "preview": "vite preview",
     "test": "node --test test/*.test.ts",

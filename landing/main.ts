@@ -120,8 +120,70 @@ function agentRow(s: SeriesSummary, color: string): HTMLElement {
   return row;
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', mount);
-} else {
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+function setStatus(el: HTMLElement, msg: string, ok: boolean): void {
+  el.textContent = msg;
+  el.classList.toggle('ok', ok);
+  el.classList.toggle('err', !ok);
+}
+
+/** Wire the waitlist form to POST /api/waitlist (Cloudflare Pages Function + D1). */
+function wireWaitlist(): void {
+  const form = document.getElementById('waitlist-form') as HTMLFormElement | null;
+  const status = document.getElementById('wl-status');
+  const submit = document.getElementById('wl-submit') as HTMLButtonElement | null;
+  if (!form || !status) return;
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    void submitWaitlist(form, status, submit);
+  });
+}
+
+async function submitWaitlist(
+  form: HTMLFormElement,
+  status: HTMLElement,
+  submit: HTMLButtonElement | null,
+): Promise<void> {
+  const email = (document.getElementById('wl-email') as HTMLInputElement).value.trim();
+  const consent = (document.getElementById('wl-consent') as HTMLInputElement).checked;
+  const company = (document.getElementById('wl-hp') as HTMLInputElement).value;
+  if (!EMAIL_RE.test(email)) return setStatus(status, 'Enter a valid email address.', false);
+  if (!consent) return setStatus(status, 'Please tick the box to continue.', false);
+  if (submit) {
+    submit.disabled = true;
+    submit.textContent = 'Sending…';
+  }
+  try {
+    const res = await fetch('/api/waitlist', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email, consent, company, source: 'cta' }),
+    });
+    if (res.ok) {
+      setStatus(status, "You're on the list — we'll be in touch.", true);
+      form.reset();
+    } else {
+      const j = (await res.json().catch(() => ({}))) as { error?: string };
+      setStatus(status, j.error ?? 'Something went wrong. Please try again.', false);
+    }
+  } catch {
+    setStatus(status, 'Network error — please try again.', false);
+  } finally {
+    if (submit) {
+      submit.disabled = false;
+      submit.textContent = 'Request access';
+    }
+  }
+}
+
+function init(): void {
   mount();
+  wireWaitlist();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
 }

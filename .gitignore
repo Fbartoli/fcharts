@@ -8,3 +8,4 @@ dist/
 compliance-out/
 compliance-out-regression/
 .sl-audit-entry.html
+dist-site

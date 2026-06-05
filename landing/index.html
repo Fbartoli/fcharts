@@ -159,9 +159,15 @@
     .final h2{margin:0 auto;max-width:24ch}
     .final p{margin:16px auto 0;max-width:56ch;color:var(--muted)}
     form.waitlist{display:flex;gap:10px;justify-content:center;margin-top:28px;flex-wrap:wrap}
-    form.waitlist input{background:var(--panel-2);border:1px solid var(--line-2);color:var(--ink);
+    form.waitlist input[type=email]{background:var(--panel-2);border:1px solid var(--line-2);color:var(--ink);
       border-radius:10px;padding:11px 14px;font-size:14px;min-width:280px;font-family:inherit}
-    form.waitlist input:focus{outline:none;border-color:var(--accent)}
+    form.waitlist input[type=email]:focus{outline:none;border-color:var(--accent)}
+    .wl-hp{position:absolute!important;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none}
+    .wl-consent{display:inline-flex;align-items:center;gap:8px;justify-content:center;margin-top:14px;
+      color:var(--muted);font-size:12.5px;max-width:52ch;text-align:left}
+    .wl-consent input{accent-color:var(--accent);flex:none}
+    .wl-status{margin-top:12px;font-size:13px;min-height:1.2em;font-weight:600}
+    .wl-status.ok{color:var(--accent)} .wl-status.err{color:var(--danger)}
     footer{border-top:1px solid var(--line);padding:28px 0;color:var(--faint);font-size:13px}
     footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
   </style>
@@ -366,11 +372,19 @@
       <h2>Make your charts fast and compliant — without choosing.</h2>
       <p>We're working with a handful of regulated fintech and data-platform teams who've
         failed an accessibility audit on data-heavy views. If that's you, get in.</p>
-      <form class="waitlist" onsubmit="return false">
-        <input type="email" aria-label="Work email" placeholder="you@company.com" />
-        <button class="btn btn-primary" type="submit">Request access</button>
+      <form class="waitlist" id="waitlist-form" novalidate>
+        <input type="email" name="email" id="wl-email" required autocomplete="email"
+          aria-label="Work email" placeholder="you@company.com" />
+        <!-- honeypot: hidden from people + AT; bots fill it and get silently dropped -->
+        <input class="wl-hp" type="text" name="company" id="wl-hp" tabindex="-1"
+          autocomplete="off" aria-hidden="true" />
+        <button class="btn btn-primary" type="submit" id="wl-submit">Request access</button>
       </form>
-      <p style="color:var(--faint);font-size:12.5px;margin-top:14px">Demo only — the form isn't wired to a backend yet.</p>
+      <label class="wl-consent">
+        <input type="checkbox" id="wl-consent" required />
+        I agree to receive early-access emails. We store only your email, and you can unsubscribe anytime.
+      </label>
+      <p class="wl-status" id="wl-status" role="status" aria-live="polite"></p>
     </div>
   </section>
 

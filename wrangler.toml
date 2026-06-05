@@ -1,0 +1,14 @@
+# Cloudflare Pages config for the Sightline marketing site + waitlist function.
+# The static site is built by `pnpm build:site` into dist-site/; the Pages Function in
+# functions/api/waitlist.ts is bundled by Cloudflare automatically.
+name = "sightline-site"
+compatibility_date = "2024-09-23"
+pages_build_output_dir = "dist-site"
+
+# D1 (SQLite) binding exposed to the function as `env.DB`. Create the database once with
+#   npx wrangler d1 create sightline-waitlist
+# then paste the printed database_id below (and into the Pages project's settings for prod).
+[[d1_databases]]
+binding = "DB"
+database_name = "sightline-waitlist"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
