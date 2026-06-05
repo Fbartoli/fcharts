@@ -18,7 +18,7 @@ import {
   type SightlineData,
 } from './core/model.ts';
 import { linearScale, type LinearScale } from './core/scales.ts';
-import { niceTicks, formatTick } from './core/ticks.ts';
+import { niceTicks, formatTick, effectiveTickCount } from './core/ticks.ts';
 import { lowerBound } from './core/downsample.ts';
 import { RenderScheduler } from './core/scheduler.ts';
 import { createCanvas2DRenderer } from './renderers/canvas2d.ts';
@@ -417,9 +417,13 @@ export class Sightline {
   private frame(): void {
     if (this.width <= 0 || this.height <= 0) return;
     const { xScale, yScale } = this.scales();
+    const m = this.margins;
+    // Thin tick density at narrow sizes so fixed-size labels don't overlap (1.4.10 reflow).
+    const xCount = effectiveTickCount(this.options.xTickCount, this.width - m.left - m.right, 64);
+    const yCount = effectiveTickCount(this.options.yTickCount, this.height - m.top - m.bottom, 28);
     const xMinStep = this.options.xInteger ? 1 : 0;
-    const xTicks = niceTicks(this.domain[0], this.domain[1], this.options.xTickCount, xMinStep);
-    const yTicks = niceTicks(this.yDomain[0], this.yDomain[1], this.options.yTickCount);
+    const xTicks = niceTicks(this.domain[0], this.domain[1], xCount, xMinStep);
+    const yTicks = niceTicks(this.yDomain[0], this.yDomain[1], yCount);
 
     if (this.ticksDirty) {
       this.axisTicks.update({

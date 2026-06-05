@@ -13,11 +13,11 @@ const CSS = `
 .sl-plot{position:relative;flex:1 1 auto;min-height:0}
 .sl-canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .sl-ticks{position:absolute;inset:0;pointer-events:none}
-.sl-tick{position:absolute;font-size:11px;color:var(--sl-tick-color,#4b5563);white-space:nowrap;
+.sl-tick{position:absolute;font-size:.6875rem;color:var(--sl-tick-color,#4b5563);white-space:nowrap;
   font-variant-numeric:tabular-nums}
 .sl-tick-x{transform:translateX(-50%);bottom:8px}
 .sl-tick-y{transform:translateY(-50%);left:8px}
-.sl-axis-title{position:absolute;font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+.sl-axis-title{position:absolute;font-size:.625rem;letter-spacing:.12em;text-transform:uppercase;
   color:var(--sl-axis-title,#6b7280)}
 .sl-axis-title-x{bottom:8px;right:12px}
 .sl-axis-title-y{top:8px;left:8px}
@@ -28,7 +28,7 @@ const CSS = `
 .sl-readout{position:absolute;z-index:5;pointer-events:none;transform:translate(-50%,-120%);
   background:var(--sl-readout-bg,#111827);color:var(--sl-readout-ink,#f9fafb);
   border:1px solid var(--sl-readout-border,rgba(255,255,255,.15));border-radius:8px;padding:6px 9px;
-  font-size:12px;min-width:118px;box-shadow:0 8px 24px rgba(0,0,0,.35);opacity:0;
+  font-size:.75rem;min-width:118px;box-shadow:0 8px 24px rgba(0,0,0,.35);opacity:0;
   transition:opacity .08s}
 .sl-readout.sl-show{opacity:1}
 .sl-readout-series{display:flex;align-items:center;gap:6px;font-weight:600;margin-bottom:2px}
@@ -40,7 +40,7 @@ const CSS = `
 .sl-legend button{display:inline-flex;align-items:center;gap:7px;cursor:pointer;padding:5px 10px;
   min-height:24px;min-width:24px;line-height:1.1;
   border-radius:7px;border:1px solid var(--sl-legend-border,rgba(0,0,0,.15));
-  background:var(--sl-legend-bg,transparent);color:inherit;font:inherit;font-size:12.5px;
+  background:var(--sl-legend-bg,transparent);color:inherit;font:inherit;font-size:.78rem;
   font-weight:600}
 .sl-legend button:hover{border-color:var(--sl-legend-border-hover,rgba(0,0,0,.4))}
 /* "Hidden" state is conveyed by aria-pressed (to AT), a strikethrough name and a dimmed
@@ -50,7 +50,7 @@ const CSS = `
 .sl-legend button[aria-pressed="false"] .sl-legend-name{text-decoration:line-through}
 .sl-swatch{width:18px;height:10px;flex:none;overflow:visible}
 .sl-legend-name{white-space:nowrap}
-.sl-legend-state{font-size:10px;font-weight:500}
+.sl-legend-state{font-size:.625rem;font-weight:500}
 @media (prefers-reduced-motion:reduce){.sl-readout{transition:none}}
 @media (prefers-contrast:more){
   .sl-tick{color:var(--sl-tick-color,#1f2937)}

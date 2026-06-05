@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { formatTick, niceTicks, tickStep } from '../src/core/ticks.ts';
+import { formatTick, niceTicks, tickStep, effectiveTickCount } from '../src/core/ticks.ts';
+
+test('effectiveTickCount: reduces at narrow widths, never exceeds base, clamps to >=2', () => {
+  assert.equal(effectiveTickCount(8, 640, 64), 8); // wide: full base (reduction-only, not 10)
+  assert.equal(effectiveTickCount(8, 320, 64), 5); // narrow: floor(320/64)=5
+  assert.equal(effectiveTickCount(8, 100, 64), 2); // very narrow: clamps to 2
+  assert.equal(effectiveTickCount(6, 0, 28), 2); // zero space: clamps to 2
+});
 
 test('niceTicks: produces round values inside the domain', () => {
   const t = niceTicks(0, 100, 5);

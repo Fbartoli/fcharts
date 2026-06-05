@@ -41,6 +41,16 @@ export function niceTicks(min: number, max: number, target: number, minStep = 0)
 }
 
 /**
+ * Reduce the desired tick count so labels don't overlap at narrow sizes (WCAG 1.4.10 reflow).
+ * Reduction-only: never returns more than `base` (so wide plots keep their requested density),
+ * clamped to >= 2. `available` is the plot extent in px, `minPx` the minimum spacing per label.
+ */
+export function effectiveTickCount(base: number, available: number, minPx: number): number {
+  const fit = Math.floor(Math.max(0, available) / Math.max(1, minPx));
+  return Math.max(2, Math.min(base, fit));
+}
+
+/**
  * Default tick label formatter: compact thousands (`12.5k`), otherwise trimmed decimals.
  * The a11y layer can override this for time/category axes.
  */
