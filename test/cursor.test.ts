@@ -1,17 +1,51 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { handlesKey, panToInclude, stepCursor, zoomFactor } from '../src/a11y/cursor.ts';
+import {
+  annotationIndexByX,
+  annotationStep,
+  handlesKey,
+  panToInclude,
+  selectsAnnotation,
+  stepCursor,
+  zoomFactor,
+} from '../src/a11y/cursor.ts';
 
 const ALL_VISIBLE = [true, true, true];
 
-test('handlesKey: recognizes navigation, zoom, and Escape keys', () => {
+test('handlesKey: recognizes navigation, zoom, event-marker, and Escape keys', () => {
   for (const k of ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End',
-                   '+', '=', '-', '_', 'Escape']) {
+                   '+', '=', '-', '_', '[', ']', 'Enter', 'Escape']) {
     assert.equal(handlesKey(k), true, k);
   }
-  for (const k of ['a', 'Enter', 'Tab', ' ', 'PageUp']) {
+  for (const k of ['a', 'Tab', ' ', 'PageUp']) {
     assert.equal(handlesKey(k), false, k);
   }
+});
+
+test('annotationStep / selectsAnnotation: bracket keys step, Enter selects', () => {
+  assert.equal(annotationStep(']'), 1);
+  assert.equal(annotationStep('['), -1);
+  assert.equal(annotationStep('Enter'), null);
+  assert.equal(annotationStep('ArrowRight'), null);
+  assert.equal(selectsAnnotation('Enter'), true);
+  assert.equal(selectsAnnotation(']'), false);
+});
+
+test('annotationIndexByX: steps to the next/previous marker by x, no wrap', () => {
+  const xs = [30, 10, 20]; // unsorted: indices 0,1,2 at x 30,10,20
+  // null start: first marker forward (x=10 → index 1), last marker backward (x=30 → index 0)
+  assert.equal(annotationIndexByX(xs, null, 1), 1);
+  assert.equal(annotationIndexByX(xs, null, -1), 0);
+  // forward from x=10 → x=20 (index 2); from x=20 → x=30 (index 0)
+  assert.equal(annotationIndexByX(xs, 10, 1), 2);
+  assert.equal(annotationIndexByX(xs, 20, 1), 0);
+  // at the last marker, forward stays on it (no wrap)
+  assert.equal(annotationIndexByX(xs, 30, 1), 0);
+  // backward from x=20 → x=10 (index 1); at the first, backward stays put
+  assert.equal(annotationIndexByX(xs, 20, -1), 1);
+  assert.equal(annotationIndexByX(xs, 10, -1), 1);
+  // empty set → null
+  assert.equal(annotationIndexByX([], null, 1), null);
 });
 
 test('zoomFactor: + zooms in (<1), - zooms out (>1), other keys null', () => {

@@ -100,3 +100,10 @@ test('ChartData.push: validates series count and non-decreasing x', () => {
   assert.equal(d.n, 3);
   assert.deepEqual([...d.x], [0, 1, 2]);
 });
+
+test('ChartData.push: rejects non-finite x (NaN passes ordering checks but breaks search)', () => {
+  const d = new ChartData({ x: [0, 1], y: [[1, 2]] });
+  assert.throws(() => d.push(NaN, [3]), /x must be a finite number \(got NaN\)/);
+  assert.throws(() => d.push(Infinity, [3]), /x must be a finite number/);
+  assert.equal(d.n, 2); // nothing was written
+});

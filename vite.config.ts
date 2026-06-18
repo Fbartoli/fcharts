@@ -2,6 +2,10 @@ import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 
 const here = import.meta.dirname;
+// The public barrel is the lib entry, so the built bundle's runtime exports match the published
+// type surface (dist/index.d.ts) and the package `exports` map — FChart, the SVG render API, the
+// themes, etc. `fchart.ts` is named separately only so the React build can externalize the core.
+const libEntry = resolve(here, 'src/index.ts');
 const coreEntry = resolve(here, 'src/fchart.ts');
 
 // `vite` (serve)                       → serves the benchmark page (bench/ is the only HTML root).
@@ -95,7 +99,7 @@ export default defineConfig(({ command }) => {
       sourcemap: true,
       minify: 'esbuild',
       lib: {
-        entry: coreEntry,
+        entry: libEntry,
         name: 'fcharts',
         fileName: 'fcharts',
         // ESM for bundlers; UMD so prospects can drop a <script> tag with zero build.

@@ -143,7 +143,7 @@ async function main(): Promise<void> {
     const conf = countStatuses(conformance);
     console.log(`\n=== Conformance engine (fcharts @ bg ${pageBg}) ===`);
     console.log(`  ${conf.pass} pass · ${conf.fail} fail · ${conf.na} n/a`);
-    for (const r of conformance.results.filter((r) => r.status === 'fail')) {
+    for (const r of conformance.results.filter((res) => res.status === 'fail')) {
       console.log(`  ✗ ${r.id}: ${r.detail}`);
     }
 

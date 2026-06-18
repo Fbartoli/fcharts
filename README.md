@@ -60,8 +60,23 @@ const vibration = Float64Array.from(x, (i) => -32 + Math.sin(i * 4e-3) * 22);
 chart.setData({ x, y: [pressure, temperature, vibration] });
 ```
 
+### Sizing
+
 The container just needs a size (e.g. `#chart { width: 100%; height: 420px }`). Styles are
 injected automatically — no CSS import required.
+
+The chart fills its container (`.fc-root` is `height: 100%`), so **`height: 100%` needs a
+definite-height ancestor** — inside an auto-height parent it resolves to `0` and nothing renders
+(the chart warns once in the console when it measures a zero height). Two pitfalls: a `height:100%`
+mount with no fixed-height ancestor, and constructing the chart while the container is
+`display:none`. The safe pattern for an indefinite container is a definite-height box the mount
+fills absolutely:
+
+```html
+<figure style="position:relative; height:250px">
+  <div id="chart" style="position:absolute; inset:0"></div>
+</figure>
+```
 
 ## Real-time / streaming
 
@@ -84,6 +99,11 @@ has panned back into history, the view stays put so they can keep reading the pa
 > **Accessibility:** the library never auto-updates on its own, so driving `append` on a timer
 > makes *auto-updating content* — give users a **Pause/Stop control** and respect
 > `prefers-reduced-motion` (WCAG 2.2.2). The landing-page hero demonstrates this.
+
+For a worked example against a real exchange feed — Hyperliquid trades aggregated into live
+OHLC candles (`append` per bucket + `amendLast` for the forming one) with a volume panel,
+interval switching, and range presets — open
+[`examples/hyperliquid-live.html`](./examples/hyperliquid-live.html) (no server, no build).
 
 ## Interaction
 
@@ -110,6 +130,7 @@ new FChart(el: HTMLElement, config: FChartConfig)
 
 chart.setData({ x, y })          // replace data, reset the view
 chart.append(x, [y0, y1, …])      // append one sample, O(1) — real-time/streaming
+chart.amendLast([y0, y1, …])      // rewrite the last sample in place, O(log n) — forming candles
 chart.update({ series, options }) // patch series/options in place
 chart.renderSync(domain?)         // synchronous render (programmatic zoom / capture)
 chart.summary()                   // structured ChartSummary (see "Agent-readable")
@@ -136,11 +157,23 @@ three ways:
 interface SeriesConfig {
   name: string;
   color: string;
-  type?: 'line' | 'area';   // default 'line'
+  type?: 'line' | 'area' | 'candle'; // default 'line'
   visible?: boolean;        // default true
   width?: number;           // line width px, default 1.25
   fillAlpha?: number;       // area fill, default 0.15
+  upColor?: string;         // candle body, close >= open (default palette green)
+  downColor?: string;       // candle body, close < open (default palette red)
 }
+```
+
+A `candle` series consumes **four** y arrays — open, high, low, close — at its position in
+`data.y` (`line`/`area` take one each). Up candles draw hollow, down candles filled, so
+direction never relies on colour alone; past ~1 candle per 3px the series degrades to the
+exact per-column high/low envelope. The cursor, live region, hidden table, and `summary()`
+all speak OHLC. Stream live candles with `append` (new bucket) + `amendLast` (forming bucket)
+— see the Hyperliquid example.
+
+```ts
 
 interface FChartOptions {
   ariaLabel?: string;
@@ -247,7 +280,10 @@ same `Renderer` interface later without touching the public API.
 ```sh
 pnpm install          # pnpm 11+ (cooldown + script-blocking for supply-chain safety)
 pnpm test             # unit tests on Node's built-in test runner (no test framework dep)
+pnpm test:browser     # interaction tests (keyboard/wheel/drag/streaming) in headless Chromium
 pnpm typecheck
+pnpm lint             # oxlint: correctness + suspicious + perf, zero findings allowed
+pnpm check            # typecheck + lint + unit + browser tests (what CI runs)
 pnpm build            # dist/fcharts.js (ESM) + .d.ts
 pnpm dev              # serve the benchmark page
 pnpm bench            # headless FPS + axe-core run (Chromium) → bench/results.json

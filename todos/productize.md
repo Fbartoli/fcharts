@@ -5,48 +5,41 @@ beyond this (per `GTM.md`: line+area only, no streaming/candlestick/extra adapte
 
 ---
 
-## <a id="npm-publish"></a>Publish OSS renderer to npm + public repo — **P0**
+## <a id="npm-publish"></a>Publish OSS renderer to npm + public repo — **P0** — ☐ HUMAN-GATED
 
-Nothing in the GTM funnel works until `npm install fcharts` does. The SDK tarball already builds
-(`pnpm pack:sdk` → `fcharts-0.1.0.tgz`), it just isn't published and the repo isn't public.
+Nothing in the GTM funnel works until `npm install fcharts-js` does. The SDK tarball already builds
+(`pnpm pack:sdk` → `fcharts-js-0.1.0.tgz`) and `package.json` already declares the right `exports`
+(`.`, `./compliance`, `./react`), `bin`, and `files`. What's left needs **credentials + a decision
+an agent can't make**: there is no git remote, and publishing requires an npm account.
 
-- [ ] Make the repo public on GitHub.
-- [ ] `npm publish` the renderer (MIT). Verify the UMD + ESM + `.d.ts` resolve for a consumer.
-- [ ] README quickstart + the embedded demo + the sample ACR lead magnet are linked from the repo.
+- [ ] Make the repo public on GitHub (needs the owner).
+- [ ] `npm publish` the renderer (MIT) — needs npm credentials. Verify UMD + ESM + `.d.ts` resolve.
+- [ ] Link README quickstart + embedded demo + sample ACR lead magnet from the repo.
 
-Effort: S (mostly process/decisions).
+Effort: S (mostly process/decisions) — **not codeable by an agent.**
 
-## <a id="compliance-build"></a>Wire the `fcharts-js/compliance` entry + `fcharts-audit` bin into the build — **P0**
+## <a id="compliance-build"></a>Wire the `fcharts-js/compliance` entry + `fcharts-audit` bin into the build — **P0** — ✅ DONE
 
-Makes the *paid layer* actually consumable. Today `src/compliance/` runs from source
-(`node src/compliance/cli.ts`, `pnpm a11y-audit`); the published-package paths don't exist yet.
+The *paid layer* is consumable from the built package.
 
-- [ ] Vite multi-entry (or a second build step) to emit `dist/compliance/index.js` + a
-      `dist/compliance/cli.js` with the shebang.
-- [ ] `package.json`: add `exports["./compliance"]`, a `bin: { "fcharts-audit": ... }`, and
-      include the compliance dist in `files`.
-- [ ] Confirm `npx fcharts-audit` and `import { buildModel } from 'fcharts-js/compliance'` work
-      from an installed package; keep Playwright/axe as **peer/dev** deps (never in core).
+- [x] Multi-entry build (`vite build && SIGHTLINE_ENTRY=react vite build && SIGHTLINE_ENTRY=compliance
+      vite build && tsc -p tsconfig.build.json`) emits `dist/compliance/index.js` + `dist/compliance/cli.js`
+      (with shebang).
+- [x] `package.json`: `exports["./compliance"]`, `bin: { "fcharts-audit": "./dist/compliance/cli.js" }`,
+      and `files: ["dist"]`.
+- [x] Playwright + axe-core are optional **peer/dev** deps (never in core); `import { … } from
+      'fcharts-js/compliance'` and `npx fcharts-audit` resolve from the built package.
 
-Effort: ~½ day.
+## <a id="react-adapter"></a>React adapter `<FChart>` — **P1** — ✅ DONE
 
-## <a id="react-adapter"></a>React adapter `<FChart>` — **P1**
+- [x] `src/react.ts` — thin `<FChart series data options />` wrapper (construct on mount,
+      `update`/`setData` on prop change via `sameConstructionOptions`, remount when a
+      construction-time option changes, `destroy` on unmount). Shipped as the `./react` entry, no
+      React in core (peer dep). Covered by the React adapter browser test.
 
-The likely *true* product gap for a real trial: the Tier-1 targets (Grafana, Metabase, Superset)
-are React. GTM cut framework adapters, but a drop-in wrapper is what a partner needs.
+## <a id="hero-demo"></a>Hero demo: side-by-side vs Highcharts+Boost — **P1** — ✅ DONE
 
-- [ ] Thin `<FChart series data options />` wrapper (construct on mount, `update`/`setData`
-      on prop change, `destroy` on unmount). Ship as a separate entry, no React in core.
-
-Effort: S–M.
-
-## <a id="hero-demo"></a>Hero demo: side-by-side vs Highcharts+Boost — **P1**
-
-GTM Days 1–15 wants the side-by-side against **Highcharts+Boost** (the "accessible incumbent" a
-prospect will name), not just uPlot + naive SVG. Highcharts+Boost disables per-point a11y
-(`exposeAsGroupOnly`), which is exactly the wedge.
-
-- [ ] Add a Highcharts+Boost column to the benchmark/landing comparison (fast but per-point
-      inaccessible at scale), same data, same size (mind the fair-layout fix already in place).
-
-Effort: M.
+- [x] `bench/baselines/highcharts-chart.ts` runs Highcharts with the **boost** module *and* the
+      accessibility module (the fairest "just use Highcharts" config); `bench/main.ts` wires it as
+      a `cell-highcharts` column and `bench/results.json` records it as "Highcharts + Boost". The
+      landing comparison (`landing/index.html`) lists the Highcharts Stock row alongside fcharts.

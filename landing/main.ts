@@ -54,6 +54,13 @@ const fmtPrice = (v: number): string => `$${v.toFixed(2)}`;
 const COLORS = ['#6ee7a8', '#fbbf24'];
 const ARROW: Record<string, string> = { up: '▲', down: '▼', flat: '■' };
 
+// The render-path badge reflects the path actually in use — and updates if the HTML-in-Canvas
+// path self-heals to the DOM overlay mid-flight (composite painted nothing in this browser).
+function setPathBadge(path: string): void {
+  const badge = document.getElementById('path-badge');
+  if (badge) badge.textContent = path === 'dom-overlay' ? 'DOM-overlay · no flags' : 'HTML-in-Canvas';
+}
+
 function mount(): void {
   const el = document.getElementById('hero-chart');
   if (!el) return;
@@ -70,13 +77,10 @@ function mount(): void {
       yLabel: 'price',
       formatX: fmtTime,
       formatY: fmtPrice,
+      onRenderPath: setPathBadge,
     },
   });
-  const badge = document.getElementById('path-badge');
-  if (badge) {
-    badge.textContent =
-      chart.renderPath === 'dom-overlay' ? 'DOM-overlay · no flags' : 'HTML-in-Canvas';
-  }
+  setPathBadge(chart.renderPath);
   populateAgentPanel(el);
   wireLiveStream(chart, el, x, price, vwap);
 }
@@ -88,6 +92,10 @@ function mount(): void {
  * "add a batch on click" affordance instead of a continuous animation. The agent panel is re-read
  * from the chart's DOM (~1×/s) while live so it doesn't go stale.
  */
+function reduced(): boolean {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 function wireLiveStream(
   chart: FChart,
   el: HTMLElement,
@@ -100,7 +108,7 @@ function wireLiveStream(
   const count = document.getElementById('tick-count');
   if (!btn || !label) return;
   const dt = SESSION_MS / TICKS;
-  const window_ = dt * 600; // show ~the last 600 ticks, so the motion is visible
+  const liveWindow = dt * 600; // show ~the last 600 ticks, so the motion is visible
   let t = x[x.length - 1];
   let p = price[price.length - 1];
   let v = vwap[vwap.length - 1];
@@ -108,8 +116,6 @@ function wireLiveStream(
   let timer = 0;
   let sinceRefresh = 0;
   let seeded = false;
-  const reduced = (): boolean => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
   // Reset to a recent slice (once) so the y-axis fits the live price range instead of the whole
   // 6.5h session, and switch the x-axis to seconds — a ~2-min window collapses to one HH:MM label.
   const seed = (): void => {
@@ -141,7 +147,7 @@ function wireLiveStream(
   };
   const start = (): void => {
     seed();
-    chart.renderSync([t - window_ * 0.85, t]); // a trailing window narrower than the data → slides
+    chart.renderSync([t - liveWindow * 0.85, t]); // a trailing window narrower than the data → slides
     timer = window.setInterval(() => {
       step();
       if (++sinceRefresh >= 6) {
@@ -155,7 +161,7 @@ function wireLiveStream(
   // Reduced motion: no continuous animation — each click appends a batch in a single discrete update.
   const batch = (): void => {
     seed();
-    chart.renderSync([t - window_ * 0.85, t]);
+    chart.renderSync([t - liveWindow * 0.85, t]);
     for (let i = 0; i < 40; i++) step();
     populateAgentPanel(el);
     label.textContent = 'Add more';
@@ -196,11 +202,12 @@ function populateAgentPanel(host: HTMLElement): void {
   if (rows) rows.replaceChildren(...summary.series.map((s, i) => agentRow(s, COLORS[i] ?? '#888')));
 
   const jsonEl = document.getElementById('agent-json');
-  if (jsonEl) {
-    const round = (_k: string, v: unknown): unknown =>
-      typeof v === 'number' ? Math.round(v * 100) / 100 : v;
-    jsonEl.textContent = JSON.stringify(summary, round, 2);
-  }
+  if (jsonEl) jsonEl.textContent = JSON.stringify(summary, roundForJson, 2);
+}
+
+/** JSON.stringify replacer: round numbers to 2 decimals for the agent-panel display. */
+function roundForJson(_k: string, v: unknown): unknown {
+  return typeof v === 'number' ? Math.round(v * 100) / 100 : v;
 }
 
 /** Build one series row with DOM APIs (textContent — no innerHTML sink for the name). */

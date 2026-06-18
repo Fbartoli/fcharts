@@ -25,6 +25,11 @@ export function isLargeText(fontPx: number, bold: boolean): boolean {
   return fontPx >= 24 || (bold && fontPx >= 18.66);
 }
 
+/** Parse one rgb()/rgba() channel: `'50%'` → 127.5, `'128'` → 128. */
+function chan(p: string): number {
+  return p.endsWith('%') ? (parseFloat(p) / 100) * 255 : parseFloat(p);
+}
+
 /** Parse a CSS color string (`#rgb`, `#rrggbb`, `rgb(...)`, `rgba(...)`) to RGBA, or null. */
 export function parseColor(css: string): Rgba | null {
   const s = css.trim().toLowerCase();
@@ -50,7 +55,6 @@ export function parseColor(css: string): Rgba | null {
   if (rgb) {
     const parts = rgb[1].split(/[,/]/).map((p) => p.trim()).filter(Boolean);
     if (parts.length < 3) return null;
-    const chan = (p: string): number => (p.endsWith('%') ? (parseFloat(p) / 100) * 255 : parseFloat(p));
     const r = chan(parts[0]);
     const g = chan(parts[1]);
     const b = chan(parts[2]);
@@ -72,12 +76,14 @@ export function composite(fg: Rgba, bg: Rgba): Rgba {
   };
 }
 
+/** Linearize one sRGB channel (0..255) per the WCAG relative-luminance definition. */
+function lin(c: number): number {
+  const cs = c / 255;
+  return cs <= 0.03928 ? cs / 12.92 : ((cs + 0.055) / 1.055) ** 2.4;
+}
+
 /** WCAG relative luminance of an opaque color (channels 0..255). */
 export function relativeLuminance({ r, g, b }: Rgba): number {
-  const lin = (c: number): number => {
-    const cs = c / 255;
-    return cs <= 0.03928 ? cs / 12.92 : ((cs + 0.055) / 1.055) ** 2.4;
-  };
   return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
 }
 

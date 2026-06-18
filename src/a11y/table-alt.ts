@@ -23,6 +23,8 @@ export interface TableUpdate {
   xLabel?: string;
   /** Max sampled rows (the table summarizes, it does not dump all N). Default 40. */
   maxRows?: number;
+  /** Localized OHLC words for candle column headers. Defaults to the English strings. */
+  ohlc?: Pick<typeof DEFAULT_STRINGS, 'open' | 'high' | 'low' | 'close'>;
 }
 
 /** Evenly spaced sample indices spanning the visible range [i0, i1] inclusive. */
@@ -64,7 +66,7 @@ export class TableAlt {
 
     const frag = this.doc.createDocumentFragment();
     frag.append(this.buildCaption(u, visible.length, rows.length));
-    frag.append(this.buildHead(visible, u.xLabel ?? 'x'));
+    frag.append(this.buildHead(u, visible, u.xLabel ?? 'x'));
     frag.append(this.buildBody(u, visible, rows));
 
     this.table.replaceChildren(frag);
@@ -80,11 +82,21 @@ export class TableAlt {
     return caption;
   }
 
-  private buildHead(visible: readonly ResolvedSeries[], xHeader: string): HTMLElement {
+  private buildHead(u: TableUpdate, visible: readonly ResolvedSeries[], xHeader: string): HTMLElement {
+    const ohlc = u.ohlc ?? DEFAULT_STRINGS;
     const thead = this.doc.createElement('thead');
     const tr = this.doc.createElement('tr');
     tr.append(this.th(xHeader));
-    for (const s of visible) tr.append(this.th(s.name));
+    for (const s of visible) {
+      if (s.type === 'candle') {
+        // One column per OHLC component so the table stays a faithful text alternative.
+        for (const part of [ohlc.open, ohlc.high, ohlc.low, ohlc.close]) {
+          tr.append(this.th(`${s.name} ${part}`));
+        }
+      } else {
+        tr.append(this.th(s.name));
+      }
+    }
     thead.append(tr);
     return thead;
   }
@@ -101,9 +113,11 @@ export class TableAlt {
       rowHeader.scope = 'row';
       tr.append(rowHeader);
       for (const s of visible) {
-        const td = this.doc.createElement('td');
-        td.textContent = u.formatY(u.data.y[s.index][i]);
-        tr.append(td);
+        for (let slot = s.index; slot < s.index + s.slots; slot++) {
+          const td = this.doc.createElement('td');
+          td.textContent = u.formatY(u.data.y[slot][i]);
+          tr.append(td);
+        }
       }
       tbody.append(tr);
     }

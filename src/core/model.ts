@@ -4,7 +4,7 @@
  *
  * All of this is computed once per `setData`, never per frame.
  */
-import { StreamingPyramid } from './downsample.ts';
+import { nearestIndex, StreamingPyramid } from './downsample.ts';
 
 export type NumberArray = Float64Array | readonly number[];
 
@@ -12,11 +12,12 @@ export type NumberArray = Float64Array | readonly number[];
 export interface SeriesConfig {
   /** Human-readable name (announced to screen readers, shown in legend/tooltip). */
   name: string;
-  /** CSS color for the line/area. Optional — falls back to the contrast-checked
-   *  {@link DEFAULT_PALETTE} by series index. */
+  /** CSS color for the line/area (wick/outline for `candle`). Optional — falls back to the
+   *  contrast-checked {@link DEFAULT_PALETTE} by series index. */
   color?: string;
-  /** `line` (stroked envelope) or `area` (filled to baseline). Default `line`. */
-  type?: 'line' | 'area';
+  /** `line` (stroked envelope), `area` (filled to baseline), or `candle` (OHLC candlesticks —
+   *  consumes four y arrays: open, high, low, close). Default `line`. */
+  type?: 'line' | 'area' | 'candle';
   /** Whether the series starts visible. Default true. */
   visible?: boolean;
   /** Stroke width in CSS px. Default 1.25. */
@@ -26,12 +27,99 @@ export interface SeriesConfig {
   /** Dash pattern for the stroke (canvas `setLineDash`). Omit to auto-assign a distinct pattern
    *  per series so colour is not the only differentiator (WCAG 1.4.1). `[]` forces solid. */
   dash?: number[];
+  /** Candle body color when close >= open. Default green from the contrast-checked palette.
+   *  Up candles are drawn hollow (outline only) so direction never relies on colour alone. */
+  upColor?: string;
+  /** Candle body color when close < open. Default red from the contrast-checked palette.
+   *  Down candles are drawn filled. */
+  downColor?: string;
 }
 
-/** Columnar dataset: one shared, non-decreasing x array and one y array per series. */
+/**
+ * Columnar dataset: one shared, non-decreasing x array and one y array per series *slot*.
+ * `line`/`area` series consume one slot; a `candle` series consumes four consecutive slots
+ * in the order open, high, low, close. Slots follow series declaration order.
+ */
 export interface FChartData {
   x: NumberArray;
   y: NumberArray[];
+}
+
+/** Y-array slots a series consumes: 4 for `candle` (open/high/low/close), 1 otherwise. */
+export function seriesSlots(type: 'line' | 'area' | 'candle' | undefined): number {
+  return type === 'candle' ? 4 : 1;
+}
+
+/**
+ * An event marker on the time series — a dot on the nearest sample of a series, or a vertical
+ * rule, at an x position, with a label (e.g. "GSR +$2.0M"). Events are half the story on a
+ * portfolio chart: a climbing line without the allocation markers hides that a jump was new
+ * capital, not yield.
+ */
+export interface AnnotationSpec {
+  /** x position (data units) the annotation marks. */
+  x: number;
+  /** Short description of the event (announced, shown in the readout, listed in the summary). */
+  label: string;
+  /** Mark color; defaults to the target series' color, else a neutral. Shape + label carry the
+   *  meaning too, so the mark is never color-only (WCAG 1.4.1). */
+  color?: string;
+  /** `point` = a diamond on the nearest sample of `seriesIndex`; `rule` = a vertical line. Default `point`. */
+  kind?: 'point' | 'rule';
+  /** Which series' nearest sample a `point` marker sits on. Default 0. */
+  seriesIndex?: number;
+  /** Draw the always-on text label beside the marker. Default `true`. Set `false` for dense event
+   *  sets (many markers on one chart): the marker still renders and the cursor readout +
+   *  screen-reader announcement still surface the label on hover or keyboard select, but the static
+   *  label is suppressed so a cluster of events doesn't collapse into overlapping text. */
+  showLabel?: boolean;
+}
+
+/** An {@link AnnotationSpec} with defaults resolved. */
+export interface ResolvedAnnotation {
+  x: number;
+  label: string;
+  color: string;
+  kind: 'point' | 'rule';
+  seriesIndex: number;
+  showLabel: boolean;
+}
+
+/** Apply defaults to annotation specs; color falls back to the target series' color. Pure. */
+export function resolveAnnotations(
+  specs: readonly AnnotationSpec[],
+  series: readonly ResolvedSeries[],
+): ResolvedAnnotation[] {
+  return specs.map((a) => {
+    const seriesIndex = a.seriesIndex ?? 0;
+    return {
+      x: a.x,
+      label: a.label,
+      kind: a.kind ?? 'point',
+      seriesIndex,
+      color: a.color || series[seriesIndex]?.color || '#64748b',
+      showLabel: a.showLabel ?? true,
+    };
+  });
+}
+
+/**
+ * The on-line data coordinates a `point` annotation snaps to: the nearest sample of its target
+ * series (the close, for a candle), so the marker lands exactly on the drawn line. Returns the
+ * sample index too, so callers can attach the annotation to the keyboard cursor. Null when there's
+ * no data or the target series doesn't exist.
+ */
+export function annotationSample(
+  data: ChartData,
+  series: readonly ResolvedSeries[],
+  a: ResolvedAnnotation,
+): { index: number; x: number; y: number } | null {
+  if (data.n === 0) return null;
+  const s = series[a.seriesIndex];
+  if (!s) return null;
+  const index = nearestIndex(data.x, a.x);
+  const slot = s.type === 'candle' ? s.index + 3 : s.index;
+  return { index, x: data.x[index], y: data.y[slot][index] };
 }
 
 /** Per-series summary statistics over the full dataset (computed once at setData). */
@@ -45,16 +133,21 @@ export interface SeriesStats {
 
 /** A series with all optional fields resolved to concrete defaults. */
 export interface ResolvedSeries {
-  /** Index into `ChartData.y` / `.pyramids`. */
+  /** First y-slot in `ChartData.y` / `.pyramids` (candles span `index..index+3`: OHLC). */
   index: number;
+  /** Y-slots consumed: 4 for `candle`, 1 otherwise. */
+  slots: number;
   name: string;
   color: string;
-  type: 'line' | 'area';
+  type: 'line' | 'area' | 'candle';
   visible: boolean;
   width: number;
   fillAlpha: number;
   /** Resolved dash pattern; `[]` = solid. */
   dash: number[];
+  /** Candle body colors (unused for line/area). */
+  upColor: string;
+  downColor: string;
 }
 
 /**
@@ -88,16 +181,25 @@ export function resolveSeries(configs: readonly SeriesConfig[]): ResolvedSeries[
   // All-or-nothing: auto-assign dashes only when the integrator specified none (an explicit dash
   // on any series opts out of the auto-cycle).
   const auto = configs.length > 1 && !configs.some((c) => c.dash !== undefined);
-  return configs.map((c, index) => ({
-    index,
-    name: c.name,
-    color: c.color || DEFAULT_PALETTE[index % DEFAULT_PALETTE.length],
-    type: c.type ?? 'line',
-    visible: c.visible ?? true,
-    width: c.width ?? 1.25,
-    fillAlpha: c.fillAlpha ?? 0.15,
-    dash: c.dash ?? (auto ? [...AUTO_DASH[index % AUTO_DASH.length]] : []),
-  }));
+  let slot = 0;
+  return configs.map((c, i) => {
+    const index = slot;
+    const slots = seriesSlots(c.type);
+    slot += slots;
+    return {
+      index,
+      slots,
+      name: c.name,
+      color: c.color || DEFAULT_PALETTE[i % DEFAULT_PALETTE.length],
+      type: c.type ?? 'line',
+      visible: c.visible ?? true,
+      width: c.width ?? 1.25,
+      fillAlpha: c.fillAlpha ?? 0.15,
+      dash: c.dash ?? (auto ? [...AUTO_DASH[i % AUTO_DASH.length]] : []),
+      upColor: c.upColor ?? '#16a34a', // palette green/red — both contrast-checked (1.4.11)
+      downColor: c.downColor ?? '#dc2626',
+    };
+  });
 }
 
 /** Which sample the keyboard/hover cursor currently points at. */
@@ -120,6 +222,16 @@ export const DEFAULT_MARGINS: Margins = { left: 56, right: 16, top: 20, bottom: 
 
 function toF64(a: NumberArray): Float64Array {
   return a instanceof Float64Array ? a : Float64Array.from(a);
+}
+
+/** Copy `src` into a fresh buffer of length `cap` (cap >= src.length). Never aliases caller
+ *  data. NOTE (measured): this two-step convert-then-memcpy ctor pipeline, with stats and
+ *  pyramids reading the flat exact-length arrays, beats every "single-copy" restructure tried
+ *  — reading subarray views in the O(n) passes costs ~15% on plain-array input. */
+function toCapacity(src: Float64Array, cap: number): Float64Array {
+  const out = new Float64Array(cap);
+  out.set(src);
+  return out;
 }
 
 /**
@@ -147,13 +259,6 @@ function initStats(y: Float64Array): { stats: SeriesStats; sum: number; count: n
   }
   if (count === 0) return { stats: { min: 0, max: 0, first: 0, last: 0, mean: 0 }, sum: 0, count: 0 };
   return { stats: { min, max, first, last, mean: sum / count }, sum, count };
-}
-
-/** Copy `src` into a fresh buffer of length `cap` (cap >= src.length). Never aliases caller data. */
-function toCapacity(src: Float64Array, cap: number): Float64Array {
-  const out = new Float64Array(cap);
-  out.set(src);
-  return out;
 }
 
 /**
@@ -212,7 +317,14 @@ export class ChartData {
    */
   push(xv: number, ys: readonly number[]): void {
     if (ys.length !== this.yBuf.length) {
-      throw new Error(`fcharts: append got ${ys.length} y-values but the chart has ${this.yBuf.length} series.`);
+      throw new Error(
+        `fcharts: append got ${ys.length} y-values but the chart has ${this.yBuf.length} series slots.`,
+      );
+    }
+    // Reject non-finite x explicitly: NaN passes every `<` ordering check, so it would land in
+    // the array silently and corrupt the binary searches that assume x is non-decreasing.
+    if (!Number.isFinite(xv)) {
+      throw new Error(`fcharts: append x must be a finite number (got ${xv}).`);
     }
     if (this.n > 0 && xv < this.xBuf[this.n - 1]) {
       throw new Error('fcharts: append x must be >= the current last x (x is non-decreasing).');
@@ -229,6 +341,58 @@ export class ChartData {
     this.n = i + 1;
     this.x = this.xBuf.subarray(0, this.n);
     for (let s = 0; s < this.yBuf.length; s++) this.y[s] = this.yBuf[s].subarray(0, this.n);
+  }
+
+  /**
+   * Replace the y-values of the LAST sample (x unchanged) — O(log n), for in-flight samples
+   * that keep changing, e.g. a forming candle or a ticking last price. Values must be finite.
+   *
+   * Stats caveat: `min`/`max` only widen under amends. If the amended value was the sole
+   * extreme and retreats, the recorded extreme stays until the next `setData`. For the
+   * intended use this never happens (a forming candle's high/low only extend), and a
+   * one-amend-wide extreme is the conservative direction for axis fitting.
+   */
+  amendLast(ys: readonly number[]): void {
+    if (this.n === 0) {
+      throw new Error('fcharts: amendLast called on an empty chart — append a sample first.');
+    }
+    if (ys.length !== this.yBuf.length) {
+      throw new Error(
+        `fcharts: amendLast got ${ys.length} y-values but the chart has ${this.yBuf.length} series slots.`,
+      );
+    }
+    const i = this.n - 1;
+    for (let s = 0; s < this.yBuf.length; s++) {
+      const v = ys[s];
+      if (!Number.isFinite(v)) {
+        throw new Error(`fcharts: amendLast values must be finite numbers (slot ${s} got ${v}).`);
+      }
+      const old = this.yBuf[s][i];
+      this.yBuf[s][i] = v;
+      this.pyramids[s].amendLast(v, i > 0 ? this.yBuf[s][i - 1] : v);
+      this.amendStat(s, old, v);
+    }
+  }
+
+  private amendStat(s: number, old: number, v: number): void {
+    const st = this.stats[s];
+    if (Number.isFinite(old)) {
+      this.sums[s] += v - old;
+    } else {
+      // The previous last value was a gap (appended as NaN) now becoming real data.
+      this.sums[s] += v;
+      this.counts[s] += 1;
+      if (this.counts[s] === 1) {
+        // First finite value ever: seed the extremes rather than widening the empty-state zeros.
+        st.first = v;
+        st.min = v;
+        st.max = v;
+      }
+    }
+    if (v < st.min) st.min = v;
+    if (v > st.max) st.max = v;
+    st.last = v;
+    st.mean = this.sums[s] / this.counts[s];
   }
 
   private grow(): void {

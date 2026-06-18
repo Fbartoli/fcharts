@@ -9,17 +9,21 @@
  */
 import {
   ChartData,
+  annotationSample,
+  resolveAnnotations,
   resolveSeries,
   DEFAULT_MARGINS,
+  type AnnotationSpec,
   type CursorState,
   type Margins,
+  type ResolvedAnnotation,
   type ResolvedSeries,
   type SeriesConfig,
   type FChartData,
 } from './core/model.ts';
 import { linearScale, type LinearScale } from './core/scales.ts';
 import { niceTicks, formatTick, effectiveTickCount } from './core/ticks.ts';
-import { lowerBound } from './core/downsample.ts';
+import { lowerBound, nearestIndex } from './core/downsample.ts';
 import { RenderScheduler } from './core/scheduler.ts';
 import { createCanvas2DRenderer } from './renderers/canvas2d.ts';
 import {
@@ -39,7 +43,15 @@ import { Pagers } from './a11y/pagers.ts';
 import { Sonifier } from './a11y/sonify.ts';
 import { TableAlt } from './a11y/table-alt.ts';
 import { buildSummary, describeSummary, type ChartSummary } from './a11y/summary.ts';
-import { handlesKey, panToInclude, stepCursor, zoomFactor } from './a11y/cursor.ts';
+import {
+  annotationIndexByX,
+  annotationStep,
+  handlesKey,
+  panToInclude,
+  selectsAnnotation,
+  stepCursor,
+  zoomFactor,
+} from './a11y/cursor.ts';
 import { format, resolveStrings, type FChartStrings } from './a11y/strings.ts';
 
 type Formatter = (value: number) => string;
@@ -55,6 +67,12 @@ export interface FChartOptions {
   maxDpr?: number;
   /** Fractional y-extent padding. Default 0.06. */
   yPadding?: number;
+  /** X-domain padding in x data units beyond the first/last sample (it widens the view's hard
+   *  bounds). Candle bodies have width in x, so charts with a visible candle series default to
+   *  half the average sample step — edge candles render whole instead of clipping to slivers at
+   *  the plot border. Other charts default to 0. Set it explicitly to keep multi-panel layouts
+   *  (e.g. price + volume) on identical domains. */
+  xPad?: number;
   /** Treat x as integer indices (ticks step >= 1). Default false. */
   xInteger?: boolean;
   xTickCount?: number;
@@ -70,6 +88,11 @@ export interface FChartOptions {
   /** Play an audible tone for the focused value as the keyboard cursor moves (audio charts).
    *  Off by default. */
   sonify?: boolean;
+  /** Notified when the live render path changes after construction — e.g. when the
+   *  HTML-in-Canvas path self-heals to the DOM overlay because the experimental composite painted
+   *  nothing. Read `chart.renderPath` for the initial value; this fires only on a change.
+   *  Lets a host reflect the live path (a status badge, diagnostics). */
+  onRenderPath?: (path: RenderPath) => void;
   /** Localize the library's fixed UI strings (legend, keyboard help, summary, caption). */
   strings?: Partial<FChartStrings>;
 }
@@ -78,12 +101,18 @@ export interface FChartConfig {
   series: SeriesConfig[];
   data?: FChartData;
   options?: FChartOptions;
+  /** Event markers on the series (allocation/closure dots, vertical rules). */
+  annotations?: AnnotationSpec[];
 }
 
-const TABLE_THROTTLE_MS = 150;
+/** Throttle for the DOM-heavy derived updates (hidden table, summary, pagers, label). */
+const DERIVED_THROTTLE_MS = 150;
 // Coalesce live-region announcements: holding an arrow key fires keydowns at the OS repeat
 // rate, which would flood a polite live region. Announce only the settled position.
 const ANNOUNCE_DEBOUNCE_MS = 100;
+// Pointer pick radius (px) for grabbing an individual event marker: the diamond's ~5px half-width
+// plus slack, so a near-miss still selects the intended marker.
+const ANNOTATION_HIT_PX = 11;
 
 let instanceSeq = 0;
 
@@ -98,17 +127,24 @@ export class FChart {
   private readonly root: HTMLElement;
   private readonly doc: Document;
   private readonly options: Required<
-    Omit<FChartOptions, 'ariaLabel' | 'xLabel' | 'yLabel' | 'strings'>
+    Omit<FChartOptions, 'ariaLabel' | 'xLabel' | 'yLabel' | 'strings' | 'onRenderPath' | 'xPad'>
   > &
-    Pick<FChartOptions, 'ariaLabel' | 'xLabel' | 'yLabel'>;
+    Pick<FChartOptions, 'ariaLabel' | 'xLabel' | 'yLabel' | 'onRenderPath' | 'xPad'>;
   private readonly strings: FChartStrings;
 
   private series: ResolvedSeries[];
+  /** Raw annotation specs, kept so a series change can re-resolve their default colors. */
+  private annotationSpecs: AnnotationSpec[] = [];
+  private annotations: ResolvedAnnotation[] = [];
   private data: ChartData;
   private domain: [number, number] = [0, 1];
   private yDomain: [number, number] = [0, 1];
   private cursor: CursorState = { series: 0, index: 0 };
   private cursorActive = false;
+  /** Event marker under the pointer or keyboard focus (transient highlight), or null. */
+  private hoveredAnn: number | null = null;
+  /** Pinned/selected event marker (persists until cleared or re-clicked), or null. */
+  private selectedAnn: number | null = null;
 
   private width = 0;
   private height = 0;
@@ -117,9 +153,16 @@ export class FChart {
 
   private ticksDirty = true;
   private tableTimer = 0;
+  private a11yTimer = 0;
   private announceTimer = 0;
+  /** One-shot guard so the zero-height diagnostic warns at most once per chart. */
+  private warnedZeroHeight = false;
   /** Consecutive HTML-in-Canvas composite misses before falling back to the visible overlay. */
   private hicMisses = 0;
+  /** Whether we've verified a composite actually painted tick pixels into the bitmap. */
+  private hicVerified = false;
+  /** Last render path handed to `options.onRenderPath` (only re-notify on a real change). */
+  private reportedPath: RenderPath;
 
   private readonly renderer: Renderer;
   private readonly scheduler: RenderScheduler;
@@ -165,15 +208,22 @@ export class FChart {
       highContrast: config.options?.highContrast ?? prefers(this.doc, '(prefers-contrast: more)'),
       forcedColors: config.options?.forcedColors ?? prefers(this.doc, '(forced-colors: active)'),
       sonify: config.options?.sonify ?? false,
+      onRenderPath: config.options?.onRenderPath,
       ariaLabel: config.options?.ariaLabel,
       xLabel: config.options?.xLabel,
       yLabel: config.options?.yLabel,
+      xPad: config.options?.xPad,
     };
     this.strings = resolveStrings(config.options?.strings);
 
     injectStyles(this.doc);
     this.series = resolveSeries(config.series);
-    this.data = new ChartData(config.data ?? { x: [], y: config.series.map(() => []) });
+    this.annotationSpecs = config.annotations ?? [];
+    this.annotations = resolveAnnotations(this.annotationSpecs, this.series);
+    if (config.data) this.assertSlotCount(config.data.y.length);
+    this.data = new ChartData(
+      config.data ?? { x: [], y: Array.from({ length: this.totalSlots() }, () => []) },
+    );
 
     // --- DOM ---
     const seq = ++instanceSeq;
@@ -232,6 +282,7 @@ export class FChart {
     this.compositor = createCompositor(this.canvas);
     this.support = detectHtmlInCanvas();
     this.path = resolveRenderPath(this.support);
+    this.reportedPath = this.path;
 
     if (this.legend) this.root.append(this.legend.el);
     this.surface.append(this.liveRegion.el, this.activeSample);
@@ -297,7 +348,7 @@ export class FChart {
    * the values a bare `<canvas>` chart hides.
    */
   summary(): ChartSummary {
-    return buildSummary(this.data, this.series, this.options.ariaLabel ?? 'Chart');
+    return buildSummary(this.data, this.series, this.options.ariaLabel ?? 'Chart', this.annotations);
   }
 
   /**
@@ -332,16 +383,35 @@ export class FChart {
       desc: describeSummary(this.summary(), this.options.formatX, this.options.formatY, this.strings),
       xLabel: this.options.xLabel,
       yLabel: this.options.yLabel,
+      annotations: this.annotations,
     });
   }
 
   /** Replace the dataset. Resets the view to the full x-domain. */
   setData(data: FChartData): FChart {
+    this.assertSlotCount(data.y.length);
     this.data = new ChartData(data);
     this.resetView();
     this.refreshDerived();
     this.requestRender();
     return this;
+  }
+
+  /** Total y-array slots the configured series consume (candles take 4: open/high/low/close). */
+  private totalSlots(): number {
+    const last = this.series[this.series.length - 1];
+    return last ? last.index + last.slots : 0;
+  }
+
+  /** Fail fast when the y-array count doesn't match the series' slot layout. */
+  private assertSlotCount(got: number): void {
+    const want = this.totalSlots();
+    if (got === want) return;
+    const candles = this.series.filter((s) => s.type === 'candle').length;
+    const hint = candles
+      ? ` (${candles} candle series × 4 arrays each — open, high, low, close — plus 1 per line/area series)`
+      : '';
+    throw new Error(`fcharts: ${this.series.length} series need ${want} y arrays${hint}, got ${got}.`);
   }
 
   /**
@@ -360,28 +430,55 @@ export class FChart {
   append(xv: number, ys: readonly number[]): FChart {
     const prevN = this.data.n;
     const prevLast = prevN > 0 ? this.data.x[prevN - 1] : xv;
-    const lo = prevN > 0 ? this.data.x[0] : xv;
+    const prevLo = prevN > 0 ? this.viewExtent()[0] : xv;
     const following = prevN === 0 || this.domain[1] >= prevLast - 1e-9;
-    const atLeftEdge = this.domain[0] <= lo + 1e-9;
+    const atLeftEdge = this.domain[0] <= prevLo + 1e-9;
 
     this.data.push(xv, ys);
-    // Rescale the y-axis only when following the tail; a paused historical view keeps its axis.
-    this.refreshDerived(following);
 
     if (following) {
+      // Rescale the y-axis only when following the tail; a paused historical view keeps its axis.
+      this.rescaleY();
+      this.ticksDirty = true;
+      const [vlo, vhi] = this.viewExtent(); // padded bounds, so an edge candle stays whole
       if (atLeftEdge) {
-        this.applyDomain([lo, xv]); // a full-history view → grow the right edge
+        this.applyDomain([vlo, vhi]); // a full-history view → grow the right edge
       } else {
         const w = this.domain[1] - this.domain[0]; // a zoomed window → slide, keep its width
-        this.applyDomain([xv - w, xv]);
+        this.applyDomain([vhi - w, vhi]);
         this.keepCursorInView();
       }
     }
+    // The DOM-facing derived state (summary JSON, accessible name, pagers, table) coalesces at
+    // streaming rates instead of rebuilding per sample — measured at ~99% of append cost.
+    this.scheduleA11yRefresh();
+    this.scheduleTableUpdate();
     this.requestRender();
     return this;
   }
 
-  /** After a follow-slide, if the keyboard cursor scrolled out of view, snap it back + announce. */
+  /**
+   * Replace the y-values of the LAST sample in place (x unchanged) — O(log n). The streaming
+   * companion to `append` for samples that keep changing while they form: amend the forming
+   * candle (or ticking last price) on every update, then `append` the next one when its bucket
+   * opens. Values must be finite; throws on an empty chart.
+   *
+   * The y-axis refits when the view is following the live tail, exactly like `append`.
+   */
+  amendLast(ys: readonly number[]): FChart {
+    const following = this.data.n > 0 && this.domain[1] >= this.data.x[this.data.n - 1] - 1e-9;
+    this.data.amendLast(ys);
+    if (following) {
+      this.rescaleY();
+      this.ticksDirty = true;
+    }
+    this.scheduleA11yRefresh();
+    this.scheduleTableUpdate();
+    this.requestRender();
+    return this;
+  }
+
+  /** If the cursor scrolled out of view (follow-slide, page-pan), snap it back + announce. */
   private keepCursorInView(): void {
     if (!this.cursorActive || this.data.n === 0) return;
     const cx = this.data.x[this.cursor.index];
@@ -390,6 +487,7 @@ export class FChart {
       this.cursor = { series: this.cursor.series, index: nearestIndex(this.data.x, mid) };
       this.updateActiveSample();
       this.queueAnnounce();
+      this.requestRender();
     }
   }
 
@@ -405,18 +503,55 @@ export class FChart {
     return this;
   }
 
-  /** Patch series and/or options. Series visibility/colors update in place. */
+  /**
+   * Patch series, options, and/or data in place. Updatable options take effect immediately
+   * (labels, formatters, tick counts, modes, callbacks). `legend`, `sonify`, and `strings` wire
+   * subsystems at construction and cannot change here: a patch that would *change* one throws
+   * (passing the current value is a no-op). Recreate the chart to change them — the React
+   * adapter remounts automatically.
+   */
   update(patch: Partial<FChartConfig>): FChart {
     if (patch.series) this.series = resolveSeries(patch.series);
-    if (patch.options) Object.assign(this.options, patch.options);
+    if (patch.options) {
+      this.assertUpdatable(patch.options);
+      // `strings` was already resolved at construction; don't let the raw partial shadow it.
+      const { strings: _fixed, ...updatable } = patch.options;
+      Object.assign(this.options, updatable);
+      this.dpr = Math.min(this.options.maxDpr, this.doc.defaultView?.devicePixelRatio ?? 1);
+      if ('xLabel' in patch.options || 'yLabel' in patch.options) {
+        this.axisTicks.setLabels(this.options.xLabel, this.options.yLabel);
+      }
+    }
     if (patch.data) {
+      this.assertSlotCount(patch.data.y.length);
       this.data = new ChartData(patch.data);
       this.resetView();
+    } else if (patch.series) {
+      this.assertSlotCount(this.data.y.length); // new series layout must fit the existing data
+    }
+    if (patch.annotations !== undefined) this.annotationSpecs = patch.annotations;
+    // Re-resolve when the specs change or when series change (annotation colors default off series).
+    if (patch.annotations !== undefined || patch.series) {
+      this.annotations = resolveAnnotations(this.annotationSpecs, this.series);
+      // Drop focus/selection: the indices referred to the old annotation set.
+      this.hoveredAnn = null;
+      this.selectedAnn = null;
     }
     this.legend?.update(this.series);
     this.refreshDerived();
     this.requestRender();
     return this;
+  }
+
+  /** Fail fast when a patch tries to change an option only the constructor can wire. */
+  private assertUpdatable(patch: FChartOptions): void {
+    if (patch.legend !== undefined && patch.legend !== this.options.legend) failFixed('legend');
+    if (patch.sonify !== undefined && patch.sonify !== this.options.sonify) failFixed('sonify');
+    for (const [key, value] of Object.entries(patch.strings ?? {})) {
+      if (value !== undefined && value !== this.strings[key as keyof FChartStrings]) {
+        failFixed('strings');
+      }
+    }
   }
 
   destroy(): void {
@@ -426,6 +561,7 @@ export class FChart {
     this.renderer.destroy();
     const view = this.doc.defaultView;
     if (this.tableTimer) view?.clearTimeout(this.tableTimer);
+    if (this.a11yTimer) view?.clearTimeout(this.a11yTimer);
     if (this.announceTimer) view?.clearTimeout(this.announceTimer);
     this.axisTicks.destroy();
     this.tableAlt.destroy();
@@ -444,9 +580,25 @@ export class FChart {
   }
 
   private resetView(): void {
-    this.domain = this.data.xExtent();
+    this.domain = this.viewExtent();
     this.cursor = { series: this.firstVisibleSeries(), index: Math.floor(this.data.n / 2) };
     this.ticksDirty = true;
+  }
+
+  /**
+   * The view's hard x-bounds: the data extent widened by `options.xPad` — which defaults to
+   * half the average sample step when a candle series is visible (candle bodies have width in
+   * x; without the pad the first and last candles clip to slivers at the plot border).
+   */
+  private viewExtent(): [number, number] {
+    const [lo, hi] = this.data.xExtent();
+    const pad = this.options.xPad ?? this.autoXPad(lo, hi);
+    return [lo - pad, hi + pad];
+  }
+
+  private autoXPad(lo: number, hi: number): number {
+    if (this.data.n < 2 || !this.series.some((s) => s.type === 'candle' && s.visible)) return 0;
+    return (hi - lo) / (this.data.n - 1) / 2;
   }
 
   private firstVisibleSeries(): number {
@@ -455,23 +607,47 @@ export class FChart {
   }
 
   /**
-   * Recompute the y-domain and refresh the surface label, ticks, and table.
-   * @param rescaleY - When false, keep the current y-domain (used by `append` when the user has
-   *   panned into history, so an out-of-view sample doesn't yank the axis they're reading).
+   * Recompute the y-domain and refresh the surface label, ticks, and table — synchronously.
+   * Used by the single-event paths (construction, setData, update, toggleSeries); `append`
+   * instead pairs `rescaleY()` with the throttled `scheduleA11yRefresh()`.
    */
   private refreshDerived(rescaleY = true): void {
-    if (rescaleY) {
-      const visible = this.series.map((s) => s.visible);
-      const [yMin, yMax] = this.data.yExtent(visible);
-      const pad = (yMax - yMin) * this.options.yPadding;
-      this.yDomain = [yMin - pad, yMax + pad];
-    }
+    if (rescaleY) this.rescaleY();
+    this.refreshA11y();
+    this.ticksDirty = true;
+    this.scheduleTableUpdate();
+  }
+
+  /** Fit the y-domain (plus padding) to the visible series. */
+  private rescaleY(): void {
+    // Per-slot visibility mask (a candle series spans 4 y slots, all sharing its visibility).
+    const visible: boolean[] = [];
+    for (const s of this.series) for (let k = 0; k < s.slots; k++) visible.push(s.visible);
+    const [yMin, yMax] = this.data.yExtent(visible);
+    const pad = (yMax - yMin) * this.options.yPadding;
+    this.yDomain = [yMin - pad, yMax + pad];
+  }
+
+  /** The DOM-facing derived state: accessible name, summary, current value, pagers. */
+  private refreshA11y(): void {
     this.surface.setAttribute('aria-label', this.describeChart());
     this.updateSummary();
     this.updateActiveSample();
     this.updatePagers();
-    this.ticksDirty = true;
-    this.scheduleTableUpdate();
+  }
+
+  /**
+   * Throttled `refreshA11y` for streaming appends. Fires at the throttle interval rather than
+   * debouncing: a continuous feed must not starve the refresh forever, just coalesce it.
+   */
+  private scheduleA11yRefresh(): void {
+    if (this.a11yTimer) return;
+    const view = this.doc.defaultView;
+    const run = (): void => {
+      this.a11yTimer = 0;
+      this.refreshA11y();
+    };
+    this.a11yTimer = view ? view.setTimeout(run, DERIVED_THROTTLE_MS) : (run(), 0);
   }
 
   /** Refresh the natural-language description and embedded JSON. Off the frame path. */
@@ -487,11 +663,14 @@ export class FChart {
   }
 
   private describeChart(): string {
+    const help = this.annotations.length
+      ? `${this.strings.keyboardHelp} ${this.strings.eventKeysHelp}`
+      : this.strings.keyboardHelp;
     return format(this.strings.chartName, {
       name: this.options.ariaLabel ?? 'Chart',
       series: this.series.length,
       points: this.data.n.toLocaleString(),
-      help: this.strings.keyboardHelp,
+      help,
     });
   }
 
@@ -500,12 +679,37 @@ export class FChart {
     const w = Math.max(0, Math.round(rect.width));
     const h = Math.max(0, Math.round(rect.height));
     if (w === this.width && h === this.height) return;
+    // A laid-out-but-zero-height container (a real width, no height) renders nothing — the
+    // commonest mount mistake (`.fc-root` is height:100%, so an auto-height ancestor collapses
+    // it to 0). `frame()` already declines to paint at height <= 0 — no flash-then-collapse —
+    // but the integrator gets no signal, so warn once with the fix. See README "Sizing".
+    if (w > 0 && h <= 0 && !this.warnedZeroHeight) {
+      this.warnedZeroHeight = true;
+      console.warn(
+        'fcharts: chart container has 0 height — nothing will render. Set an explicit height on ' +
+          'the container or a definite-height ancestor (the root is height:100%), e.g. ' +
+          'style="height:320px", or wrap it in position:relative;height:Npx + the mount at ' +
+          'position:absolute;inset:0. See the README "Sizing" note.',
+      );
+    }
     this.width = w;
     this.height = h;
     this.dpr = Math.min(this.options.maxDpr, this.doc.defaultView?.devicePixelRatio ?? 1);
     this.ticksDirty = true;
     this.positionSurface();
+    if (this.path === 'html-in-canvas') this.sizeCanvasChildTicks();
     this.requestRender();
+  }
+
+  /**
+   * Give the canvas-child tick layer an explicit size. A `layoutsubtree` child cannot size
+   * itself against the canvas box — `position:absolute; inset:0` resolves to 0×0 (Chrome 149),
+   * so every composite would snapshot an empty layer and the path would self-heal away even
+   * though the API works. Explicit px sizing keeps its geometry identical to the overlay case.
+   */
+  private sizeCanvasChildTicks(): void {
+    this.axisTicks.el.style.width = `${this.width}px`;
+    this.axisTicks.el.style.height = `${this.height}px`;
   }
 
   private positionSurface(): void {
@@ -558,7 +762,12 @@ export class FChart {
       domain: this.domain,
       xTicks,
       yTicks,
-      cursor: this.cursorActive ? this.cursor : null,
+      // Suppress the sample crosshair while a marker is focused, so hovering a diamond reads as
+      // "this event" rather than "this sample" — the highlighted marker carries the position.
+      cursor: this.cursorActive && this.hoveredAnn === null ? this.cursor : null,
+      annotations: this.annotations,
+      hoveredAnnotation: this.hoveredAnn,
+      selectedAnnotation: this.selectedAnn,
       reducedMotion: this.options.reducedMotion,
       highContrast: this.options.highContrast,
       forcedColors: this.options.forcedColors,
@@ -566,7 +775,9 @@ export class FChart {
     this.renderer.render(scene);
     if (this.path === 'html-in-canvas') this.compositeTicks();
 
-    if (this.cursorActive) this.updateReadout(xScale, yScale);
+    if (this.cursorActive || this.hoveredAnn !== null || this.selectedAnn !== null) {
+      this.updateReadout(xScale, yScale);
+    }
   }
 
   /**
@@ -575,15 +786,41 @@ export class FChart {
    * back to a visible DOM overlay so the ticks can never vanish on an unexpected API change.
    */
   private compositeTicks(): void {
-    if (this.compositor.composite(this.axisTicks.el)) {
-      this.hicMisses = 0;
-    } else if (++this.hicMisses > 8) {
-      this.fallbackToOverlay();
-    } else {
-      // The paint snapshot for the canvas-placed children isn't ready until the browser has
-      // painted them at least once. Under render-on-demand the loop would otherwise stop before
-      // that happens, so nudge another frame until the first draw lands (then it's cached).
-      this.requestRender();
+    // The paint snapshot for the canvas-placed children isn't ready until the browser has
+    // painted them at least once. How that surfaces changed across Chrome: M148 throws ("no
+    // cached paint record" → composite() returns false), M149+ "succeeds" but paints no pixels.
+    // Treat both as the same warm-up miss: nudge another frame (render-on-demand would otherwise
+    // stop before the snapshot exists) and retry. If the gutter never gains pixels within the
+    // miss budget the API is lying (observed on some dev builds) — self-heal to the visible DOM
+    // overlay so the axes can never vanish. Once verified, skip the per-frame readback.
+    const painted =
+      this.compositor.composite(this.axisTicks.el) &&
+      (this.hicVerified || this.compositePaintedTicks());
+    if (!painted) {
+      if (++this.hicMisses > 8) this.fallbackToOverlay();
+      else this.requestRender();
+      return;
+    }
+    this.hicMisses = 0;
+    this.hicVerified = true;
+  }
+
+  /**
+   * Read back the left y-axis gutter and report whether the composite actually painted there. The
+   * canvas renderer draws no text and keeps grid + axis lines inside `margins.left`, so the gutter
+   * is transparent unless the composited tick layer (labels + axis titles) painted into it.
+   */
+  private compositePaintedTicks(): boolean {
+    const ctx = this.canvas.getContext('2d');
+    const gutter = Math.round((this.margins.left - 3) * this.dpr);
+    const h = Math.round(this.height * this.dpr);
+    if (!ctx || gutter < 1 || h < 1) return false;
+    try {
+      const { data } = ctx.getImageData(0, 0, gutter, h);
+      for (let i = 3; i < data.length; i += 4) if (data[i] > 8) return true; // any opaque pixel
+      return false;
+    } catch {
+      return false; // an unreadable bitmap (tainted/unsupported) → fall back; axes stay visible
     }
   }
 
@@ -592,17 +829,31 @@ export class FChart {
     this.path = 'dom-overlay';
     this.canvas.removeAttribute('layoutsubtree');
     this.axisTicks.el.style.transform = '';
+    // Back to the stylesheet's inset:0 sizing — the overlay tracks the plot on resize by itself.
+    this.axisTicks.el.style.width = '';
+    this.axisTicks.el.style.height = '';
     this.plot.insertBefore(this.axisTicks.el, this.surface);
     this.ticksDirty = true;
+    this.reportPath();
     this.requestRender();
+  }
+
+  /** Notify `options.onRenderPath` when the live render path changes (e.g. on self-heal). */
+  private reportPath(): void {
+    if (this.path === this.reportedPath) return;
+    this.reportedPath = this.path;
+    this.options.onRenderPath?.(this.path);
   }
 
   // --- accessibility-driven updates ---
 
   private scheduleTableUpdate(): void {
+    // Throttle, don't debounce: resetting the timer per call would postpone the table forever
+    // under a continuous append stream — it must go at most one interval stale.
+    if (this.tableTimer) return;
     const view = this.doc.defaultView;
-    if (this.tableTimer) view?.clearTimeout(this.tableTimer);
     const run = (): void => {
+      this.tableTimer = 0;
       this.tableAlt.update({
         data: this.data,
         series: this.series,
@@ -612,9 +863,10 @@ export class FChart {
         caption: this.options.ariaLabel ?? 'Chart data',
         captionTemplate: this.strings.tableCaption,
         xLabel: this.options.xLabel,
+        ohlc: this.strings,
       });
     };
-    this.tableTimer = view ? view.setTimeout(run, TABLE_THROTTLE_MS) : (run(), 0);
+    this.tableTimer = view ? view.setTimeout(run, DERIVED_THROTTLE_MS) : (run(), 0);
   }
 
   private toggleSeries(index: number): void {
@@ -627,7 +879,6 @@ export class FChart {
     this.requestRender();
   }
 
-  /** Announce the current cursor position immediately (used on focus — a single event). */
   /** Natural-language text for the focused sample, or null when there's nothing to describe. */
   private currentSampleText(): string | null {
     const s = this.series[this.cursor.series];
@@ -635,12 +886,48 @@ export class FChart {
     // (which is hidden), and neither the announcement nor the value target should leak it.
     if (!s || !s.visible || this.data.n === 0) return null;
     const x = this.data.x[this.cursor.index];
-    const v = this.data.y[s.index][this.cursor.index];
     const lx = this.options.xLabel ?? 'x';
-    const ly = this.options.yLabel ?? 'value';
-    return `${s.name} — ${lx} ${this.options.formatX(x)}, ${ly} ${this.options.formatY(v)}`;
+    let base: string;
+    if (s.type === 'candle') {
+      const [o, h, l, c] = this.candleAt(s, this.cursor.index);
+      const fy = this.options.formatY;
+      const w = this.strings;
+      base =
+        `${s.name} — ${lx} ${this.options.formatX(x)}, ${w.open} ${fy(o)}, ` +
+        `${w.high} ${fy(h)}, ${w.low} ${fy(l)}, ${w.close} ${fy(c)}`;
+    } else {
+      const v = this.data.y[s.index][this.cursor.index];
+      const ly = this.options.yLabel ?? 'value';
+      base = `${s.name} — ${lx} ${this.options.formatX(x)}, ${ly} ${this.options.formatY(v)}`;
+    }
+    // Surface any event markers on this sample so they're reachable in the keyboard walk.
+    const labels = this.annotationLabelsAt(this.cursor.series, this.cursor.index);
+    return labels.length ? `${base} · ${labels.join('; ')}` : base;
   }
 
+  /** Labels of annotations attached to the sample at (series position, sample index): point
+   *  markers on that series whose nearest sample is `idx`, plus any rule nearest to `idx`. */
+  private annotationLabelsAt(seriesPos: number, idx: number): string[] {
+    if (this.annotations.length === 0) return [];
+    const out: string[] = [];
+    for (const a of this.annotations) {
+      if (a.kind === 'rule') {
+        if (nearestIndex(this.data.x, a.x) === idx) out.push(a.label);
+      } else if (a.seriesIndex === seriesPos) {
+        const pt = annotationSample(this.data, this.series, a);
+        if (pt && pt.index === idx) out.push(a.label);
+      }
+    }
+    return out;
+  }
+
+  /** The [open, high, low, close] of a candle series at a sample index. */
+  private candleAt(s: ResolvedSeries, i: number): [number, number, number, number] {
+    const y = this.data.y;
+    return [y[s.index][i], y[s.index + 1][i], y[s.index + 2][i], y[s.index + 3][i]];
+  }
+
+  /** Announce the current cursor position immediately (used on focus — a single event). */
   private announceNow(): void {
     const text = this.currentSampleText();
     if (text) this.liveRegion.announce(text);
@@ -659,6 +946,13 @@ export class FChart {
   private sonifyCursor(): void {
     const s = this.series[this.cursor.series];
     if (!this.sonifier || !s || !s.visible || this.data.n === 0) return;
+    if (s.type === 'candle') {
+      // Pitch the close within the full traded range (low stats → high stats).
+      const lo = this.data.stats[s.index + 2].min;
+      const hi = this.data.stats[s.index + 1].max;
+      this.sonifier.play(this.data.y[s.index + 3][this.cursor.index], lo, hi);
+      return;
+    }
     const st = this.data.stats[s.index];
     this.sonifier.play(this.data.y[s.index][this.cursor.index], st.min, st.max);
   }
@@ -671,29 +965,148 @@ export class FChart {
     this.announceTimer = view ? view.setTimeout(run, ANNOUNCE_DEBOUNCE_MS) : (run(), 0);
   }
 
+  /** The marker that owns the readout/highlight: a live hover wins over a standing selection. */
+  private focusAnn(): number | null {
+    return this.hoveredAnn ?? this.selectedAnn;
+  }
+
+  /** Position the readout on a focused event marker and show its label. Hides if the marker is
+   *  off-screen or its series is toggled off. */
+  private annotationReadout(i: number, xScale: LinearScale, yScale: LinearScale): void {
+    const a = this.annotations[i];
+    const hide = (): void => this.readout.el.classList.remove('fc-show');
+    if (!a) return hide();
+    const px = xScale(a.x);
+    if (px < this.margins.left - 2 || px > this.width - this.margins.right + 2) return hide();
+    let py = this.margins.top + 14;
+    if (a.kind !== 'rule') {
+      const s = this.series[a.seriesIndex];
+      if (s && !s.visible) return hide();
+      const pt = annotationSample(this.data, this.series, a);
+      if (!pt) return hide();
+      py = yScale(pt.y);
+    }
+    this.readout.swatch.style.background = a.color;
+    this.readout.name.textContent = a.label;
+    this.readout.value.textContent = this.options.formatX(a.x);
+    this.readout.el.style.left = `${px}px`;
+    this.readout.el.style.top = `${py - 8}px`;
+    this.readout.el.classList.add('fc-show');
+  }
+
   private updateReadout(xScale: LinearScale, yScale: LinearScale): void {
+    const fa = this.focusAnn();
+    if (fa !== null) {
+      this.annotationReadout(fa, xScale, yScale);
+      return;
+    }
     const s = this.series[this.cursor.series];
     if (!s || !s.visible || this.data.n === 0) {
       this.readout.el.classList.remove('fc-show');
       return;
     }
     const x = this.data.x[this.cursor.index];
-    const v = this.data.y[s.index][this.cursor.index];
+    const candle = s.type === 'candle' ? this.candleAt(s, this.cursor.index) : null;
+    const v = candle ? candle[3] : this.data.y[s.index][this.cursor.index];
     const px = xScale(x);
     const py = yScale(v);
     if (px < this.margins.left - 2 || px > this.width - this.margins.right + 2) {
       this.readout.el.classList.remove('fc-show');
       return;
     }
-    this.readout.swatch.style.background = s.color;
+    this.readout.swatch.style.background = candle
+      ? (candle[3] >= candle[0] ? s.upColor : s.downColor)
+      : s.color;
     this.readout.name.textContent = s.name;
-    this.readout.value.textContent = `${this.options.formatX(x)} · ${this.options.formatY(v)}`;
+    const fy = this.options.formatY;
+    // The readout is aria-hidden (the live region speaks full words); abbreviations are visual-only.
+    const valueText = candle
+      ? `${this.options.formatX(x)} · O ${fy(candle[0])} H ${fy(candle[1])} L ${fy(candle[2])} C ${fy(candle[3])}`
+      : `${this.options.formatX(x)} · ${fy(v)}`;
+    const labels = this.annotationLabelsAt(this.cursor.series, this.cursor.index);
+    this.readout.value.textContent = labels.length ? `${valueText} · ${labels.join('; ')}` : valueText;
     this.readout.el.style.left = `${px}px`;
     this.readout.el.style.top = `${py - 8}px`;
     this.readout.el.classList.add('fc-show');
   }
 
   // --- interaction ---
+
+  /**
+   * Index of the event marker within {@link ANNOTATION_HIT_PX} of the pointer, or null. Point
+   * markers use 2-D distance to their diamond; rules use horizontal distance to the line. The
+   * nearest qualifying marker wins, so clustered events stay individually selectable.
+   */
+  private annotationAt(clientX: number, clientY: number): number | null {
+    if (this.annotations.length === 0) return null;
+    const rect = this.plot.getBoundingClientRect();
+    const lx = clientX - rect.left;
+    const ly = clientY - rect.top;
+    const { xScale, yScale } = this.scales();
+    const r2 = ANNOTATION_HIT_PX * ANNOTATION_HIT_PX;
+    let best: number | null = null;
+    let bestD = r2;
+    for (let i = 0; i < this.annotations.length; i++) {
+      const a = this.annotations[i];
+      const dx = lx - xScale(a.x);
+      let d = dx * dx;
+      if (a.kind !== 'rule') {
+        const s = this.series[a.seriesIndex];
+        if (s && !s.visible) continue;
+        const pt = annotationSample(this.data, this.series, a);
+        if (!pt) continue;
+        const dy = ly - yScale(pt.y);
+        d += dy * dy;
+      }
+      if (d <= r2 && d < bestD) {
+        best = i;
+        bestD = d;
+      }
+    }
+    return best;
+  }
+
+  /** Move keyboard focus to an event marker: align the sample cursor (for the SR announcement),
+   *  bring it into view, and announce it. */
+  private focusAnnotation(i: number): void {
+    const a = this.annotations[i];
+    if (!a) return;
+    this.hoveredAnn = i;
+    this.cursorActive = true;
+    const pt = a.kind === 'rule' ? null : annotationSample(this.data, this.series, a);
+    this.cursor = {
+      series: a.kind === 'rule' ? this.cursor.series : a.seriesIndex,
+      index: pt ? pt.index : nearestIndex(this.data.x, a.x),
+    };
+    this.domain = panToInclude(this.domain, a.x);
+    this.ticksDirty = true;
+    this.scheduleTableUpdate();
+    this.updateActiveSample();
+    this.announceAnnotation(i);
+    this.requestRender();
+  }
+
+  /** Step keyboard focus to the next/previous event marker by date. */
+  private stepAnnotation(dir: 1 | -1): void {
+    const fromX = this.hoveredAnn !== null ? this.annotations[this.hoveredAnn]?.x ?? null : null;
+    const idx = annotationIndexByX(this.annotations.map((a) => a.x), fromX, dir);
+    if (idx !== null) this.focusAnnotation(idx);
+  }
+
+  /** Toggle the pinned selection on the currently focused marker (Enter, or a marker click). */
+  private toggleSelectAnnotation(i: number): void {
+    this.selectedAnn = this.selectedAnn === i ? null : i;
+    this.hoveredAnn = i;
+    this.announceAnnotation(i);
+    this.requestRender();
+  }
+
+  private announceAnnotation(i: number): void {
+    const a = this.annotations[i];
+    if (!a) return;
+    const suffix = this.selectedAnn === i ? `, ${this.strings.selected}` : '';
+    this.liveRegion.announce(`${a.label}, ${this.options.formatX(a.x)}${suffix}`);
+  }
 
   private attachEvents(): void {
     const signal = this.listeners.signal;
@@ -729,7 +1142,18 @@ export class FChart {
     if (!handlesKey(e.key)) return;
     e.preventDefault();
     if (e.key === 'Escape') {
+      this.selectedAnn = null;
+      this.hoveredAnn = null;
       this.dismissCursor();
+      return;
+    }
+    const annDir = annotationStep(e.key);
+    if (annDir !== null) {
+      this.stepAnnotation(annDir);
+      return;
+    }
+    if (selectsAnnotation(e.key)) {
+      if (this.hoveredAnn !== null) this.toggleSelectAnnotation(this.hoveredAnn);
       return;
     }
     const factor = zoomFactor(e.key);
@@ -745,6 +1169,7 @@ export class FChart {
     });
     if (!next) return;
     this.cursor = next;
+    this.hoveredAnn = null; // an arrow press returns to sample navigation
     this.cursorActive = true;
     this.updateActiveSample();
     this.sonifyCursor();
@@ -780,22 +1205,12 @@ export class FChart {
     const [d0, d1] = this.domain;
     const shift = dir * (d1 - d0) * 0.9;
     this.setDomain([d0 + shift, d1 + shift]);
-    // Override #5: keep the cursor in view after the pan, and announce the new sample.
-    if (this.cursorActive && this.data.n > 0) {
-      const cx = this.data.x[this.cursor.index];
-      if (cx < this.domain[0] || cx > this.domain[1]) {
-        const mid = (this.domain[0] + this.domain[1]) / 2;
-        this.cursor = { series: this.cursor.series, index: nearestIndex(this.data.x, mid) };
-        this.updateActiveSample();
-        this.queueAnnounce();
-        this.requestRender();
-      }
-    }
+    this.keepCursorInView();
   }
 
   /** Show/disable the pan pagers based on whether (and which way) the view can pan. */
   private updatePagers(): void {
-    const [lo, hi] = this.data.xExtent();
+    const [lo, hi] = this.viewExtent();
     this.pagers.update(this.domain[0] <= lo, this.domain[1] >= hi);
   }
 
@@ -811,6 +1226,15 @@ export class FChart {
 
   private onPointerDown(e: PointerEvent): void {
     if (e.button !== 0) return;
+    const hit = this.annotationAt(e.clientX, e.clientY);
+    if (hit !== null) {
+      this.toggleSelectAnnotation(hit); // click a marker to pin/unpin it, not to start a pan
+      return;
+    }
+    if (this.selectedAnn !== null) {
+      this.selectedAnn = null; // a click on empty space clears the pinned selection
+      this.requestRender();
+    }
     this.dragging = true;
     this.dragStartX = e.clientX;
     this.dragStartDomain = [...this.domain];
@@ -825,6 +1249,18 @@ export class FChart {
       this.setDomain([this.dragStartDomain[0] - shift, this.dragStartDomain[1] - shift]);
       return;
     }
+    const hit = this.annotationAt(e.clientX, e.clientY);
+    if (hit !== null) {
+      if (hit !== this.hoveredAnn) {
+        this.hoveredAnn = hit;
+        this.requestRender();
+      }
+      return;
+    }
+    if (this.hoveredAnn !== null) {
+      this.hoveredAnn = null;
+      this.requestRender();
+    }
     this.hoverAt(e.clientX);
   }
 
@@ -838,9 +1274,11 @@ export class FChart {
 
   private onPointerLeave(): void {
     if (this.dragging || this.doc.activeElement === this.surface) return;
+    this.hoveredAnn = null;
     this.cursorActive = false;
     this.updateActiveSample();
-    this.readout.el.classList.remove('fc-show');
+    // Keep a pinned selection's readout up; the next frame repaints it from selectedAnn.
+    if (this.selectedAnn === null) this.readout.el.classList.remove('fc-show');
     this.requestRender();
   }
 
@@ -867,7 +1305,7 @@ export class FChart {
 
   /** Clamp + apply a new x-domain (no render). Returns whether the domain changed. */
   private applyDomain(next: readonly [number, number]): boolean {
-    const [lo, hi] = this.data.xExtent();
+    const [lo, hi] = this.viewExtent();
     const minSpan = ((hi - lo) / Math.max(1, this.data.n - 1)) * 4 || 1e-9;
     let a = next[0];
     let b = next[1];
@@ -900,17 +1338,29 @@ export class FChart {
   }
 }
 
-function prefers(doc: Document, query: string): boolean {
-  return doc.defaultView?.matchMedia?.(query).matches ?? false;
+/**
+ * True when two option objects agree on every construction-time option (`legend`, `sonify`,
+ * `strings`) — i.e. an existing chart built with `a` can absorb `b` via `update()`. Adapters
+ * use this to decide between updating in place and remounting (see the React wrapper).
+ */
+export function sameConstructionOptions(a: FChartOptions = {}, b: FChartOptions = {}): boolean {
+  if ((a.legend ?? true) !== (b.legend ?? true)) return false;
+  if ((a.sonify ?? false) !== (b.sonify ?? false)) return false;
+  const sa = a.strings ?? {};
+  const sb = b.strings ?? {};
+  const keys = Object.keys({ ...sa, ...sb }) as (keyof FChartStrings)[];
+  return keys.every((k) => sa[k] === sb[k]);
 }
 
-function nearestIndex(x: Float64Array, target: number): number {
-  const n = x.length;
-  if (n === 0) return 0;
-  const hi = lowerBound(x, target);
-  if (hi <= 0) return 0;
-  if (hi >= n) return n - 1;
-  return target - x[hi - 1] <= x[hi] - target ? hi - 1 : hi;
+function failFixed(name: string): never {
+  throw new Error(
+    `fcharts: option "${name}" is fixed at construction; update() cannot rewire it. ` +
+      'Recreate the chart to change it (the React adapter remounts automatically).',
+  );
+}
+
+function prefers(doc: Document, query: string): boolean {
+  return doc.defaultView?.matchMedia?.(query).matches ?? false;
 }
 
 function buildReadout(doc: Document): ReadoutEls {

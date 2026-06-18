@@ -39,8 +39,7 @@ const PRINCIPLES: [string, string][] = [
 
 /** Count WCAG (non-adaptation) rows per conformance level. */
 export function tally(rows: readonly CriterionRow[]): ConformanceTally {
-  const empty = (): Partial<Record<Conformance, number>> => ({});
-  const byLevel: ConformanceTally['byLevel'] = { A: empty(), AA: empty() };
+  const byLevel: ConformanceTally['byLevel'] = { A: {}, AA: {} };
   const total: ConformanceTally['total'] = {};
   for (const r of rows) {
     byLevel[r.level][r.conformance] = (byLevel[r.level][r.conformance] ?? 0) + 1;
@@ -92,8 +91,11 @@ function summaryLine(m: AcrModel): string {
 
 // --- Markdown ---
 
+function esc(s: string): string {
+  return s.replace(/\|/g, '\\|').replace(/\n/g, ' ');
+}
+
 function mdTable(headers: string[], rows: string[][]): string {
-  const esc = (s: string): string => s.replace(/\|/g, '\\|').replace(/\n/g, ' ');
   const head = `| ${headers.join(' | ')} |`;
   const sep = `| ${headers.map(() => '---').join(' | ')} |`;
   const body = rows.map((r) => `| ${r.map(esc).join(' | ')} |`).join('\n');

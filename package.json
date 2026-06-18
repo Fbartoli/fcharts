@@ -33,7 +33,8 @@
     "./react": {
       "types": "./dist/react.d.ts",
       "import": "./dist/react.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "scripts": {
     "dev": "vite",
@@ -44,7 +45,10 @@
     "pack:sdk": "pnpm build && pnpm pack",
     "preview": "vite preview",
     "test": "node --test test/*.test.ts",
+    "test:browser": "node --test test/browser/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "oxlint src test bench landing a11y scripts",
+    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm test:browser",
     "bench": "node bench/harness.ts",
     "a11y-audit": "node src/compliance/cli.ts --fixture ./a11y/fixture.ts --edition en301549 --out ./compliance-out",
     "size": "node scripts/size.mjs"
@@ -74,7 +78,10 @@
     "@types/react": "^19.2.16",
     "axe-core": "^4.10.2",
     "highcharts": "^12.6.0",
+    "oxlint": "^1.68.0",
     "playwright": "^1.49.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "typescript": "^5.7.2",
     "uplot": "^1.6.31",
     "vite": "^6.0.5"

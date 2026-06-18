@@ -48,6 +48,6 @@ test('formatTick: compact thousands and trimmed decimals', () => {
   assert.equal(formatTick(12500), '12.5k');
   assert.equal(formatTick(2000), '2k');
   assert.equal(formatTick(42), '42');
-  assert.equal(formatTick(3.14159), '3.1');
+  assert.equal(formatTick(7.8642), '7.9');
   assert.equal(formatTick(0), '0');
 });

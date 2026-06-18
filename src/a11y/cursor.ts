@@ -25,12 +25,72 @@ const KEYS = new Set(['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'Home',
 const ZOOM_IN = new Set(['+', '=']);
 const ZOOM_OUT = new Set(['-', '_']);
 
+// Step between event markers (annotations) without walking every sample: ']' next, '[' prev,
+// Enter selects/pins the focused marker. Lets keyboard users reach a specific event directly.
+const ANN_NEXT = ']';
+const ANN_PREV = '[';
+const ANN_SELECT = 'Enter';
+
 /**
- * True if this key is one the data surface handles (navigation, zoom, or Escape-to-dismiss),
- * so callers know to call preventDefault.
+ * True if this key is one the data surface handles (navigation, zoom, event-marker stepping, or
+ * Escape-to-dismiss), so callers know to call preventDefault.
  */
 export function handlesKey(key: string): boolean {
-  return KEYS.has(key) || ZOOM_IN.has(key) || ZOOM_OUT.has(key) || key === 'Escape';
+  return (
+    KEYS.has(key) ||
+    ZOOM_IN.has(key) ||
+    ZOOM_OUT.has(key) ||
+    key === ANN_NEXT ||
+    key === ANN_PREV ||
+    key === ANN_SELECT ||
+    key === 'Escape'
+  );
+}
+
+/** Step direction for an event-marker key: +1 next (']'), -1 previous ('['), else null. */
+export function annotationStep(key: string): 1 | -1 | null {
+  if (key === ANN_NEXT) return 1;
+  if (key === ANN_PREV) return -1;
+  return null;
+}
+
+/** True if the key selects/pins the focused event marker (Enter). */
+export function selectsAnnotation(key: string): boolean {
+  return key === ANN_SELECT;
+}
+
+/**
+ * Index (into `xs`) of the next/previous event marker by x-position, stepping from `fromX` in
+ * `dir`. A null `fromX` starts at the first marker (dir +1) or the last (dir -1). Does not wrap:
+ * stepping past the last/first marker returns that edge marker. Null only when there are no
+ * markers. Markers sharing an x with `fromX` are skipped (strict ordering), so a step always
+ * advances to a different x.
+ */
+export function annotationIndexByX(
+  xs: readonly number[],
+  fromX: number | null,
+  dir: 1 | -1,
+): number | null {
+  if (xs.length === 0) return null;
+  // Edge fallbacks: the marker with the smallest / largest x (where a non-wrapping step lands
+  // when there's nothing further in the step direction).
+  let minI = 0;
+  let maxI = 0;
+  for (let i = 1; i < xs.length; i++) {
+    if (xs[i]! < xs[minI]!) minI = i;
+    if (xs[i]! > xs[maxI]!) maxI = i;
+  }
+  if (fromX === null) return dir === 1 ? minI : maxI;
+  // The closest marker strictly past `fromX` in the step direction (smallest x above it going
+  // forward, largest x below it going back).
+  let bestI = -1;
+  for (let i = 0; i < xs.length; i++) {
+    const x = xs[i]!;
+    if (dir === 1 ? x <= fromX : x >= fromX) continue;
+    if (bestI === -1 || (dir === 1 ? x < xs[bestI]! : x > xs[bestI]!)) bestI = i;
+  }
+  if (bestI !== -1) return bestI;
+  return dir === 1 ? maxI : minI;
 }
 
 /**

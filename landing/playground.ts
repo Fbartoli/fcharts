@@ -139,7 +139,11 @@ function scheduleRebuild(): void {
 function rebuild(): void {
   if (live) return; // a live (Binance) chart owns the host; config changes don't rebuild it
   chart?.destroy();
-  const options: FChartOptions = { ...readOptions(), strings: locale === 'fr' ? FR : undefined };
+  const options: FChartOptions = {
+    ...readOptions(),
+    strings: locale === 'fr' ? FR : undefined,
+    onRenderPath: setPathBadge,
+  };
   chart = new FChart(chartEl, {
     series: series.map((s) => ({
       name: s.name,
@@ -155,11 +159,16 @@ function rebuild(): void {
   refreshPanels();
 }
 
+/** Reflect the render path actually in use; updates if a chart self-heals off HTML-in-Canvas. */
+function setPathBadge(path: string): void {
+  $('badge-path').innerHTML = `render: <b>${path}</b>`;
+}
+
 function refreshPanels(): void {
   if (!chart) return;
   $('badge-points').innerHTML =
     `<b>${points.toLocaleString()}</b> points × <b>${series.length}</b> series`;
-  $('badge-path').innerHTML = `render: <b>${chart.renderPath}</b>`;
+  setPathBadge(chart.renderPath);
   $('code').textContent = buildSnippet();
   $('summary').textContent = JSON.stringify(chart.summary(), null, 2);
 }
@@ -198,13 +207,14 @@ function connectLive(): void {
       yLabel: 'price',
       formatX: (t) => new Date(t).toLocaleTimeString(),
       formatY: fmtUsd,
+      onRenderPath: setPathBadge,
     },
   });
   liveChart.setData({ x: [], y: [[]] });
   $('live-toggle').setAttribute('aria-pressed', 'true');
   $('live-toggle').innerHTML = '❚❚&nbsp;Disconnect';
   $('badge-points').innerHTML = `<b>live</b> · ${sym}`;
-  $('badge-path').innerHTML = `render: <b>${liveChart.renderPath}</b>`;
+  setPathBadge(liveChart.renderPath);
   setLiveStatus(`Connecting to ${sym}…`, '');
 
   try {

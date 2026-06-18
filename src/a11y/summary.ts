@@ -7,7 +7,7 @@
  * chart is opaque pixels, this gives assistive tech, AI agents, and crawlers the actual
  * values and trend — pure functions, no DOM, unit-tested.
  */
-import type { ChartData, ResolvedSeries } from '../core/model.ts';
+import type { ChartData, ResolvedAnnotation, ResolvedSeries } from '../core/model.ts';
 import { DEFAULT_STRINGS, format, type FChartStrings } from './strings.ts';
 
 export type Trend = 'up' | 'down' | 'flat';
@@ -27,6 +27,13 @@ export interface SeriesSummary {
   trend: Trend;
 }
 
+/** One event marker, in the machine-readable summary. */
+export interface AnnotationSummary {
+  x: number;
+  label: string;
+  kind: 'point' | 'rule';
+}
+
 export interface ChartSummary {
   label: string;
   /** Points per series. */
@@ -34,6 +41,8 @@ export interface ChartSummary {
   xStart: number;
   xEnd: number;
   series: SeriesSummary[];
+  /** Event markers on the series, when any are configured. */
+  annotations?: AnnotationSummary[];
 }
 
 const EMPTY_STAT = { min: 0, max: 0, first: 0, last: 0, mean: 0 };
@@ -41,9 +50,10 @@ const EMPTY_STAT = { min: 0, max: 0, first: 0, last: 0, mean: 0 };
 /**
  * Direction of travel, derived from the SAME percentage that `changePct` reports (a <1%
  * move counts as flat) so the structured `trend` field and the reported `changePct` can
- * never contradict each other.
+ * never contradict each other. Exported so other renderers (e.g. the sparkline) classify
+ * direction identically.
  */
-function trendOf(changePct: number): Trend {
+export function trendOf(changePct: number): Trend {
   if (changePct > 1) return 'up';
   if (changePct < -1) return 'down';
   return 'flat';
@@ -54,6 +64,7 @@ export function buildSummary(
   data: ChartData,
   series: readonly ResolvedSeries[],
   label: string,
+  annotations: readonly ResolvedAnnotation[] = [],
 ): ChartSummary {
   const [xStart, xEnd] = data.xExtent();
   return {
@@ -61,8 +72,21 @@ export function buildSummary(
     points: data.n,
     xStart,
     xEnd,
+    annotations:
+      annotations.length > 0
+        ? annotations.map((a) => ({ x: a.x, label: a.label, kind: a.kind }))
+        : undefined,
     series: series.map((s) => {
-      const st = data.stats[s.index] ?? EMPTY_STAT;
+      // A candle series spans 4 stat slots (OHLC): range comes from the true traded extremes
+      // (low.min / high.max); first/last/mean/trend follow the close.
+      const st =
+        s.type === 'candle'
+          ? {
+              ...(data.stats[s.index + 3] ?? EMPTY_STAT),
+              min: (data.stats[s.index + 2] ?? EMPTY_STAT).min,
+              max: (data.stats[s.index + 1] ?? EMPTY_STAT).max,
+            }
+          : (data.stats[s.index] ?? EMPTY_STAT);
       const range = st.max - st.min;
       const changeAbs = st.last - st.first;
       // Percent change vs the starting value; fall back to range-relative when first is 0.
@@ -115,5 +139,11 @@ export function describeSummary(
     });
   });
   const span = format(strings.summarySpan, { start: fmtX(summary.xStart), end: fmtX(summary.xEnd) });
-  return format(strings.summaryLine, { label, points, span, parts: parts.join('; ') });
+  const line = format(strings.summaryLine, { label, points, span, parts: parts.join('; ') });
+  if (!summary.annotations || summary.annotations.length === 0) return line;
+  const events = format(strings.summaryEvents, {
+    count: summary.annotations.length,
+    labels: summary.annotations.map((a) => a.label).join('; '),
+  });
+  return `${line} ${events}.`;
 }

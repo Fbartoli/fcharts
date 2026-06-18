@@ -14,6 +14,10 @@ export interface FrameClock {
   cancel(handle: number): void;
 }
 
+function fallbackNow(): number {
+  return typeof performance !== 'undefined' ? performance.now() : 0;
+}
+
 function defaultClock(): FrameClock {
   const raf = typeof globalThis.requestAnimationFrame === 'function';
   if (raf) {
@@ -22,10 +26,8 @@ function defaultClock(): FrameClock {
       cancel: (h) => globalThis.cancelAnimationFrame(h),
     };
   }
-  const now = (): number =>
-    typeof performance !== 'undefined' ? performance.now() : 0;
   return {
-    request: (cb) => setTimeout(() => cb(now()), 16) as unknown as number,
+    request: (cb) => setTimeout(() => cb(fallbackNow()), 16) as unknown as number,
     cancel: (h) => clearTimeout(h),
   };
 }

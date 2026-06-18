@@ -7,7 +7,13 @@
  * core/`FChart` builds it; the renderer only reads it.
  */
 import type { LinearScale } from '../core/scales.ts';
-import type { ChartData, CursorState, Margins, ResolvedSeries } from '../core/model.ts';
+import type {
+  ChartData,
+  CursorState,
+  Margins,
+  ResolvedAnnotation,
+  ResolvedSeries,
+} from '../core/model.ts';
 
 export interface RenderScene {
   /** Plot size in CSS px. */
@@ -29,11 +35,24 @@ export interface RenderScene {
   yTicks: readonly number[];
   /** Active cursor sample, or null when the cursor is inactive. */
   cursor: CursorState | null;
+  /** Event markers on the series (dots / vertical rules). */
+  annotations: readonly ResolvedAnnotation[];
+  /** Index (into `annotations`) of the marker under pointer/keyboard focus — drawn emphasized
+   *  with its label forced on — or null. */
+  hoveredAnnotation: number | null;
+  /** Index (into `annotations`) of the pinned/selected marker — emphasized and persistent — or
+   *  null. */
+  selectedAnnotation: number | null;
   reducedMotion: boolean;
   highContrast: boolean;
   /** Windows High Contrast / forced-colors active — repaint marks in system colors. */
   forcedColors: boolean;
 }
+
+/** Minimum px per candle to draw individual bodies; below this, renderers fall back to the
+ *  per-column high/low envelope. Shared by the canvas renderer and the SVG export so both
+ *  modes switch at the same density. */
+export const MIN_CANDLE_PX = 3;
 
 export interface Renderer {
   /** Draw a single frame. Must be cheap to call every animation frame. */

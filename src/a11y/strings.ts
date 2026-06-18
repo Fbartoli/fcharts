@@ -17,6 +17,11 @@ export interface FChartStrings {
   hidden: string;
   /** Keyboard operating instructions woven into the chart's accessible name. No tokens. */
   keyboardHelp: string;
+  /** Event-marker key instructions, appended to the accessible name only when the chart has
+   *  annotations. No tokens. */
+  eventKeysHelp: string;
+  /** Word appended to an event-marker announcement when it becomes pinned/selected. No tokens. */
+  selected: string;
   /** Chart accessible name. Tokens: `{name}` `{series}` `{points}` `{help}`. */
   chartName: string;
   /** Data-table caption. Tokens: `{caption}` `{series}` `{rows}`. */
@@ -29,6 +34,8 @@ export interface FChartStrings {
   summaryLine: string;
   /** Per-series clause within the summary. Tokens: `{name}` `{min}` `{max}` `{last}` `{dir}`. */
   summaryPart: string;
+  /** Event-annotations clause appended to the summary. Tokens: `{count}` `{labels}`. */
+  summaryEvents: string;
   /** x-range phrase within the summary. Tokens: `{start}` `{end}`. */
   summarySpan: string;
   /** Direction phrases. `{pct}` for up/down; flat has no token. */
@@ -38,6 +45,11 @@ export interface FChartStrings {
   /** Accessible labels for the single-pointer pan buttons. No tokens. */
   pagerPrev: string;
   pagerNext: string;
+  /** OHLC value words for candle series (announcements, table headers). No tokens. */
+  open: string;
+  high: string;
+  low: string;
+  close: string;
 }
 
 export const DEFAULT_STRINGS: FChartStrings = {
@@ -49,18 +61,26 @@ export const DEFAULT_STRINGS: FChartStrings = {
     'Home and End jump to the ends; hold Shift for fine steps. ' +
     'Plus and minus zoom; Escape clears the cursor. ' +
     'A sampled data table follows for screen-reader review.',
+  eventKeysHelp:
+    'Right and left bracket keys step between event markers; Enter selects the focused marker.',
+  selected: 'selected',
   chartName: '{name}. {series} series, {points} points each. {help}',
   tableCaption: '{caption} — {series} series, {rows} sampled rows across the visible range.',
   summaryNoData: '{label}: no data.',
   summaryAllHidden: '{label}: {points} points per series, all series hidden.',
   summaryLine: '{label}: {points} points per series from {span}. {parts}.',
   summaryPart: '{name} ranges {min} to {max}, now {last} ({dir})',
+  summaryEvents: '{count} events: {labels}',
   summarySpan: '{start} to {end}',
   trendUp: 'up {pct}%',
   trendDown: 'down {pct}%',
   trendFlat: 'flat',
   pagerPrev: 'Pan to earlier data',
   pagerNext: 'Pan to later data',
+  open: 'open',
+  high: 'high',
+  low: 'low',
+  close: 'close',
 };
 
 /** Fill `{token}` placeholders from `vars`. Unknown tokens are left intact (so typos are visible). */

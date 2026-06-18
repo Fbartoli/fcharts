@@ -9,6 +9,9 @@
  *
  * This module is renderer-agnostic: it returns per-column min/max envelopes in *data*
  * units. Mapping those to pixels is the renderer's job.
+ *
+ * Pyramid buckets are Float32 over Float64 source data — a deliberate memory/bandwidth
+ * tradeoff (~7 significant digits), invisible at pixel resolution where envelopes are drawn.
  */
 
 /** A pre-aggregated level of the pyramid. `bucketSize` source samples per bucket. */
@@ -129,7 +132,32 @@ export class StreamingPyramid {
       L0.max[b0] = L0.max[b0] > v ? L0.max[b0] : v;
     }
 
-    // Propagate up: each higher level's tail bucket = combine of its two children below.
+    this.propagateUp(idx);
+  }
+
+  /**
+   * Replace the LAST raw value (index n-1) and fix up its bucket per level — O(log n), for
+   * in-flight samples that keep changing (a forming candle, a ticking last price). When n-1 is
+   * odd its level-0 bucket pairs it with the previous raw value, so the caller passes that
+   * `sibling` (the pyramid stores no raw values).
+   */
+  amendLast(v: number, sibling: number): void {
+    const idx = this.n - 1;
+    const b0 = idx >> 1;
+    const L0 = this.levels[0];
+    if ((idx & 1) === 0) {
+      L0.min[b0] = v;
+      L0.max[b0] = v;
+    } else {
+      // Rebuild the pair bucket from scratch with buildLevel0's exact `a < c ? a : c` semantics.
+      L0.min[b0] = sibling < v ? sibling : v;
+      L0.max[b0] = sibling > v ? sibling : v;
+    }
+    this.propagateUp(idx);
+  }
+
+  /** Recompute every ancestor bucket of raw index `idx` from its two children below. */
+  private propagateUp(idx: number): void {
     for (let k = 1; ; k++) {
       const prevCount = Math.ceil(this.n / (1 << k)); // bucket count of level k-1
       if (prevCount <= 1) break; // level k-1 is the apex; no parent needed
@@ -181,6 +209,16 @@ export function lowerBound(x: Float64Array, target: number): number {
     else hi = mid;
   }
   return lo;
+}
+
+/** Index of the sample closest to `target` (x non-decreasing); 0 on empty input. */
+export function nearestIndex(x: Float64Array, target: number): number {
+  const n = x.length;
+  if (n === 0) return 0;
+  const hi = lowerBound(x, target);
+  if (hi <= 0) return 0;
+  if (hi >= n) return n - 1;
+  return target - x[hi - 1] <= x[hi] - target ? hi - 1 : hi;
 }
 
 function pickLevel(pyramid: MinMaxPyramid, pointsPerCol: number): PyramidLevel {
@@ -263,49 +301,39 @@ export function downsampleColumns(
   const plan = planDownsample(x, pyramid, domain, w);
   if (plan.mode === 'empty') return { min, max, first: -1, last: -1 };
 
+  // Column mapping is inlined in both loops (not a shared closure): the call overhead is
+  // measurable at this loop's grain (~25% of the per-frame downsample cost).
   const d0 = domain[0];
   const invSpan = w / (domain[1] - domain[0]);
-  const colOf = (xv: number): number => {
-    const c = (xv - d0) * invSpan;
-    return c < 0 ? 0 : c >= w ? w - 1 : c | 0;
-  };
 
   if (plan.mode === 'raw') {
     for (let i = plan.i0; i <= plan.i1; i++) {
-      const c = colOf(x[i]);
+      const cf = (x[i] - d0) * invSpan;
+      const c = cf < 0 ? 0 : cf >= w ? w - 1 : cf | 0;
       const v = rawY[i];
       if (v < min[c]) min[c] = v;
       if (v > max[c]) max[c] = v;
     }
-  } else {
-    accumulateLevel(x, plan.level!, plan.i0, plan.i1, colOf, min, max);
+    return finalize(min, max, w);
   }
-  return finalize(min, max, w);
-}
 
-function accumulateLevel(
-  x: Float64Array,
-  level: PyramidLevel,
-  i0: number,
-  i1: number,
-  colOf: (xv: number) => number,
-  min: Float32Array,
-  max: Float32Array,
-): void {
-  // Each bucket is written across the full column span its x-range covers (from the x of
-  // its first sample to its last), not just its center column. With uniform x a bucket
-  // spans one column (same as a center map); with non-uniform x a sparse bucket spans many
-  // columns and fills them — so there are no gaps regardless of x distribution. Buckets
+  // Level mode. Each bucket is written across the full column span its x-range covers (from
+  // the x of its first sample to its last), not just its center column. With uniform x a
+  // bucket spans one column (same as a center map); with non-uniform x a sparse bucket spans
+  // many columns and fills them — so there are no gaps regardless of x distribution. Buckets
   // tile the index space contiguously, so total writes stay O(width + buckets) ≈ O(width).
+  const level = plan.level!;
   const bs = level.bucketSize;
   const n = x.length;
-  const b0 = Math.floor(i0 / bs);
-  const b1 = Math.min(Math.ceil(n / bs) - 1, Math.floor(i1 / bs));
+  const b0 = Math.floor(plan.i0 / bs);
+  const b1 = Math.min(Math.ceil(n / bs) - 1, Math.floor(plan.i1 / bs));
   for (let b = b0; b <= b1; b++) {
     const start = b * bs;
     const end = start + bs - 1 < n ? start + bs - 1 : n - 1;
-    const cL = colOf(x[start]);
-    const cR = colOf(x[end]);
+    const fL = (x[start] - d0) * invSpan;
+    const fR = (x[end] - d0) * invSpan;
+    const cL = fL < 0 ? 0 : fL >= w ? w - 1 : fL | 0;
+    const cR = fR < 0 ? 0 : fR >= w ? w - 1 : fR | 0;
     const bmin = level.min[b];
     const bmax = level.max[b];
     for (let c = cL; c <= cR; c++) {
@@ -313,6 +341,7 @@ function accumulateLevel(
       if (bmax > max[c]) max[c] = bmax;
     }
   }
+  return finalize(min, max, w);
 }
 
 function finalize(min: Float32Array, max: Float32Array, w: number): ColumnEnvelope {

@@ -36,12 +36,14 @@ export class Legend {
 
   private build(series: readonly ResolvedSeries[]): void {
     this.list.replaceChildren();
-    this.buttons = series.map((s) => {
+    this.buttons = series.map((s, i) => {
       const li = this.doc.createElement('li');
       const button = this.doc.createElement('button');
       button.type = 'button';
-      button.dataset.series = String(s.index);
-      button.addEventListener('click', () => this.onToggle(s.index));
+      // Positional, not s.index: a candle series spans 4 y-slots, so slot offsets diverge
+      // from positions in `series` — and toggleSeries addresses by position.
+      button.dataset.series = String(i);
+      button.addEventListener('click', () => this.onToggle(i));
 
       const swatch = this.swatch(s);
 
@@ -74,7 +76,27 @@ export class Legend {
     svg.setAttribute('class', 'fc-swatch');
     svg.setAttribute('viewBox', '0 0 18 10');
     svg.setAttribute('aria-hidden', 'true');
-    if (s.type === 'area') {
+    if (s.type === 'candle') {
+      // Two mini candles — hollow up, filled down — mirroring the on-canvas encoding, where
+      // fill (not only hue) carries direction (WCAG 1.4.1).
+      const candle = (cx: number, color: string, filled: boolean): void => {
+        const wick = this.doc.createElementNS(NS, 'line');
+        for (const [k, v] of [['x1', String(cx)], ['y1', '0'], ['x2', String(cx)], ['y2', '10']]) {
+          wick.setAttribute(k, v);
+        }
+        wick.setAttribute('stroke', color);
+        const body = this.doc.createElementNS(NS, 'rect');
+        for (const [k, v] of [['x', String(cx - 2.5)], ['y', '2.5'], ['width', '5'], ['height', '5']]) {
+          body.setAttribute(k, v);
+        }
+        body.setAttribute('fill', filled ? color : 'none');
+        body.setAttribute('stroke', color);
+        body.setAttribute('stroke-width', '1.5');
+        svg.append(wick, body);
+      };
+      candle(5, s.upColor, false);
+      candle(13, s.downColor, true);
+    } else if (s.type === 'area') {
       const rect = this.doc.createElementNS(NS, 'rect');
       for (const [k, v] of [['x', '1'], ['y', '2'], ['width', '16'], ['height', '7'], ['rx', '1']]) {
         rect.setAttribute(k, v);

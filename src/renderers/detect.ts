@@ -35,7 +35,12 @@ export function detectHtmlInCanvas(): HtmlInCanvasSupport {
   return { supported: false, via: null };
 }
 
-/** The render path the library will use given current support. */
+/**
+ * The render path the library will use given current support. The HTML-in-Canvas path is used
+ * when available, but it self-verifies at runtime: if a composite reports success yet paints no
+ * tick pixels into the bitmap (observed on some Chrome dev builds), the chart automatically falls
+ * back to the DOM overlay so the axes can never silently vanish (see `fcharts`' `compositeTicks`).
+ */
 export function resolveRenderPath(support: HtmlInCanvasSupport): RenderPath {
   return support.supported ? 'html-in-canvas' : 'dom-overlay';
 }

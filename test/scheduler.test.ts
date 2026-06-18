@@ -42,10 +42,11 @@ test('coalesces many requests into a single frame', () => {
 test('render-on-demand: no frame fires without a request', () => {
   const m = manualClock();
   let frames = 0;
-  new RenderScheduler(() => frames++, m.clock);
+  const s = new RenderScheduler(() => frames++, m.clock);
   assert.equal(m.pending(), false);
   m.flush();
   assert.equal(frames, 0);
+  s.destroy();
 });
 
 test('re-requesting after a frame schedules another', () => {

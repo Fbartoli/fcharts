@@ -25,6 +25,8 @@ export class AxisTicks {
   private readonly xLayer: HTMLElement;
   private readonly yLayer: HTMLElement;
   private readonly doc: Document;
+  private xTitle: HTMLElement | null = null;
+  private yTitle: HTMLElement | null = null;
 
   constructor(doc: Document = document, xLabel?: string, yLabel?: string) {
     this.doc = doc;
@@ -38,8 +40,16 @@ export class AxisTicks {
     this.xLayer.className = 'fc-ticks-x';
     this.el.append(this.yLayer, this.xLayer);
 
-    if (yLabel) this.el.append(this.axisTitle('y', yLabel));
-    if (xLabel) this.el.append(this.axisTitle('x', xLabel));
+    this.setLabels(xLabel, yLabel);
+  }
+
+  /** Replace the axis titles (FChart.update() calls this when xLabel/yLabel change). */
+  setLabels(xLabel?: string, yLabel?: string): void {
+    for (const title of this.el.querySelectorAll('.fc-axis-title')) title.remove();
+    this.yTitle = yLabel ? this.axisTitle('y', yLabel) : null;
+    this.xTitle = xLabel ? this.axisTitle('x', xLabel) : null;
+    if (this.yTitle) this.el.append(this.yTitle);
+    if (this.xTitle) this.el.append(this.xTitle);
   }
 
   private axisTitle(axis: 'x' | 'y', text: string): HTMLElement {
@@ -82,6 +92,52 @@ export class AxisTicks {
         })
         .map((t) => this.tick('x', u.formatX(t), u.xScale(t))),
     );
+    this.pruneTitleCollisions();
+  }
+
+  /**
+   * Drop tick labels that would run into an axis title — the x title shares the bottom row
+   * with the x labels (and the y title the left gutter), so a tick landing at the plot edge
+   * would otherwise overlap it. Measured, not estimated, so it holds for localized titles.
+   * Runs only on tick rebuilds (domain/size change), never per frame.
+   */
+  private pruneTitleCollisions(): void {
+    const xTitle = this.xTitle?.isConnected ? this.xTitle : null;
+    const yTitle = this.yTitle?.isConnected ? this.yTitle : null;
+    if (!xTitle && !yTitle) return;
+    // Make titles measurable first (they may be hidden from a previous cramped layout), then
+    // do all layout reads before any removal: interleaving a removal between offset reads
+    // would force one reflow per pruned label, and this runs every streamed frame while the
+    // view follows the live tail. One write phase + one read pass + one write phase.
+    if (xTitle) xTitle.style.display = '';
+    if (yTitle) yTitle.style.display = '';
+    const doomed: HTMLElement[] = [];
+    if (xTitle) this.collectCollisions(xTitle, 'x', doomed);
+    if (yTitle) this.collectCollisions(yTitle, 'y', doomed);
+    for (const span of doomed) span.remove();
+  }
+
+  /**
+   * Collect tick labels colliding with `title` into `doomed` — unless that would leave fewer
+   * than two labels on the axis. In that cramped case the data labels win: hide the title
+   * instead (values are what 1.4.10 reflow must keep usable; the axis name stays available
+   * programmatically via the chart's accessible description and table headers).
+   */
+  private collectCollisions(title: HTMLElement, axis: 'x' | 'y', doomed: HTMLElement[]): void {
+    const layer = axis === 'x' ? this.xLayer : this.yLayer;
+    // Tick spans are centered via translate(-50%): offsetLeft/offsetTop is the center.
+    const limit =
+      axis === 'x' ? title.offsetLeft - 6 : title.offsetTop + title.offsetHeight + 4;
+    const colliding: HTMLElement[] = [];
+    for (const span of layer.children as HTMLCollectionOf<HTMLElement>) {
+      const hits =
+        axis === 'x'
+          ? span.offsetLeft + span.offsetWidth / 2 > limit
+          : span.offsetTop - span.offsetHeight / 2 < limit;
+      if (hits) colliding.push(span);
+    }
+    if (layer.children.length - colliding.length >= 2) doomed.push(...colliding);
+    else title.style.display = 'none';
   }
 
   destroy(): void {

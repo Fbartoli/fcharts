@@ -5,12 +5,16 @@
  * its real-DOM text layer *into* the canvas so the chart is one composited surface, while the
  * element stays the live, accessible, hit-testable, find-in-page-able source of truth.
  *
- * Contract (per the WICG explainer, verified empirically in Chrome 148):
+ * Contract (per the WICG explainer, verified empirically in Chrome 148 and 149):
  *  - the layer MUST be an *immediate child* of the `<canvas>`;
  *  - the canvas must carry the boolean `layoutsubtree` attribute (which opts its children into
  *    layout + hit-testing — note they are NOT painted to screen on their own, only via a draw);
- *  - a paint snapshot of the children must already exist, so the very first draw (before any
- *    paint) throws "no cached paint record" — we treat that as a miss and retry next frame;
+ *  - the layer cannot size itself against the canvas box: `inset:0` resolves to 0×0 in
+ *    Chrome 149, silently snapshotting nothing — the caller must give it an explicit size;
+ *  - a paint snapshot of the children must already exist. Before one does, Chrome 148 throws
+ *    "no cached paint record" on every draw, Chrome 149 throws InvalidStateError on the first
+ *    frame and then "succeeds" while painting nothing — callers must verify pixels landed and
+ *    treat all of these as warm-up misses (see `fcharts`' `compositeTicks`);
  *  - `drawElementImage(el, dx, dy)` returns the `DOMMatrix` mapping the live element onto the
  *    drawn pixels; assigning it to `el.style.transform` keeps hit-testing/focus aligned with
  *    what's painted.
@@ -35,7 +39,8 @@ export interface Compositor {
   /** Opt the canvas into laying out its element children. Idempotent; no-op if unsupported. */
   enable(): void;
   /**
-   * Draw a canvas-child `layer` into the bitmap at (dx, dy) and sync its transform.
+   * Draw a canvas-child `layer` into the bitmap at (dx, dy) — device pixels — and sync its
+   * transform.
    * @returns true if it composited this frame; false if unsupported or no snapshot yet.
    */
   composite(layer: HTMLElement, dx?: number, dy?: number): boolean;
@@ -51,6 +56,12 @@ export function createCompositor(canvas: HTMLCanvasElement): Compositor {
     },
     composite(layer: HTMLElement, dx = 0, dy = 0): boolean {
       if (!supported || !ctx) return false;
+      // The element snapshot is already at device-pixel resolution (verified at dpr 2 on
+      // Chrome 149), so it must be drawn under an identity transform. The renderer leaves a
+      // scale(dpr) on the context — drawing under it compounds to dpr²: labels twice their
+      // size and the bottom of the layer pushed off the bitmap.
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       try {
         const matrix = (ctx as HtmlInCanvasContext).drawElementImage(layer, dx, dy);
         // Keep the live (canvas-placed) element aligned with the drawn pixels so focus and
@@ -60,6 +71,8 @@ export function createCompositor(canvas: HTMLCanvasElement): Compositor {
       } catch {
         // No paint snapshot yet (first frame) or a transient failure — retry next frame.
         return false;
+      } finally {
+        ctx.restore();
       }
     },
   };

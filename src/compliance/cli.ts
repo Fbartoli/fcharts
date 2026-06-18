@@ -249,7 +249,9 @@ function printSummary(
     console.log(`\n✗ ${regressed.length} REGRESSION(S) — gate fails:`);
     for (const v of regressed) {
       console.log(`  ${v.num}: ${v.expected} → ${v.observed}`);
-      for (const c of v.checks.filter((c) => c.status === 'fail')) console.log(`     ✗ ${c.id}: ${c.detail}`);
+      for (const c of v.checks.filter((chk) => chk.status === 'fail')) {
+        console.log(`     ✗ ${c.id}: ${c.detail}`);
+      }
     }
   }
 }
