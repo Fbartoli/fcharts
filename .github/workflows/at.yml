@@ -35,6 +35,9 @@ jobs:
         uses: guidepup/setup-action@0.17.2
 
       - name: VoiceOver harness
+        # --test-force-exit: a hung osascript child must not keep the process alive after the
+        # tests (with their own timeouts) have reported; the step budget is the backstop.
+        timeout-minutes: 10
         env:
           FCHARTS_VOICEOVER: '1'
-        run: node --test test/at/voiceover.test.ts
+        run: node --test --test-force-exit test/at/voiceover.test.ts

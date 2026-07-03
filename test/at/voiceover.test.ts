@@ -23,6 +23,12 @@ import { launchChartPage, withTimeout, CHART_LABEL, SERIES_NAME, type ChartPage 
 const PHRASE_TIMEOUT = 6000;
 /** Ceiling on `voiceOver.start()` so an un-permitted launch can't hang the job. */
 const START_TIMEOUT = 45_000;
+/** Ceiling on any single VoiceOver AppleScript round-trip (log read, key press, detect). A stuck
+ *  osascript call otherwise hangs forever — observed on a CI runner — and node:test has no
+ *  default timeout, so one hung call would ride the job to its kill. */
+const CALL_TIMEOUT = 10_000;
+/** Per-test ceiling: fail loud with the phrase log, never stall the workflow. */
+const TEST_OPTS = { timeout: 120_000 };
 
 /**
  * Static skip decision, evaluated before anything is launched. Returns a human-readable reason to
@@ -45,12 +51,21 @@ let chart: ChartPage | undefined;
 let voiceOverStarted = false;
 let skip = staticSkipReason();
 
+/** One VoiceOver call with the shared ceiling; a timed-out read degrades to `fallback`. */
+async function voCall<T>(promise: Promise<T>, label: string, fallback: T): Promise<T> {
+  try {
+    return await withTimeout(promise, CALL_TIMEOUT, label);
+  } catch {
+    return fallback;
+  }
+}
+
 /** Poll the spoken-phrase log until one entry matches `re`, or the timeout elapses. */
 async function waitForPhrase(re: RegExp, ms = PHRASE_TIMEOUT): Promise<string[]> {
   const deadline = Date.now() + ms;
   let log: string[] = [];
   do {
-    log = await voiceOver.spokenPhraseLog();
+    log = await voCall(voiceOver.spokenPhraseLog(), 'spokenPhraseLog()', log);
     if (log.some((phrase) => re.test(phrase))) return log;
     await new Promise((r) => setTimeout(r, 250));
   } while (Date.now() < deadline);
@@ -61,22 +76,22 @@ async function waitForPhrase(re: RegExp, ms = PHRASE_TIMEOUT): Promise<string[]>
 async function focusAndRead(selector: string, expect: RegExp): Promise<string[]> {
   const page = chart!.page;
   await page.bringToFront();
-  await voiceOver.clearSpokenPhraseLog();
+  await voCall(voiceOver.clearSpokenPhraseLog(), 'clearSpokenPhraseLog()', undefined);
   await page.focus(selector);
   return waitForPhrase(expect);
 }
 
 before(async () => {
   if (skip) return;
-  if (!(await voiceOver.detect())) {
-    skip = 'VoiceOver is not supported on this OS';
+  if (!(await voCall(voiceOver.detect(), 'voiceOver.detect()', false))) {
+    skip = 'VoiceOver is not supported on this OS (or detection timed out)';
     return;
   }
   chart = await launchChartPage();
   try {
     await withTimeout(voiceOver.start(), START_TIMEOUT, 'voiceOver.start()');
     voiceOverStarted = true;
-    await voiceOver.clearSpokenPhraseLog();
+    await voCall(voiceOver.clearSpokenPhraseLog(), 'clearSpokenPhraseLog()', undefined);
   } catch (error) {
     // A denied automation permission surfaces here — skip, never fail.
     skip = `VoiceOver could not start (automation likely not permitted): ${(error as Error).message}`;
@@ -87,10 +102,10 @@ before(async () => {
 
 after(async () => {
   if (voiceOverStarted) {
-    await voiceOver.stop().catch(() => undefined);
+    await voCall(voiceOver.stop(), 'voiceOver.stop()', undefined);
   }
   await chart?.close();
-});
+}, { timeout: 60_000 });
 
 /** Skip helper so every test shares one bail-out that reports why. */
 function ensureReady(t: TestContext): boolean {
@@ -101,7 +116,7 @@ function ensureReady(t: TestContext): boolean {
   return true;
 }
 
-test('focusing the chart speaks its accessible name and data summary', async (t) => {
+test('focusing the chart speaks its accessible name and data summary', TEST_OPTS, async (t) => {
   if (!ensureReady(t)) return;
   const log = await focusAndRead('.fc-surface', new RegExp(CHART_LABEL, 'i'));
   const spoken = log.join(' · ');
@@ -111,20 +126,20 @@ test('focusing the chart speaks its accessible name and data summary', async (t)
   assert.match(spoken, /(up|down|flat|ranges|now|points|\d)/i, `no summary/value spoken: ${spoken}`);
 });
 
-test('ArrowRight moves the data cursor and speaks a new value', async (t) => {
+test('ArrowRight moves the data cursor and speaks a new value', TEST_OPTS, async (t) => {
   if (!ensureReady(t)) return;
   await focusAndRead('.fc-surface', new RegExp(CHART_LABEL, 'i'));
-  await voiceOver.clearSpokenPhraseLog();
+  await voCall(voiceOver.clearSpokenPhraseLog(), 'clearSpokenPhraseLog()', undefined);
   // role=application forwards arrow keys to the chart, which announces the new sample via its
   // polite live region.
-  await voiceOver.press('ArrowRight');
+  await voCall(voiceOver.press('ArrowRight'), "press('ArrowRight')", undefined);
   const log = await waitForPhrase(/\d/);
   const valuePhrase = log.find((phrase) => /\d/.test(phrase));
   assert.ok(valuePhrase, `ArrowRight spoke no data value; log: ${JSON.stringify(log)}`);
   assert.match(valuePhrase, /revenue|day|\d/i, `value announcement lacks data: ${valuePhrase}`);
 });
 
-test('the legend toggle button is reachable and announces its pressed state', async (t) => {
+test('the legend toggle button is reachable and announces its pressed state', TEST_OPTS, async (t) => {
   if (!ensureReady(t)) return;
   const log = await focusAndRead('.fc-legend button', new RegExp(SERIES_NAME, 'i'));
   const spoken = log.join(' · ');
