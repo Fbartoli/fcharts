@@ -80,7 +80,7 @@
     "prepublishOnly": "pnpm check && pnpm build && pnpm size",
     "preview": "vite preview",
     "test": "node --test test/*.test.ts",
-    "test:browser": "node --test test/browser/*.test.ts",
+    "test:browser": "node --test --test-concurrency=1 test/browser/*.test.ts",
     "test:at": "node --test test/at/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "oxlint src test bench landing a11y scripts",
