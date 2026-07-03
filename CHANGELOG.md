@@ -3,7 +3,7 @@
 All notable changes to `fcharts-js`. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning: [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [0.2.0] — 2026-07-03
 
 ### Added
 - **Time x-axis** (`xType: 'time'`): calendar-boundary ticks (minutes → hours → local

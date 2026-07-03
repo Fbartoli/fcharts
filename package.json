@@ -1,6 +1,6 @@
 {
   "name": "fcharts-js",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Charts that render 100k+ points at 60fps and pass the accessibility audit at the same time.",
   "type": "module",
   "license": "MIT",

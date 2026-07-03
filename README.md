@@ -33,7 +33,7 @@ npm install fcharts-js       # ESM, for bundlers (Vite, webpack, esbuild…)
 ```
 
 Evaluating without publishing? Build a local, installable tarball: `pnpm pack:sdk` →
-`fcharts-js-0.1.0.tgz`, then `npm install ./fcharts-js-0.1.0.tgz`. Or open
+`fcharts-js-0.2.0.tgz`, then `npm install ./fcharts-js-0.2.0.tgz`. Or open
 [`examples/quickstart.html`](./examples/quickstart.html) directly (no server, no build).
 
 ## Quickstart
