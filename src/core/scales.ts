@@ -40,3 +40,30 @@ export function linearScale(
   });
   return scale;
 }
+
+/**
+ * Build a base-10 log scale (same {@link LinearScale} shape, so renderers are agnostic).
+ * The domain must be positive — the caller derives it from positive data (see `rescaleY`).
+ * Non-positive values can still reach the scale at render time (a gap sample's neighbors,
+ * an area baseline of 0); they clamp to the range start instead of producing NaN, which
+ * would break an entire canvas path.
+ */
+export function logScale(
+  domain: readonly [number, number],
+  range: readonly [number, number],
+): LinearScale {
+  const [d0, d1] = domain;
+  const [r0, r1] = range;
+  const l0 = Math.log10(d0);
+  const lspan = Math.log10(d1) - l0 || 1;
+  const m = (r1 - r0) / lspan;
+
+  const scale = ((value: number): number =>
+    value > 0 ? r0 + (Math.log10(value) - l0) * m : r0) as LinearScale;
+  Object.defineProperties(scale, {
+    invert: { value: (px: number): number => Math.pow(10, l0 + (px - r0) / m) },
+    domain: { value: domain },
+    range: { value: range },
+  });
+  return scale;
+}

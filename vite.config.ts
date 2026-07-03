@@ -68,6 +68,49 @@ export default defineConfig(({ command }) => {
       },
     };
   }
+  if (process.env.FCHARTS_ENTRY === 'adapters') {
+    // Vue + Svelte adapters, same externalization contract as the React pass: the framework AND
+    // the core stay out of the bundle, so a consumer ships one copy of the engine.
+    return {
+      build: {
+        outDir: resolve(here, 'dist'),
+        emptyOutDir: false,
+        sourcemap: true,
+        minify: 'esbuild',
+        lib: {
+          entry: {
+            vue: resolve(here, 'src/vue.ts'),
+            svelte: resolve(here, 'src/svelte.ts'),
+          },
+          formats: ['es'],
+        },
+        rollupOptions: {
+          external: ['vue', coreEntry],
+          output: { entryFileNames: '[name].js', paths: { [coreEntry]: './fcharts.js' } },
+        },
+      },
+    };
+  }
+  if (process.env.FCHARTS_ENTRY === 'cli') {
+    // The `fcharts-render` bin (config JSON → SVG on stdout) as Node ESM. The library barrel is
+    // externalized to the sibling built file, like the adapters, so the SVG code isn't duplicated.
+    return {
+      build: {
+        outDir: resolve(here, 'dist'),
+        emptyOutDir: false,
+        sourcemap: true,
+        minify: false, // a CLI; keep it readable and avoid mangling the shebang
+        lib: {
+          entry: { 'render-cli': resolve(here, 'src/render-cli.ts') },
+          formats: ['es'],
+        },
+        rollupOptions: {
+          external: [/^node:/, libEntry],
+          output: { entryFileNames: '[name].js', paths: { [libEntry]: './fcharts.js' } },
+        },
+      },
+    };
+  }
   if (process.env.FCHARTS_ENTRY === 'compliance') {
     // Third build pass: the Compliance Pack as Node ESM. Node refuses to strip types under
     // node_modules, so the bin + the `fcharts-js/compliance` subpath must ship compiled JS, not the

@@ -50,6 +50,8 @@ export interface FChartStrings {
   high: string;
   low: string;
   close: string;
+  /** Accessible label for the opt-in CSV download control. No tokens. */
+  exportCsv: string;
 }
 
 export const DEFAULT_STRINGS: FChartStrings = {
@@ -81,6 +83,7 @@ export const DEFAULT_STRINGS: FChartStrings = {
   high: 'high',
   low: 'low',
   close: 'close',
+  exportCsv: 'Download data (CSV)',
 };
 
 /** Fill `{token}` placeholders from `vars`. Unknown tokens are left intact (so typos are visible). */

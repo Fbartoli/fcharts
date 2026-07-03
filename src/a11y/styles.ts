@@ -62,6 +62,13 @@ const CSS = `
   line-height:1;opacity:.55;transition:opacity .1s}
 .fc-pager:hover,.fc-pager:focus-visible{opacity:1}
 .fc-pager:disabled{opacity:.2;cursor:default}
+/* Opt-in CSV download (an always-available alternative format; pairs with the hidden table). */
+.fc-export{position:absolute;left:10px;bottom:8px;z-index:6;min-height:28px;display:inline-flex;
+  align-items:center;cursor:pointer;padding:0 9px;
+  border:1px solid var(--fc-legend-border,rgba(0,0,0,.15));border-radius:7px;
+  background:var(--fc-legend-bg,rgba(127,127,127,.10));color:inherit;font:inherit;font-size:.72rem;
+  font-weight:600;line-height:1;opacity:.55;transition:opacity .1s}
+.fc-export:hover,.fc-export:focus-visible{opacity:1}
 @media (prefers-reduced-motion:reduce){.fc-readout{transition:none}}
 @media (prefers-contrast:more){
   .fc-tick{color:var(--fc-tick-color,#1f2937)}

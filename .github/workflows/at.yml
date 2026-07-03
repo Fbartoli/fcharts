@@ -1,0 +1,40 @@
+# Real assistive-technology gate: drives Apple VoiceOver over a live FChart and asserts on the
+# phrases it speaks (test/at/voiceover.test.ts). This is environment-sensitive — it turns the
+# screen reader on and needs granted automation permission — so it is deliberately kept OFF
+# pull_request and out of branch protection. It runs on a schedule, on pushes to main, and on
+# demand, as a monitoring signal rather than a PR gate.
+name: assistive-tech (VoiceOver)
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly, Monday 07:00 UTC.
+    - cron: '0 7 * * 1'
+  push:
+    branches: [main]
+
+jobs:
+  voiceover:
+    runs-on: macos-14
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: npx pnpm@11.4.0 install --frozen-lockfile
+
+      - name: Install Chromium (headed for VoiceOver)
+        run: npx pnpm@11.4.0 exec playwright install chromium
+
+      # Grants Accessibility permission and enables VoiceOver AppleScript control on the runner.
+      - name: Enable screen-reader automation
+        uses: guidepup/setup-action@0.17.2
+
+      - name: VoiceOver harness
+        env:
+          FCHARTS_VOICEOVER: '1'
+        run: node --test test/at/voiceover.test.ts

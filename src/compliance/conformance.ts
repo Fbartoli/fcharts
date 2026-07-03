@@ -28,6 +28,17 @@ const na = (id: string, sc: string[], detail: string): CheckResult => ({ id, sta
 const status = (cond: boolean, id: string, sc: string[], failDetail: string, passDetail = ''): CheckResult =>
   cond ? ok(id, sc, passDetail) : no(id, sc, failDetail);
 
+/** The keyboard/live-region checks as (id, sc) — used to fail-soft when no focusable surface
+ * exists (a bare external chart has nothing to receive keyboard focus, so every claim fails). */
+const KEYBOARD_CHECKS: ReadonlyArray<readonly [string, string[]]> = [
+  ['keyboard-announce', ['2.1.1', '4.1.3']],
+  ['context-stability', ['3.2.1', '3.2.2']],
+  ['active-value', ['4.1.2']],
+  ['keyboard-zoom', ['2.1.1']],
+  ['escape-dismiss', ['1.4.13']],
+  ['no-keyboard-trap', ['2.1.2']],
+];
+
 /** Map axe wcag tags ("wcag143") to SC numbers ("1.4.3"). Best-effort; ignores version tags. */
 function scFromAxeTags(tags: string[]): string[] {
   const out: string[] = [];
@@ -57,20 +68,26 @@ async function checkAxe(
   axeViolations: AxeViolation[],
 ): Promise<void> {
   if (opts.axeSource) {
-    await page.addScriptTag({ content: opts.axeSource });
-    const violations = await page.evaluate(async (s) => {
-      const axe = (window as unknown as { axe: { run: (ctx: Element | null, o: unknown) => Promise<{ violations: { id: string; impact: string; tags: string[] }[] }> } }).axe;
-      const r = await axe.run(document.querySelector(s), { resultTypes: ['violations'] });
-      return r.violations
-        .filter((v) => v.impact === 'serious' || v.impact === 'critical')
-        .map((v) => ({ id: v.id, impact: v.impact, tags: v.tags }));
-    }, sel);
-    for (const v of violations) axeViolations.push({ id: v.id, impact: v.impact, sc: scFromAxeTags(v.tags) });
-    results.push(
-      status(violations.length === 0, 'axe-serious', [],
-        `${violations.length} serious/critical: ${violations.map((v) => v.id).join(', ')}`,
-        '0 serious/critical violations'),
-    );
+    try {
+      await page.addScriptTag({ content: opts.axeSource });
+      const violations = await page.evaluate(async (s) => {
+        const axe = (window as unknown as { axe: { run: (ctx: Element | null, o: unknown) => Promise<{ violations: { id: string; impact: string; tags: string[] }[] }> } }).axe;
+        const r = await axe.run(document.querySelector(s), { resultTypes: ['violations'] });
+        return r.violations
+          .filter((v) => v.impact === 'serious' || v.impact === 'critical')
+          .map((v) => ({ id: v.id, impact: v.impact, tags: v.tags }));
+      }, sel);
+      for (const v of violations) axeViolations.push({ id: v.id, impact: v.impact, sc: scFromAxeTags(v.tags) });
+      results.push(
+        status(violations.length === 0, 'axe-serious', [],
+          `${violations.length} serious/critical: ${violations.map((v) => v.id).join(', ')}`,
+          '0 serious/critical violations'),
+      );
+    } catch (e) {
+      // A page whose CSP blocks injected scripts (common on real third-party dashboards) cannot
+      // run axe — record n/a rather than crashing the whole audit.
+      results.push(na('axe-serious', [], `axe could not run on the page: ${e instanceof Error ? e.message : 'injection blocked'}`));
+    }
   } else {
     results.push(na('axe-serious', [], 'no axe source supplied'));
   }
@@ -246,6 +263,14 @@ async function checkKeyboard(
   results: CheckResult[],
 ): Promise<void> {
   const startUrl = page.url();
+  // Fail-soft for external targets: with no focusable data surface every keyboard/live-region
+  // claim fails outright (and page.focus would otherwise time out and crash the audit).
+  if ((await page.locator(`${sel} [role="application"]`).count()) === 0) {
+    for (const [id, sc] of KEYBOARD_CHECKS) {
+      results.push(no(id, sc, 'no [role="application"] surface to receive keyboard focus'));
+    }
+    return;
+  }
   await page.focus(`${sel} [role="application"]`);
   await page.waitForTimeout(80);
   const liveSel = `${sel} [aria-live]`;
@@ -367,6 +392,11 @@ async function checkReflowAdaptive(page: Page, sel: string, results: CheckResult
   const curWidth = await page.evaluate(
     (s) => (document.querySelector(s) as HTMLElement | null)?.getBoundingClientRect().width ?? 0, sel);
   const wideTicks = await tickXCount();
+  if (wideTicks === 0) {
+    // No fcharts x-ticks (.fc-tick-x) means this is not our adaptive-density mechanism to measure.
+    results.push(na('reflow-adaptive', ['1.4.10'], 'no fcharts x-ticks (.fc-tick-x) to measure reflow density'));
+    return;
+  }
   const narrowPx = Math.max(160, Math.round(curWidth * 0.4));
   if (curWidth < 240) {
     results.push(na('reflow-adaptive', ['1.4.10'], `container already narrow (${Math.round(curWidth)}px) — cannot narrow further`));
@@ -391,6 +421,11 @@ async function checkResizeTextRem(page: Page, sel: string, results: CheckResult[
       return t ? parseFloat(getComputedStyle(t).fontSize) : 0;
     }, sel);
   const fontBefore = await tickFontPx();
+  if (fontBefore === 0) {
+    // No fcharts tick text (.fc-tick) to measure — the rem-scaling probe does not apply here.
+    results.push(na('resize-text-rem', ['1.4.4'], 'no fcharts tick text (.fc-tick) to measure rem scaling'));
+    return;
+  }
   await page.evaluate(() => { document.documentElement.style.fontSize = '32px'; });
   await page.waitForTimeout(60);
   const fontAfter = await tickFontPx();
@@ -404,6 +439,12 @@ async function checkResizeTextRem(page: Page, sel: string, results: CheckResult[
 /** single-pointer-pan (2.5.7, R4): once zoomed in, the pan pagers appear and a single click
  * shifts the visible window (no dragging required). */
 async function checkSinglePointerPan(page: Page, sel: string, results: CheckResult[]): Promise<void> {
+  // The pan pagers are an fcharts affordance reached by zooming the surface; without our surface
+  // there is nothing to drive, so the criterion cannot be assessed on an external target.
+  if ((await page.locator(`${sel} [role="application"]`).count()) === 0) {
+    results.push(na('single-pointer-pan', ['2.5.7'], 'no [role="application"] surface to drive the pan pagers'));
+    return;
+  }
   await page.focus(`${sel} [role="application"]`);
   await page.keyboard.press('+');
   await page.keyboard.press('+');
@@ -442,6 +483,12 @@ async function checkForcedColorsCanvas(page: Page, sel: string, results: CheckRe
       }
     }, sel);
   const sigBefore = await canvasSig();
+  if (sigBefore === '') {
+    // No fcharts canvas (canvas.fc-canvas) to read — cannot prove a forced-colors repaint here.
+    results.push(na('forced-colors-canvas', ['forced-colors', '1.4.11'],
+      'no fcharts canvas (canvas.fc-canvas) to measure forced-colors repaint'));
+    return;
+  }
   await page.emulateMedia({ forcedColors: 'active' });
   await page.waitForTimeout(160);
   const sigAfter = await canvasSig();
