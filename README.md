@@ -189,6 +189,8 @@ interface FChartOptions {
   yScale?: 'linear' | 'log';  // 'log': base 10, needs positive data
   exportControl?: boolean;  // visible "Download data (CSV)" button, default false
   xTickCount?: number; yTickCount?: number;
+  locale?: string;          // BCP-47 tag: Intl-localized DEFAULT tick/value formatters
+                            // (explicit formatX/formatY always win; unset = English defaults)
   formatX?: (v: number) => string;
   formatY?: (v: number) => string;
   reducedMotion?: boolean;  // auto-detected from prefers-reduced-motion
@@ -232,8 +234,10 @@ Everything below is a thin layer over the same imperative class — one engine, 
   any pane, the others follow); built on the public `chart.onDomainChange()`.
 - **Time & log axes** — `xType: 'time'` puts ticks on calendar boundaries with adaptive date
   labels; `yScale: 'log'` gives decade ticks (positive data).
-- **Localized UI strings** — complete `stringsDE`/`stringsFR`/`stringsES` packs for
-  `options.strings` (the a11y layer's fixed prose; WCAG 3.1.2).
+- **Localization** — complete `stringsDE`/`stringsFR`/`stringsES` packs for `options.strings`
+  (the a11y layer's fixed prose; WCAG 3.1.2), and `options.locale` (any BCP-47 tag) to localize
+  the default tick/value formatters via `Intl` — dates, month names, decimal separators. The two
+  compose: `{ locale: 'de', strings: stringsDE }` localizes a chart end to end.
 - **`fcharts-render` CLI** — `fcharts-render spec.json > chart.svg` (or stdin): charts from
   shells, report pipelines, and agents with no browser and no code.
 
@@ -260,6 +264,10 @@ the *proof*, kept current automatically. (Both live in this repo; the Pack is a 
   --selector '#chart'` points the same functional checks (keyboard, live region, contrast,
   target size) at any existing chart — Highcharts, ECharts, a bare canvas — and reports exactly
   which ones fail. Report-only, no baseline needed.
+- **Diff two ACRs**: `fcharts-audit --compare old/acr-en301549.json new/acr-en301549.json`
+  answers procurement's actual question — *what changed in conformance between versions* —
+  criterion by criterion (improved / regressed / scope-changed / remarks-only), exiting non-zero
+  when a claim weakened. Pure JSON diff: needs neither Playwright nor Vite.
 - **Real screen-reader testing in CI**: `pnpm test:at` drives actual **VoiceOver** over a live
   chart (via guidepup) and asserts on the spoken phrases — focus announcement, per-sample
   arrow-key announcements, legend state. Runs weekly + on main in

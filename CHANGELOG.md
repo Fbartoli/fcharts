@@ -12,11 +12,24 @@ versioning: [SemVer](https://semver.org/).
 - **Release automation** (`.github/workflows/release.yml`): pushing a `v*` tag publishes to npm
   via trusted publishing (OIDC, no token), with the tag/version match asserted and the full
   `prepublishOnly` gauntlet re-run; provenance attaches automatically once the repo is public.
+- **ACR diffing**: `fcharts-audit --compare old.json new.json` reports what changed in
+  conformance between two generated ACRs — per-criterion improved / regressed / scope-changed /
+  remarks-only, `--json` for machines — and exits non-zero when a claim weakened. Pure JSON
+  diff; also exported from `fcharts-js/compliance` (`compareAcrs`, `renderComparison`).
+- **`locale` option** (`FChart` and `renderSVG`/`fcharts-render`): any BCP-47 tag localizes the
+  *default* tick/value formatters via `Intl.DateTimeFormat`/`Intl.NumberFormat` — month names,
+  date order, decimal separators — completing what the de/fr/es string packs started. Explicit
+  `formatX`/`formatY` still win; without `locale`, output is byte-identical to before.
 
 ### Changed
 - Landing page: npm install path surfaced (the MIT renderer is live on npm), 0.2.0 capabilities
   added (adapters, SSR hydration, real-VoiceOver CI), an "audit your current charts" one-liner,
   and the last stale bundle-size claim fixed.
+
+### Fixed
+- `fcharts-audit` no longer crashes with a module-resolution error when its optional peers are
+  absent: `playwright`/`vite` load lazily per mode, so `--help` and `--compare` work in a bare
+  install and `--fixture`/`--target` print an actionable install hint instead of a stack trace.
 
 ## [0.2.0] — 2026-07-03
 

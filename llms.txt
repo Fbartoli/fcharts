@@ -85,6 +85,8 @@ interface FChartOptions {
   xInteger?: boolean;            // integer-stepped x ticks, default false
   xTickCount?: number;           // default 8
   yTickCount?: number;           // default 6
+  locale?: string;               // BCP-47 tag: Intl-localized DEFAULT formatters (dates,
+                                 // month names, decimal separators); formatX/formatY win
   formatX?: (v: number) => string;  // tick + readout x formatter
   formatY?: (v: number) => string;  // tick + readout y formatter
   reducedMotion?: boolean;       // else auto from prefers-reduced-motion
@@ -260,6 +262,10 @@ bundled into the core chart (it imports Playwright as a dev/peer dep).
   functional checks at a chart you don't own (Highcharts, ECharts, a bare canvas). Report-only
   (no baseline gate): it writes `audit-report.json` + a console tally showing exactly which
   keyboard/SR/contrast checks fail — the gap axe-core can't see.
+- **Diff two ACRs** — `fcharts-audit --compare <old.json> <new.json>` (the `acr-<edition>.json`
+  outputs) reports per-criterion conformance changes (improved / regressed / scope-changed /
+  remarks-only) and exits 1 when a claim weakened. Pure JSON diff — needs neither Playwright nor
+  Vite; `--help` and `--compare` work without any optional peer installed.
 - **Real screen-reader CI** — `pnpm test:at` drives actual VoiceOver over a live chart via
   guidepup and asserts on the spoken phrases (`.github/workflows/at.yml`, macOS runner; skips
   cleanly where VoiceOver automation isn't permitted).
