@@ -101,7 +101,7 @@ Notes:
   layered on top of this WCAG core in **document 2 (`vpat-editions.md`)**. This document is the
   WCAG core they all share.
 
-We **lead with EN 301 549** because the GTM beachhead is EU/EAA-exposed teams (see `GTM.md`).
+We **lead with EN 301 549** because the primary audience is EU/EAA-exposed teams.
 
 ---
 

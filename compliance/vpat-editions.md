@@ -18,8 +18,8 @@ procurement/legal reviewer without explanation.
 
 ## 2. Editions (priority order)
 
-ITI publishes the VPAT in four editions; we generate three, leading with the EU one (GTM
-beachhead — see `GTM.md`). Every edition shares the **WCAG core** (document 1); they differ in
+ITI publishes the VPAT in four editions; we generate three, leading with the EU one
+(EU/EAA-exposed teams first). Every edition shares the **WCAG core** (document 1); they differ in
 which *additional* standard tables and functional-performance sections they carry.
 
 | Edition key | Title | Referenced standard | Extra tables beyond WCAG |

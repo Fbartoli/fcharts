@@ -1,13 +1,13 @@
 # Productize backlog
 
 The minimum to make fcharts installable + demoable to a design partner. Resist feature-building
-beyond this (per `GTM.md`: line+area only, no streaming/candlestick/extra adapters on spec).
+beyond this (line+area only; no streaming, candlestick, or extra adapters on spec).
 
 ---
 
 ## <a id="npm-publish"></a>Publish OSS renderer to npm + public repo — **P0** — ☐ HUMAN-GATED
 
-Nothing in the GTM funnel works until `npm install fcharts-js` does. The SDK tarball already builds
+Nothing downstream works until `npm install fcharts-js` does. The SDK tarball already builds
 (`pnpm pack:sdk` → `fcharts-js-0.1.0.tgz`) and `package.json` already declares the right `exports`
 (`.`, `./compliance`, `./react`), `bin`, and `files`. What's left needs **credentials + a decision
 an agent can't make**: there is no git remote, and publishing requires an npm account.

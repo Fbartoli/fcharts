@@ -7,7 +7,7 @@ rendered in Node) and needs chart types beyond today's line+area. This is fchart
 "machine-readable to AI agents" thesis meeting a real SSR dashboard — a good validation
 surface, not a spec to gold-plate.
 
-**Honest sequencing (per `GTM.md`): these are all pulled by ONE consumer.** Ship the
+**Honest sequencing: these are all pulled by ONE consumer.** Ship the
 server-side SVG path (P1) so the line+area Hecate already needs works end-to-end and proves
 the SSR + agent-readable story; treat donut/scatter/sparkline/bars as **P2 build-on-demand** —
 implement each only when Hecate (or the next consumer) actually wires it. Do not pre-build all

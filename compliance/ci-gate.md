@@ -102,7 +102,7 @@ Properties:
 - **Blocks the PR** on a conformance regression (exit 1), exactly like a failing test — turning
   "charts stay accessible" into an enforced invariant, not a hope.
 - **Publishes the ACR** as a build artifact every run, so the always-current VPAT is a click away
-  (the GTM "always-current VPAT" promise — `GTM.md`).
+  (the "always-current VPAT" promise).
 - **Playwright/Chromium are installed in CI only** — never a runtime dependency of the shipped
   renderer.
 - Optional: a PR-comment step posting the tally + any regression diff (kept optional to avoid a

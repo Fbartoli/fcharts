@@ -1,7 +1,7 @@
 # fcharts — TODO backlog
 
-Outstanding work surfaced across the build + the GTM/accessibility discussions. **Honest
-sequencing (from `GTM.md`): validate demand before polishing the renderer.** The binding
+Outstanding work surfaced across the build + the accessibility discussions. **Honest
+sequencing: validate demand before polishing the renderer.** The binding
 constraint is willingness-to-pay, not features — the engineering substrate (renderer + Compliance
 Pack: auto-VPAT generator, `fcharts-audit` CI gate, conformance engine) is already built.
 
@@ -31,8 +31,6 @@ interviews, credentials, or real assistive-tech — not code an agent can write)
 
 | Area | Item | Priority | Status |
 |---|---|---|---|
-| GTM | [Price-discovery interviews (falsify WTP)](./gtm.md#price-discovery) | **P0** | ☐ human-gated |
-| GTM | [Recruit 3–5 design partners → day-90 LOI](./gtm.md#design-partners) | **P0** | ☐ human-gated |
 | Product | [Publish OSS renderer to npm + public repo](./productize.md#npm-publish) | **P0** | ☐ human-gated |
 | Product | [Wire `fcharts-js/compliance` entry + `fcharts-audit` bin into the build](./productize.md#compliance-build) | **P0** | ✅ done |
 | Charts | [Server-side SVG render API + dark theme (SSR / agent-readable)](./chart-types.md#server-svg) | P1 | ✅ done |
@@ -46,8 +44,6 @@ interviews, credentials, or real assistive-tech — not code an agent can write)
 | Charts | [Styled hover readout for static-SVG charts (`attachReadout`, `FChart` tooltip parity)](./chart-types.md#hover-readout) | P2 | ✅ done |
 | Bug | [Chart renders at 0 height when container height is indefinite (flash-then-disappear)](./bugs.md#zero-height-collapse) | P1 | ✅ fixed |
 | A11y | [Real screen-reader testing (NVDA/JAWS/VoiceOver) — to claim "blind-friendly"](./accessibility.md#sr-testing) | **P0** | ⚠ partial (automated SR-readiness test done; real-AT ☐ human-gated) |
-| GTM | [Launch post (HN/Lobsters) — lead with "axe can't see the gap"](./gtm.md#launch) | P1 | ☐ human-gated |
-| GTM | [GitHub-issue outreach (Grafana / Metabase / Superset)](./gtm.md#outreach) | P1 | ☐ human-gated |
 | Product | [React adapter `<FChart>`](./productize.md#react-adapter) | P1 | ✅ done |
 | Product | [Hero demo: side-by-side vs Highcharts+Boost](./productize.md#hero-demo) | P1 | ✅ done |
 | A11y | [R5 — per-series dash/marker channel (EU "double encoding"; closes 1.4.1)](./accessibility.md#r5) | P1 | ✅ done |
@@ -58,5 +54,5 @@ interviews, credentials, or real assistive-tech — not code an agent can write)
 | A11y | [R12 — forced-colors canvas remap (Windows HCM)](./accessibility.md#r12) | P2 | ✅ done |
 | A11y | [SVG / tactile-graphic export (EU blind-specific item)](./accessibility.md#svg-export) | P2 | ✅ done (subsumed by server-SVG) |
 
-See [`GTM.md`](../GTM.md), [`compliance/scope-and-evidence-map.md`](../compliance/scope-and-evidence-map.md)
-(§11 remediation backlog), and [`FINDINGS.md`](../FINDINGS.md) for the full context.
+See [`compliance/scope-and-evidence-map.md`](../compliance/scope-and-evidence-map.md)
+(§11 remediation backlog) and [`FINDINGS.md`](../FINDINGS.md) for the full context.
