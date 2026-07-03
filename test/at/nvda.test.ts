@@ -15,7 +15,7 @@
  */
 import test, { before, after, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { nvda } from '@guidepup/guidepup';
+import { nvda, windowsActivate } from '@guidepup/guidepup';
 import { launchChartPage, withTimeout, CHART_LABEL, SERIES_NAME, type ChartPage } from './harness.ts';
 
 /** How long a phrase-log poll waits for NVDA to catch up with a focus/keystroke, in ms. */
@@ -70,10 +70,17 @@ async function waitForPhrase(re: RegExp, ms = PHRASE_TIMEOUT): Promise<string[]>
   return log;
 }
 
-/** Move DOM focus to `selector`, then return the phrase log once NVDA announces `expect`. */
+/**
+ * Move DOM focus to `selector`, then return the phrase log once NVDA announces `expect`.
+ * Blurs the current element first so re-focusing always fires a real focus event — NVDA only
+ * speaks focus *changes*, and a repeated `page.focus()` on the same element is silent.
+ */
 async function focusAndRead(selector: string, expect: RegExp): Promise<string[]> {
   const page = chart!.page;
   await page.bringToFront();
+  await page.evaluate(() => {
+    (document.activeElement as HTMLElement | null)?.blur?.();
+  });
   await nvdaCall(nvda.clearSpokenPhraseLog(), 'clearSpokenPhraseLog()', undefined);
   await page.focus(selector);
   return waitForPhrase(expect);
@@ -81,15 +88,26 @@ async function focusAndRead(selector: string, expect: RegExp): Promise<string[]>
 
 before(async () => {
   if (skip) return;
-  chart = await launchChartPage();
+  // Start NVDA BEFORE the browser: NVDA's own window takes OS foreground when it starts, and
+  // NVDA only tracks focus in the foreground application — a browser opened afterwards ends up
+  // in front. (Observed on the first CI run: live-region speech landed, focus speech did not.)
   try {
     await withTimeout(nvda.start(), START_TIMEOUT, 'nvda.start()');
     nvdaStarted = true;
-    await nvdaCall(nvda.clearSpokenPhraseLog(), 'clearSpokenPhraseLog()', undefined);
   } catch (error) {
     // A missing guidepup-prepared NVDA install surfaces here — skip, never fail.
     skip = `NVDA could not start (guidepup setup likely absent): ${(error as Error).message}`;
-    await chart.close();
+    return;
+  }
+  try {
+    chart = await launchChartPage();
+    // Belt and braces: force the Chromium window to the OS foreground (AppActivate matches the
+    // window title by prefix — the harness page title starts with "fcharts"). Non-fatal: the
+    // start-order above is the primary mechanism.
+    await nvdaCall(windowsActivate('chrome.exe', 'fcharts'), 'windowsActivate()', undefined);
+    await nvdaCall(nvda.clearSpokenPhraseLog(), 'clearSpokenPhraseLog()', undefined);
+  } catch (error) {
+    skip = `chart page could not launch: ${(error as Error).message}`;
     chart = undefined;
   }
 });
