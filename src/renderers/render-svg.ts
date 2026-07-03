@@ -19,9 +19,8 @@ import {
 } from '../core/model.ts';
 import { linearScale, logScale } from '../core/scales.ts';
 import {
+  defaultFormatters,
   effectiveTickCount,
-  formatTick,
-  formatTimeTick,
   logTicks,
   niceTicks,
   niceTimeTicks,
@@ -39,6 +38,10 @@ export interface RenderSVGChartOptions {
   formatY?: (v: number) => string;
   xTickCount?: number;
   yTickCount?: number;
+  /** BCP-47 tag localizing the DEFAULT tick/value formatters via Intl (matches the live
+   *  chart's `locale` option). Explicit `formatX`/`formatY` always win; without a locale the
+   *  deterministic English defaults are unchanged. An invalid tag throws. */
+  locale?: string;
   /** Treat x as integer indices (ticks step >= 1). Default false. */
   xInteger?: boolean;
   /** X-axis flavor. `'time'` treats x as epoch ms: calendar-boundary ticks + a date/clock
@@ -121,8 +124,9 @@ export function renderSVG(
   const yScale = (log ? logScale : linearScale)(yDomain, [height - m.bottom, m.top]);
   const xCount = effectiveTickCount(o.xTickCount ?? 8, width - m.left - m.right, 64);
   const yCount = effectiveTickCount(o.yTickCount ?? 6, height - m.top - m.bottom, 28);
-  const formatX = o.formatX ?? (o.xType === 'time' ? formatTimeTick : formatTick);
-  const formatY = o.formatY ?? formatTick;
+  const format = defaultFormatters(o.xType, o.locale);
+  const formatX = o.formatX ?? format.x;
+  const formatY = o.formatY ?? format.y;
   const title = o.ariaLabel ?? 'Chart';
   const summary = buildSummary(cd, series, title, annotations);
 

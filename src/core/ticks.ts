@@ -178,3 +178,61 @@ export function formatTick(value: number): string {
   if (abs !== 0 && abs < 1) return value.toFixed(2);
   return Number.isInteger(value) ? value.toString() : value.toFixed(1);
 }
+
+/**
+ * Locale-aware {@link formatTick}: the same three branches (compact thousands, two-decimal
+ * sub-unit values, trimmed decimals) rendered by `Intl.NumberFormat`. An invalid BCP-47 tag
+ * throws a RangeError here, at construction — fail fast, not once per tick.
+ */
+export function localeNumberFormatter(locale: string): (value: number) => string {
+  const compact = new Intl.NumberFormat(locale, { notation: 'compact', maximumFractionDigits: 1 });
+  const small = new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const plain = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
+  return (value) => {
+    const abs = Math.abs(value);
+    if (abs >= 1000) return compact.format(value);
+    if (abs !== 0 && abs < 1) return small.format(value);
+    return plain.format(value);
+  };
+}
+
+/**
+ * Locale-aware {@link formatTimeTick}: the identical finest-boundary cascade, labeled by
+ * `Intl.DateTimeFormat` (local time, matching {@link niceTimeTicks}). Formatters are built
+ * once here, so per-tick formatting stays allocation-free.
+ */
+export function localeTimeFormatter(locale: string): (value: number) => string {
+  const dtf = (opts: Intl.DateTimeFormatOptions): Intl.DateTimeFormat =>
+    new Intl.DateTimeFormat(locale, opts);
+  const clock = { hour: '2-digit', minute: '2-digit' } as const;
+  const millisecond = dtf({ ...clock, second: '2-digit', fractionalSecondDigits: 3 });
+  const second = dtf({ ...clock, second: '2-digit' });
+  const minute = dtf(clock);
+  const day = dtf({ month: 'short', day: 'numeric' });
+  const month = dtf({ month: 'short' });
+  const year = dtf({ year: 'numeric' });
+  return (value) => {
+    const d = new Date(value);
+    if (d.getMilliseconds()) return millisecond.format(d);
+    if (d.getSeconds()) return second.format(d);
+    if (d.getMinutes() || d.getHours()) return minute.format(d);
+    if (d.getDate() !== 1) return day.format(d);
+    if (d.getMonth() !== 0) return month.format(d);
+    return year.format(d);
+  };
+}
+
+/**
+ * The default x/y tick formatters for an axis pair. Without a `locale` these are the exact
+ * hand-rolled English defaults ({@link formatTick} / {@link formatTimeTick}) — same function
+ * references, so existing output is untouched byte-for-byte. With a `locale` they become the
+ * Intl-based equivalents.
+ */
+export function defaultFormatters(
+  xType: 'linear' | 'time' | undefined,
+  locale: string | undefined,
+): { x: (v: number) => string; y: (v: number) => string } {
+  const num = locale ? localeNumberFormatter(locale) : formatTick;
+  const time = locale ? localeTimeFormatter(locale) : formatTimeTick;
+  return { x: xType === 'time' ? time : num, y: num };
+}
