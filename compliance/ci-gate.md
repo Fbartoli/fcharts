@@ -32,6 +32,9 @@ fcharts-audit [options]
 
   --fixture <path>      Module exporting `mountChart(el) => () => void` (build + teardown).
                         Default: the bundled demo fixture (fcharts with sample data).
+  --target <url>        Audit a chart on a LIVE page instead of a fixture (mutually exclusive
+                        with --fixture). Works on any library — Highcharts, ECharts, bare canvas.
+  --selector <css>      The chart root element on the target page (required with --target).
   --edition <key>       en301549 | wcag | section508   (repeatable). Default: en301549.
   --baseline <path>     Committed evidence-map JSON to diff against.
                         Default: the version's bundled baseline.
@@ -73,9 +76,37 @@ Auditing the integrator's *own* configured chart (their colors, labels, locale, 
 point — it catches *their* regressions (a teammate hardcodes a low-contrast series color, removes
 `xLabel`, drops the legend), not just the library's.
 
+### Target mode (audit any chart)
+
+`--target <url> --selector <css>` points the same functional checks at a chart you don't own —
+the lead-gen form of the gate: "axe says your chart is fine; watch the keyboard and
+screen-reader checks fail." It is **report-only** (no committed baseline exists for an external
+chart, so there is nothing to regress against): it writes `audit-report.json` + the console
+tally and exits 0. Checks that assume fcharts DOM report `not-applicable` instead of crashing;
+edition flags are ignored (no ACR is generated for a chart whose evidence map is unknown).
+
 ## 3. GitHub Action
 
-A reusable workflow + a worked example committed in task 21. Sketch:
+Shipped as a composite action at the repo root ([`action.yml`](../action.yml)) — listable on the
+GitHub Marketplace, usable today via `uses: Fbartoli/fcharts@<tag>`:
+
+```yaml
+# Gate your own fcharts chart against its committed baseline (fails the PR on regression):
+- uses: Fbartoli/fcharts@v0.2.0
+  with:
+    fixture: ./a11y/fixture.ts
+    editions: en301549 wcag
+
+# Or audit any chart on a live page, report-only:
+- uses: Fbartoli/fcharts@v0.2.0
+  with:
+    target: https://preview.example.com/dashboard
+    selector: '#price-chart'
+```
+
+The action installs `fcharts-js` + peers into an isolated `$RUNNER_TEMP` prefix (the consumer's
+workspace is untouched) and uploads the report as a build artifact. The hand-rolled equivalent,
+for teams who prefer explicit steps:
 
 ```yaml
 # .github/workflows/a11y-gate.yml

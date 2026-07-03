@@ -28,10 +28,19 @@ interviews, credentials, or real assistive-tech — not code an agent can write)
 > those, **every agent-closable engineering item in this backlog is done**; the only remaining rows
 > are the human-gated ones above (plus the consumer-side step of Hecate deleting its hand-rolled
 > readout).
+>
+> **Update (2026-07-03 — 0.2.0 shipped):** the repo is **public**, `fcharts-js@0.2.0` is **on
+> npm**, and the feature release landed: time/log axes, linked panes (`syncCharts`), CSV export,
+> SSR hydration, `<f-chart>` web component, Vue/Svelte adapters, `fcharts-render` CLI, de/fr/es
+> locale packs, matrix heatmap, **audit-any-chart** (`fcharts-audit --target`), a reusable
+> **GitHub Action** (`action.yml`), tag-triggered **release automation**, and a real-VoiceOver
+> CI harness (green but skip-only on GitHub's runner until VoiceOver automation permits there —
+> it runs for real on any permitted Mac). The engineering backlog for what's next lives in
+> [`next.md`](./next.md); demand validation remains the binding constraint.
 
 | Area | Item | Priority | Status |
 |---|---|---|---|
-| Product | [Publish OSS renderer to npm + public repo](./productize.md#npm-publish) | **P0** | ☐ human-gated |
+| Product | [Publish OSS renderer to npm + public repo](./productize.md#npm-publish) | **P0** | ✅ done (0.2.0 live; trusted-publisher setup pending, see RELEASING.md) |
 | Product | [Wire `fcharts-js/compliance` entry + `fcharts-audit` bin into the build](./productize.md#compliance-build) | **P0** | ✅ done |
 | Charts | [Server-side SVG render API + dark theme (SSR / agent-readable)](./chart-types.md#server-svg) | P1 | ✅ done |
 | Charts | [Donut / pie (categorical share)](./chart-types.md#donut) | P2 | ✅ done |
@@ -43,7 +52,7 @@ interviews, credentials, or real assistive-tech — not code an agent can write)
 | Charts | [Thin inline progress / gauge bar (KPI cap bars)](./chart-types.md#progress-gauge) | P2 | ✅ done |
 | Charts | [Styled hover readout for static-SVG charts (`attachReadout`, `FChart` tooltip parity)](./chart-types.md#hover-readout) | P2 | ✅ done |
 | Bug | [Chart renders at 0 height when container height is indefinite (flash-then-disappear)](./bugs.md#zero-height-collapse) | P1 | ✅ fixed |
-| A11y | [Real screen-reader testing (NVDA/JAWS/VoiceOver) — to claim "blind-friendly"](./accessibility.md#sr-testing) | **P0** | ⚠ partial (automated SR-readiness test done; real-AT ☐ human-gated) |
+| A11y | [Real screen-reader testing (NVDA/JAWS/VoiceOver) — to claim "blind-friendly"](./accessibility.md#sr-testing) | **P0** | ⚠ partial (automated SR-readiness + real-VoiceOver harness done; VO-on-runner + NVDA + a human session still open — see [next.md](./next.md)) |
 | Product | [React adapter `<FChart>`](./productize.md#react-adapter) | P1 | ✅ done |
 | Product | [Hero demo: side-by-side vs Highcharts+Boost](./productize.md#hero-demo) | P1 | ✅ done |
 | A11y | [R5 — per-series dash/marker channel (EU "double encoding"; closes 1.4.1)](./accessibility.md#r5) | P1 | ✅ done |
