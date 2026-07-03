@@ -271,6 +271,28 @@ the *proof*, kept current automatically. (Both live in this repo; the Pack is a 
 > checks — keyboard, live region, focus, computed contrast, target size — which is what the engine
 > runs.
 
+### GitHub Action
+
+The audit ships as a reusable action ([`action.yml`](./action.yml)) — gate any repo's charts in
+a few lines, no fcharts adoption required:
+
+```yaml
+# Audit any chart on a live page (report-only; Highcharts, ECharts, bare canvas, …)
+- uses: Fbartoli/fcharts@v0.2.0
+  with:
+    target: https://preview.example.com/dashboard
+    selector: '#price-chart'
+
+# Or gate an fcharts chart against its committed baseline (fails the build on regression)
+- uses: Fbartoli/fcharts@v0.2.0
+  with:
+    fixture: ./a11y/fixture.ts
+    editions: en301549 wcag
+```
+
+Both modes upload the generated report as a build artifact. Everything installs into an isolated
+prefix — your `package.json` and `node_modules` are untouched.
+
 ### Worked CI example
 
 Point the gate at a fixture that builds your real chart (`export mountChart(el) => teardown`):
