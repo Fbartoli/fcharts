@@ -29,7 +29,13 @@ versioning: [SemVer](https://semver.org/).
 ### Changed
 - Landing page: npm install path surfaced (the MIT renderer is live on npm), 0.2.0 capabilities
   added (adapters, SSR hydration, real-VoiceOver CI), an "audit your current charts" one-liner,
-  and the last stale bundle-size claim fixed.
+  and the last stale bundle-size claim fixed. Then updated for this cycle: the screen-reader
+  card now carries the NVDA-green-in-CI claim, and the ACR block mentions `--compare` + the
+  machine-readable JSON.
+- Docs & examples: a keyboard-navigation demo GIF at the top of the README (recorded
+  deterministically by `scripts/record-demo.ts`), an audit step in the quickstart, and
+  standalone StackBlitz-ready starter apps for React / Vue / Svelte / `<f-chart>` under
+  `examples/` (each verified to install and build against the published package).
 
 ### Fixed
 - `fcharts-audit` no longer crashes with a module-resolution error when its optional peers are
