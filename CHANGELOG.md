@@ -3,7 +3,7 @@
 All notable changes to `fcharts-js`. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning: [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [0.3.0] — 2026-07-03
 
 ### Added
 - **Reusable GitHub Action** (`action.yml`): run `fcharts-audit` in any repo — audit-any
