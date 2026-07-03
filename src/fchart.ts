@@ -61,7 +61,8 @@ import {
 } from './a11y/cursor.ts';
 import { format, resolveStrings, type FChartStrings } from './a11y/strings.ts';
 
-type Formatter = (value: number) => string;
+/** A tick/value formatter: number in, label out (see `formatX`/`formatY`/`locale`). */
+export type Formatter = (value: number) => string;
 
 export interface FChartOptions {
   /** Accessible name for the whole chart. */

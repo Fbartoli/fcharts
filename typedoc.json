@@ -1,0 +1,21 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "src/index.ts",
+    "src/react.ts",
+    "src/vue.ts",
+    "src/svelte.ts",
+    "src/compliance/index.ts"
+  ],
+  "out": "dist-site/api",
+  "name": "fcharts-js",
+  "readme": "none",
+  "includeVersion": true,
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "hideGenerator": true,
+  "navigationLinks": {
+    "fcharts.dev": "https://fcharts.dev",
+    "GitHub": "https://github.com/Fbartoli/fcharts"
+  }
+}

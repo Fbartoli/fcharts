@@ -6,6 +6,12 @@ versioning: [SemVer](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Generated API reference** at [fcharts.dev/api](https://fcharts.dev/api/) — typedoc over the
+  existing TSDoc for all five public entries (core, react, vue, svelte, compliance), built into
+  the site on every deploy, zero typedoc warnings. Types referenced by public signatures
+  (`Formatter`, `Margins`, `ChartData`, `LinearScale`, `SeriesStats`, resolved series/annotation
+  shapes, `DEFAULT_MARGINS`) are now exported from the barrel — they were always part of the
+  de-facto API surface.
 - **Perf-budget CI monitor** (`.github/workflows/perf.yml`): the committed benchmark runs on
   every push to main + weekly, failing on a flake-resistant subset of its acceptance criteria
   — frame cost < 16 ms, the relative 250k/10k scaling ratio, and the deterministic a11y
