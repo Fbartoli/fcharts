@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>fcharts × &lt;f-chart&gt; web component</title>
+    <style>
+      body { margin: 2rem auto; max-width: 760px; font-family: system-ui, sans-serif; }
+      f-chart { display: block; height: 360px; }
+    </style>
+  </head>
+  <body>
+    <h1>fcharts × &lt;f-chart&gt;</h1>
+    <p>
+      No framework — the element is configured via its <code>config</code> property (configs
+      carry formatter functions, which JSON attributes can't). Tab to the chart, then use arrow
+      keys — every value is announced to screen readers and shown in the readout.
+    </p>
+    <f-chart id="chart"></f-chart>
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>
