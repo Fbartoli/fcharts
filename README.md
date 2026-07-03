@@ -19,8 +19,9 @@ independent of point count) plus a **real-DOM accessibility layer** overlaid on 
 - **Works today, no browser flags.** HTML-in-Canvas is feature-detected and used if present;
   otherwise the DOM-overlay path runs in stock Chrome/Firefox/Safari.
 
-> This is a **validation MVP**, not a product. See [`FINDINGS.md`](./FINDINGS.md) for the
-> benchmark numbers and an honest verdict on the thesis.
+> This is a **validation MVP**, not a product. The benchmark harness behind every performance
+> claim is committed under [`bench/`](./bench/) — three browser engines, axe scans, and real
+> keyboard + find-in-page assertions, with the result JSONs checked in.
 
 ## Install
 
@@ -287,10 +288,9 @@ the *proof*, kept current automatically. (Both live in this repo; the Pack is a 
   VoiceOver speech). Both in [`.github/workflows/at.yml`](./.github/workflows/at.yml); both skip
   cleanly on machines without screen-reader automation.
 
-> Why a gate and not just a scan? The benchmark's own finding (see [`FINDINGS.md`](./FINDINGS.md)):
-> a bare inaccessible `<canvas>` scores **0 axe violations** too. Real conformance needs functional
-> checks — keyboard, live region, focus, computed contrast, target size — which is what the engine
-> runs.
+> Why a gate and not just a scan? The benchmark's own finding: a bare inaccessible `<canvas>`
+> scores **0 axe violations** too. Real conformance needs functional checks — keyboard, live
+> region, focus, computed contrast, target size — which is what the engine runs.
 
 ### GitHub Action
 

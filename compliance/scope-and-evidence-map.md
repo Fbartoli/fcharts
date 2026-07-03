@@ -123,8 +123,8 @@ Each criterion carries one of the four standard VPAT conformance levels:
 
 ## 4. Verification taxonomy (what the CI gate can prove vs. what a human must attest)
 
-This is the second load-bearing idea. The headline finding of the validation MVP (`FINDINGS.md`)
-was that **"passes axe" is necessary but not sufficient** — axe rated a bare inaccessible canvas
+This is the second load-bearing idea. The headline finding of the validation benchmark was
+that **"passes axe" is necessary but not sufficient** — axe rated a bare inaccessible canvas
 identically to fcharts. So each evidence item is tagged with how it is verified:
 
 - **`automated`** — a machine check can prove/disprove it on **every commit**. This is one of:
@@ -735,8 +735,8 @@ Derived from the verification tags above; formalized in documents 3 and 4.
 
 **CI-enforceable (automated, runs every commit) — the gate fails if any regresses:**
 
-- axe: 0 serious/critical violations scoped to the chart (necessary, not sufficient — see
-  `FINDINGS.md`).
+- axe: 0 serious/critical violations scoped to the chart (necessary, not sufficient — the
+  benchmark rated a bare inaccessible canvas axe-clean too).
 - DOM structure: canvas `aria-hidden`; surface `role="application"` + `aria-roledescription` +
   non-empty `aria-label` + `aria-details` + `aria-describedby`; legend `role="group"` of
   `type="button"` `aria-pressed` controls; data `<table>` with `<caption>` + `<th scope>` headers;

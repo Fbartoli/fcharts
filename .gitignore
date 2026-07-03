@@ -11,6 +11,7 @@ compliance-out/
 compliance-out-regression/
 .sl-audit-entry.html
 dist-site
-# Private business docs — kept local, purged from history (2026-07-03)
+# Private business docs & planning notes — kept local, never published
 GTM.md
-todos/gtm.md
+FINDINGS.md
+todos/

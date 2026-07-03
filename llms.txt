@@ -287,4 +287,5 @@ bundled into the core chart (it imports Playwright as a dev/peer dep).
 
 - Quickstart + theming + worked streaming example: README.md
 - Live demo + benchmark vs uPlot/SVG: bench/ (run `pnpm bench`), landing/ (run `pnpm landing`)
-- Honest validation results: FINDINGS.md
+- Committed benchmark results (three engines): bench/results.json, bench/results-firefox.json,
+  bench/results-webkit.json
