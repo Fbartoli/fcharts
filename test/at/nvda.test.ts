@@ -71,18 +71,26 @@ async function waitForPhrase(re: RegExp, ms = PHRASE_TIMEOUT): Promise<string[]>
 }
 
 /**
- * Move DOM focus to `selector`, then return the phrase log once NVDA announces `expect`.
- * Blurs the current element first so re-focusing always fires a real focus event — NVDA only
- * speaks focus *changes*, and a repeated `page.focus()` on the same element is silent.
+ * Move DOM focus to `selector`, then have NVDA read the focused element (the NVDA+Tab "report
+ * current focus" command) and return the phrase log once it matches `expect`.
+ *
+ * The report command — rather than relying on NVDA's focus-event announcement — is deliberate:
+ * CDP-driven `page.focus()` moves real DOM focus (proven: subsequent real keystrokes reach the
+ * element), but NVDA does not speak that transition on the CI runner. Asking NVDA to read the
+ * focus proves what matters end to end: the element's accessible name/role/state as a shipping
+ * AT actually renders them.
  */
 async function focusAndRead(selector: string, expect: RegExp): Promise<string[]> {
   const page = chart!.page;
   await page.bringToFront();
-  await page.evaluate(() => {
-    (document.activeElement as HTMLElement | null)?.blur?.();
-  });
   await nvdaCall(nvda.clearSpokenPhraseLog(), 'clearSpokenPhraseLog()', undefined);
   await page.focus(selector);
+  await new Promise((r) => setTimeout(r, 300)); // let focus settle before asking for the report
+  await nvdaCall(
+    nvda.perform(nvda.keyboardCommands.reportCurrentFocus),
+    'perform(reportCurrentFocus)',
+    undefined,
+  );
   return waitForPhrase(expect);
 }
 
