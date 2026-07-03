@@ -285,7 +285,12 @@ bundled into the core chart (it imports Playwright as a dev/peer dep).
 
 ## Links
 
-- Quickstart + theming + worked streaming example: README.md
-- Live demo + benchmark vs uPlot/SVG: bench/ (run `pnpm bench`), landing/ (run `pnpm landing`)
-- Committed benchmark results (three engines): bench/results.json, bench/results-firefox.json,
-  bench/results-webkit.json
+- [Live demo + landing](https://fcharts.dev/): the hero chart — 120k points, streaming, keyboard-navigable
+- [Playground](https://fcharts.dev/playground): configure a chart interactively and copy the config
+- [Guide: accessible canvas charts](https://fcharts.dev/guides/accessible-canvas-charts): the real-DOM overlay pattern
+- [Guide: WCAG requirements for charts](https://fcharts.dev/guides/wcag-chart-requirements): criterion by criterion
+- [Guide: audit any chart](https://fcharts.dev/guides/audit-any-chart): the one-command functional audit
+- [Sample chart-layer ACR](https://fcharts.dev/acr-en301549): the generated EN 301 549 conformance report
+- [GitHub repository](https://github.com/Fbartoli/fcharts): source, README quickstart, benchmark harness under `bench/` with committed three-engine results
+- [npm package](https://www.npmjs.com/package/fcharts-js): `fcharts-js`, published with provenance
+- [fcharts-audit GitHub Action](https://github.com/marketplace/actions/fcharts-accessibility-audit): the audit as a CI step
