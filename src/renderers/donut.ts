@@ -9,7 +9,7 @@
  */
 import { DEFAULT_PALETTE } from '../core/model.ts';
 import { resolveTheme, STATUS_COLORS, type SvgTheme } from './svg-theme.ts';
-import { anchor, embedSummary, esc, n, svgDocument } from './svg-util.ts';
+import { anchor, embedSummary, esc, n, svgDocument, text } from './svg-util.ts';
 
 export interface DonutSlice {
   label: string;
@@ -108,16 +108,16 @@ export function buildDonutSVG(spec: { slices: readonly DonutSlice[] }, opts: Don
 
   if (opts.centerLabel) {
     parts.push(
-      `<text x="${n(cx)}" y="${n(cy + (opts.centerSub ? -2 : 4))}" text-anchor="middle" ` +
-        `font-family="system-ui,sans-serif" font-size="${n(size * 0.13)}" font-weight="600" ` +
-        `fill="${esc(theme.tick)}">${esc(opts.centerLabel)}</text>`,
+      text(cx, cy + (opts.centerSub ? -2 : 4), esc(opts.centerLabel), {
+        fill: theme.tick, size: size * 0.13, anchor: 'middle', weight: 600,
+      }),
     );
   }
   if (opts.centerSub) {
     parts.push(
-      `<text x="${n(cx)}" y="${n(cy + size * 0.085)}" text-anchor="middle" ` +
-        `font-family="system-ui,sans-serif" font-size="${n(size * 0.055)}" ` +
-        `fill="${esc(theme.label)}">${esc(opts.centerSub)}</text>`,
+      text(cx, cy + size * 0.085, esc(opts.centerSub), {
+        fill: theme.label, size: size * 0.055, anchor: 'middle',
+      }),
     );
   }
 
@@ -149,8 +149,7 @@ function legendRows(slices: readonly ResolvedSlice[], size: number, theme: SvgTh
     const flag = s.overCap ? `<tspan fill="${esc(STATUS_COLORS.over)}"> ⚑</tspan>` : '';
     const row =
       `<rect x="${n(x)}" y="${n(y - 9)}" width="10" height="10" rx="2" fill="${esc(s.color)}"/>` +
-      `<text x="${n(x + 16)}" y="${n(y)}" font-family="system-ui,sans-serif" font-size="11" ` +
-      `fill="${esc(theme.tick)}">${esc(s.label)} — ${s.pct.toFixed(1)}%${flag}</text>`;
+      text(x + 16, y, `${esc(s.label)} — ${s.pct.toFixed(1)}%${flag}`, { fill: theme.tick });
     return anchor(s.href, row);
   });
 }

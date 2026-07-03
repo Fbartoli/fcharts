@@ -117,13 +117,81 @@ const ANNOTATION_HIT_PX = 11;
 
 let instanceSeq = 0;
 
+/** Constructor options resolved onto their defaults (media-query autodetects included). */
+type ResolvedOptions = Required<
+  Omit<FChartOptions, 'ariaLabel' | 'xLabel' | 'yLabel' | 'strings' | 'onRenderPath' | 'xPad'>
+> &
+  Pick<FChartOptions, 'ariaLabel' | 'xLabel' | 'yLabel' | 'onRenderPath' | 'xPad'>;
+
+function resolveOptions(config: FChartConfig, doc: Document): ResolvedOptions {
+  return {
+    legend: config.options?.legend ?? true,
+    maxDpr: config.options?.maxDpr ?? 2,
+    yPadding: config.options?.yPadding ?? 0.06,
+    xInteger: config.options?.xInteger ?? false,
+    xTickCount: config.options?.xTickCount ?? 8,
+    yTickCount: config.options?.yTickCount ?? 6,
+    formatX: config.options?.formatX ?? formatTick,
+    formatY: config.options?.formatY ?? formatTick,
+    reducedMotion:
+      config.options?.reducedMotion ?? prefers(doc, '(prefers-reduced-motion: reduce)'),
+    highContrast: config.options?.highContrast ?? prefers(doc, '(prefers-contrast: more)'),
+    forcedColors: config.options?.forcedColors ?? prefers(doc, '(forced-colors: active)'),
+    sonify: config.options?.sonify ?? false,
+    onRenderPath: config.options?.onRenderPath,
+    ariaLabel: config.options?.ariaLabel,
+    xLabel: config.options?.xLabel,
+    yLabel: config.options?.yLabel,
+    xPad: config.options?.xPad,
+  };
+}
+
+/**
+ * Machine-readable layer: a one-line natural-language summary (aria-describedby, so it is
+ * announced and agent-readable), the focused sample as a programmatically-determinable value
+ * (an aria-describedby target updated in lockstep with the cursor — vs. the live region, which
+ * is a transient announcement; lets AT/automation *query* the current point, not just hear it),
+ * and a structured JSON block for DOM scrapers.
+ */
+function buildA11yEls(
+  doc: Document,
+  summaryId: string,
+  activeId: string,
+): { summaryEl: HTMLElement; activeSample: HTMLElement; dataScript: HTMLElement } {
+  const summaryEl = doc.createElement('p');
+  summaryEl.className = 'fc-sr-only';
+  summaryEl.id = summaryId;
+  const activeSample = doc.createElement('span');
+  activeSample.className = 'fc-sr-only';
+  activeSample.id = activeId;
+  const dataScript = doc.createElement('script');
+  dataScript.setAttribute('type', 'application/json');
+  dataScript.setAttribute('data-fcharts', 'summary');
+  return { summaryEl, activeSample, dataScript };
+}
+
+function buildSurface(
+  doc: Document,
+  ids: { tableId: string; summaryId: string; activeId: string },
+): HTMLElement {
+  const surface = doc.createElement('div');
+  surface.className = 'fc-surface';
+  surface.tabIndex = 0;
+  surface.setAttribute('role', 'application');
+  surface.setAttribute('aria-roledescription', 'interactive chart');
+  // Point the focused widget at its data table so screen-reader users can reach it
+  // without leaving application mode and blindly browsing.
+  surface.setAttribute('aria-details', ids.tableId);
+  // Describe the data (values + trend) plus the focused sample (updated live) so SR users
+  // and AI agents get the overview on focus and can query the current point.
+  surface.setAttribute('aria-describedby', `${ids.summaryId} ${ids.activeId}`);
+  return surface;
+}
+
 export class FChart {
   private readonly root: HTMLElement;
   private readonly doc: Document;
-  private readonly options: Required<
-    Omit<FChartOptions, 'ariaLabel' | 'xLabel' | 'yLabel' | 'strings' | 'onRenderPath' | 'xPad'>
-  > &
-    Pick<FChartOptions, 'ariaLabel' | 'xLabel' | 'yLabel' | 'onRenderPath' | 'xPad'>;
+  private readonly options: ResolvedOptions;
   private readonly strings: FChartStrings;
 
   private series: ResolvedSeries[];
@@ -188,26 +256,7 @@ export class FChart {
   constructor(el: HTMLElement, config: FChartConfig) {
     this.root = el;
     this.doc = el.ownerDocument;
-    this.options = {
-      legend: config.options?.legend ?? true,
-      maxDpr: config.options?.maxDpr ?? 2,
-      yPadding: config.options?.yPadding ?? 0.06,
-      xInteger: config.options?.xInteger ?? false,
-      xTickCount: config.options?.xTickCount ?? 8,
-      yTickCount: config.options?.yTickCount ?? 6,
-      formatX: config.options?.formatX ?? formatTick,
-      formatY: config.options?.formatY ?? formatTick,
-      reducedMotion:
-        config.options?.reducedMotion ?? prefers(this.doc, '(prefers-reduced-motion: reduce)'),
-      highContrast: config.options?.highContrast ?? prefers(this.doc, '(prefers-contrast: more)'),
-      forcedColors: config.options?.forcedColors ?? prefers(this.doc, '(forced-colors: active)'),
-      sonify: config.options?.sonify ?? false,
-      onRenderPath: config.options?.onRenderPath,
-      ariaLabel: config.options?.ariaLabel,
-      xLabel: config.options?.xLabel,
-      yLabel: config.options?.yLabel,
-      xPad: config.options?.xPad,
-    };
+    this.options = resolveOptions(config, this.doc);
     this.strings = resolveStrings(config.options?.strings);
 
     injectStyles(this.doc);
@@ -230,20 +279,10 @@ export class FChart {
     this.tableAlt = new TableAlt(this.doc);
     this.tableAlt.el.id = tableId;
 
-    // Machine-readable layer: a one-line natural-language summary (aria-describedby, so it
-    // is announced and agent-readable) plus a structured JSON block for DOM scrapers.
-    this.summaryEl = this.doc.createElement('p');
-    this.summaryEl.className = 'fc-sr-only';
-    this.summaryEl.id = summaryId;
-    // The focused sample as a programmatically-determinable value: an aria-describedby target
-    // updated in lockstep with the cursor (vs. the live region, which is a transient
-    // announcement). Lets AT/automation *query* the current point, not just hear it announced.
-    this.activeSample = this.doc.createElement('span');
-    this.activeSample.className = 'fc-sr-only';
-    this.activeSample.id = activeId;
-    this.dataScript = this.doc.createElement('script');
-    this.dataScript.setAttribute('type', 'application/json');
-    this.dataScript.setAttribute('data-fcharts', 'summary');
+    const a11y = buildA11yEls(this.doc, summaryId, activeId);
+    this.summaryEl = a11y.summaryEl;
+    this.activeSample = a11y.activeSample;
+    this.dataScript = a11y.dataScript;
     this.legend = this.options.legend
       ? new Legend(this.series, (i) => this.toggleSeries(i), this.strings, this.doc)
       : null;
@@ -257,19 +296,7 @@ export class FChart {
 
     this.plot = this.doc.createElement('div');
     this.plot.className = 'fc-plot';
-
-    this.surface = this.doc.createElement('div');
-    this.surface.className = 'fc-surface';
-    this.surface.tabIndex = 0;
-    this.surface.setAttribute('role', 'application');
-    this.surface.setAttribute('aria-roledescription', 'interactive chart');
-    // Point the focused widget at its data table so screen-reader users can reach it
-    // without leaving application mode and blindly browsing.
-    this.surface.setAttribute('aria-details', tableId);
-    // Describe the data (values + trend) plus the focused sample (updated live) so SR users
-    // and AI agents get the overview on focus and can query the current point.
-    this.surface.setAttribute('aria-describedby', `${summaryId} ${activeId}`);
-
+    this.surface = buildSurface(this.doc, { tableId, summaryId, activeId });
     this.readout = buildReadout(this.doc);
 
     this.renderer = createCanvas2DRenderer(this.canvas);
@@ -278,6 +305,25 @@ export class FChart {
     this.path = resolveRenderPath(this.support);
     this.reportedPath = this.path;
 
+    this.assembleDom();
+
+    this.scheduler = new RenderScheduler(() => this.frame());
+
+    this.attachEvents();
+    this.trackForcedColors(config.options?.forcedColors !== undefined);
+    this.resizeObserver = new ResizeObserver(() => this.measure());
+    this.resizeObserver.observe(this.plot);
+
+    this.measure();
+    this.resetView();
+    // Always run, even without initial data, so the surface has an accessible name and a
+    // populated (non-empty) aria-describedby target before any setData().
+    this.refreshDerived();
+    this.requestRender();
+  }
+
+  /** Attach the built pieces to the document (legend, plot stack, a11y layer). */
+  private assembleDom(): void {
     if (this.legend) this.root.append(this.legend.el);
     this.surface.append(this.liveRegion.el, this.activeSample);
     // The axis-tick text layer is a plot sibling (a visible CSS overlay) on the DOM-overlay
@@ -299,30 +345,19 @@ export class FChart {
       this.dataScript,
     );
     this.root.append(this.plot);
+  }
 
-    this.scheduler = new RenderScheduler(() => this.frame());
-
-    this.attachEvents();
-    // Live forced-colors (Windows High Contrast) tracking, unless the integrator pinned it.
-    if (config.options?.forcedColors === undefined) {
-      this.doc.defaultView?.matchMedia?.('(forced-colors: active)').addEventListener?.(
-        'change',
-        (e) => {
-          this.options.forcedColors = e.matches;
-          this.requestRender();
-        },
-        { signal: this.listeners.signal },
-      );
-    }
-    this.resizeObserver = new ResizeObserver(() => this.measure());
-    this.resizeObserver.observe(this.plot);
-
-    this.measure();
-    this.resetView();
-    // Always run, even without initial data, so the surface has an accessible name and a
-    // populated (non-empty) aria-describedby target before any setData().
-    this.refreshDerived();
-    this.requestRender();
+  /** Live forced-colors (Windows High Contrast) tracking, unless the integrator pinned it. */
+  private trackForcedColors(pinned: boolean): void {
+    if (pinned) return;
+    this.doc.defaultView?.matchMedia?.('(forced-colors: active)').addEventListener?.(
+      'change',
+      (e) => {
+        this.options.forcedColors = e.matches;
+        this.requestRender();
+      },
+      { signal: this.listeners.signal },
+    );
   }
 
   /** The render path actually in use. The DOM-overlay path is fully accessible on its own. */

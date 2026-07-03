@@ -6,11 +6,10 @@
  * (ok / near / over) so the encoding isn't position-only. Agent-readable: per-row counts plus, for
  * each reference line, how many points fall below it — the outliers a reviewer actually wants.
  */
-import { DEFAULT_PALETTE } from '../core/model.ts';
 import { formatTick, niceTicks } from '../core/ticks.ts';
-import { linearScale } from '../core/scales.ts';
-import { resolveTheme, STATUS_COLORS, type Status, type SvgTheme } from './svg-theme.ts';
-import { embedSummary, esc, n, svgDocument } from './svg-util.ts';
+import { linearScale, type LinearScale } from '../core/scales.ts';
+import { markColor, resolveTheme, type Status, type SvgTheme } from './svg-theme.ts';
+import { bgRect, embedSummary, esc, n, svgDocument, text } from './svg-util.ts';
 
 export interface ScatterPoint {
   x: number;
@@ -46,6 +45,17 @@ export interface ScatterOptions {
 
 const M = { left: 96, right: 16, top: 22, bottom: 28 };
 
+/** Geometry + paint shared by the part builders below. */
+interface ScatterCtx {
+  theme: SvgTheme;
+  xScale: LinearScale;
+  width: number;
+  height: number;
+  rowH: number;
+}
+
+const rowCenter = (ctx: ScatterCtx, i: number): number => M.top + i * ctx.rowH + ctx.rowH / 2;
+
 /** Build a scatter / dot-strip chart as a standalone SVG string. */
 export function buildScatterSVG(
   spec: { points: readonly ScatterPoint[]; rows: readonly string[]; refLines?: readonly ScatterRefLine[] },
@@ -53,7 +63,6 @@ export function buildScatterSVG(
 ): string {
   const theme = resolveTheme(opts.theme);
   const title = opts.title ?? 'Scatter';
-  const formatX = opts.formatX ?? formatTick;
   const rowH = opts.rowHeight ?? 34;
   const refLines = spec.refLines ?? [];
   const width = opts.width;
@@ -67,90 +76,20 @@ export function buildScatterSVG(
   const pad = (hi - lo) * 0.06;
   const domain: [number, number] = [lo - pad, hi + pad];
   const xScale = linearScale(domain, [M.left, width - M.right]);
+  const ctx: ScatterCtx = { theme, xScale, width, height, rowH };
   const rowIndex = new Map(spec.rows.map((r, i) => [r, i]));
-  const rowCenter = (i: number): number => M.top + i * rowH + rowH / 2;
-
-  const parts: string[] = [`<rect width="${n(width)}" height="${n(height)}" fill="${esc(theme.bg)}"/>`];
-
-  // Vertical gridlines at x ticks + tick labels.
-  const ticks = niceTicks(domain[0], domain[1], 6);
-  let grid = '';
-  for (const t of ticks) {
-    const px = xScale(t);
-    grid += `M${n(px)},${n(M.top)}V${n(height - M.bottom)}`;
-  }
-  parts.push(`<path d="${grid}" stroke="${esc(theme.grid)}" stroke-width="1" fill="none"/>`);
-  for (const t of ticks) {
-    parts.push(
-      `<text x="${n(xScale(t))}" y="${n(height - M.bottom + 16)}" text-anchor="middle" ` +
-        `font-family="system-ui,sans-serif" font-size="11" fill="${esc(theme.tick)}">${esc(formatX(t))}</text>`,
-    );
-  }
-  if (opts.xLabel) {
-    parts.push(
-      `<text x="${n(width - M.right)}" y="${n(height - M.bottom + 16)}" text-anchor="end" ` +
-        `font-family="system-ui,sans-serif" font-size="10" fill="${esc(theme.label)}">${esc(opts.xLabel)}</text>`,
-    );
-  }
-
-  // Row labels + faint separators.
-  spec.rows.forEach((row, i) => {
-    const cy = rowCenter(i);
-    parts.push(
-      `<text x="${n(M.left - 8)}" y="${n(cy + 4)}" text-anchor="end" ` +
-        `font-family="system-ui,sans-serif" font-size="11" fill="${esc(theme.tick)}">${esc(row)}</text>`,
-    );
-    if (i > 0) {
-      parts.push(
-        `<line x1="${n(M.left)}" y1="${n(M.top + i * rowH)}" x2="${n(width - M.right)}" ` +
-          `y2="${n(M.top + i * rowH)}" stroke="${esc(theme.grid)}" stroke-width="1"/>`,
-      );
-    }
-  });
-
-  // Reference lines (vertical) + labels at top.
-  for (const ref of refLines) {
-    const px = xScale(ref.x);
-    const color = ref.color || theme.label;
-    parts.push(
-      `<line x1="${n(px)}" y1="${n(M.top)}" x2="${n(px)}" y2="${n(height - M.bottom)}" ` +
-        `stroke="${esc(color)}" stroke-width="1" stroke-dasharray="4 3"/>`,
-      `<text x="${n(px)}" y="${n(M.top - 6)}" text-anchor="middle" font-family="system-ui,sans-serif" ` +
-        `font-size="10" fill="${esc(color)}">${esc(ref.label)}</text>`,
-    );
-  }
 
   // Points for an undeclared row are dropped (fail-soft); `valid` is the single rendered set the
   // summary also accounts over, so total / per-row counts / below-ref counts stay consistent.
   const valid = spec.points.filter((p) => rowIndex.has(p.row));
 
-  // Dots, with small deterministic vertical jitter so co-located points in a row don't fully stack.
-  const perRow = new Map<string, number>();
-  for (const p of valid) {
-    const ri = rowIndex.get(p.row) ?? 0;
-    const seen = perRow.get(p.row) ?? 0;
-    perRow.set(p.row, seen + 1);
-    const jitter = ((seen % 5) - 2) * 4;
-    const cx = xScale(p.x);
-    const cy = rowCenter(ri) + jitter;
-    const color = p.color || (p.status ? STATUS_COLORS[p.status] : DEFAULT_PALETTE[0]);
-    const tip = p.label ? `<title>${esc(p.label)}</title>` : '';
-    const hoverR = opts.hoverRadius && opts.hoverRadius > 4 ? opts.hoverRadius : 0;
-    // With a hover target: the visible dot keeps its size; a transparent circle on top carries the
-    // <title> over a larger, easy-to-hit area. Without one: the dot itself holds the <title> (default).
-    parts.push(
-      `<circle cx="${n(cx)}" cy="${n(cy)}" r="4" fill="${esc(color)}" ` +
-        `fill-opacity="0.85" stroke="${esc(theme.bg)}" stroke-width="0.75">${hoverR ? '' : tip}</circle>`,
-    );
-    if (hoverR) {
-      // `fc-hit` + `data-fc-swatch` are the contract `attachReadout()` reads to show a styled DOM
-      // tooltip (the dot's color + the `<title>` text); the `<title>` stays as the no-JS fallback.
-      parts.push(
-        `<circle class="fc-hit" data-fc-swatch="${esc(color)}" cx="${n(cx)}" cy="${n(cy)}" ` +
-          `r="${n(hoverR)}" fill="${esc(theme.bg)}" fill-opacity="0" pointer-events="all">${tip}</circle>`,
-      );
-    }
-  }
+  const parts: string[] = [
+    bgRect(width, height, theme.bg),
+    ...axisParts(ctx, domain, opts.formatX ?? formatTick, opts.xLabel),
+    ...rowParts(ctx, spec.rows),
+    ...refLineParts(ctx, refLines),
+    ...dotParts(ctx, valid, rowIndex, opts.hoverRadius),
+  ];
 
   const summary = scatterSummary(title, valid, spec.rows, refLines);
   return svgDocument({
@@ -161,6 +100,101 @@ export function buildScatterSVG(
     body: parts.join(''),
     extra: opts.embedData === false ? undefined : embedSummary(summary),
   });
+}
+
+/** Vertical gridlines at the x ticks, tick labels, and the optional x-axis title. */
+function axisParts(
+  ctx: ScatterCtx,
+  domain: [number, number],
+  formatX: (v: number) => string,
+  xLabel?: string,
+): string[] {
+  const { theme, xScale, width, height } = ctx;
+  const out: string[] = [];
+  const ticks = niceTicks(domain[0], domain[1], 6);
+  let grid = '';
+  for (const t of ticks) {
+    grid += `M${n(xScale(t))},${n(M.top)}V${n(height - M.bottom)}`;
+  }
+  out.push(`<path d="${grid}" stroke="${esc(theme.grid)}" stroke-width="1" fill="none"/>`);
+  for (const t of ticks) {
+    out.push(text(xScale(t), height - M.bottom + 16, esc(formatX(t)), { fill: theme.tick, anchor: 'middle' }));
+  }
+  if (xLabel) {
+    out.push(text(width - M.right, height - M.bottom + 16, esc(xLabel), { fill: theme.label, size: 10, anchor: 'end' }));
+  }
+  return out;
+}
+
+/** Row labels (left gutter) + faint separators between row bands. */
+function rowParts(ctx: ScatterCtx, rows: readonly string[]): string[] {
+  const { theme, width } = ctx;
+  const out: string[] = [];
+  rows.forEach((row, i) => {
+    out.push(text(M.left - 8, rowCenter(ctx, i) + 4, esc(row), { fill: theme.tick, anchor: 'end' }));
+    if (i > 0) {
+      const y = M.top + i * ctx.rowH;
+      out.push(
+        `<line x1="${n(M.left)}" y1="${n(y)}" x2="${n(width - M.right)}" ` +
+          `y2="${n(y)}" stroke="${esc(theme.grid)}" stroke-width="1"/>`,
+      );
+    }
+  });
+  return out;
+}
+
+/** Vertical reference lines + their labels above the plot. */
+function refLineParts(ctx: ScatterCtx, refLines: readonly ScatterRefLine[]): string[] {
+  const { theme, xScale, height } = ctx;
+  const out: string[] = [];
+  for (const ref of refLines) {
+    const px = xScale(ref.x);
+    const color = ref.color || theme.label;
+    out.push(
+      `<line x1="${n(px)}" y1="${n(M.top)}" x2="${n(px)}" y2="${n(height - M.bottom)}" ` +
+        `stroke="${esc(color)}" stroke-width="1" stroke-dasharray="4 3"/>`,
+      text(px, M.top - 6, esc(ref.label), { fill: color, size: 10, anchor: 'middle' }),
+    );
+  }
+  return out;
+}
+
+/** Dots, with small deterministic vertical jitter so co-located points in a row don't fully stack. */
+function dotParts(
+  ctx: ScatterCtx,
+  points: readonly ScatterPoint[],
+  rowIndex: Map<string, number>,
+  hoverRadius?: number,
+): string[] {
+  const { theme, xScale } = ctx;
+  const out: string[] = [];
+  const perRow = new Map<string, number>();
+  for (const p of points) {
+    const ri = rowIndex.get(p.row) ?? 0;
+    const seen = perRow.get(p.row) ?? 0;
+    perRow.set(p.row, seen + 1);
+    const jitter = ((seen % 5) - 2) * 4;
+    const cx = xScale(p.x);
+    const cy = rowCenter(ctx, ri) + jitter;
+    const color = markColor(p.color, p.status);
+    const tip = p.label ? `<title>${esc(p.label)}</title>` : '';
+    const hoverR = hoverRadius && hoverRadius > 4 ? hoverRadius : 0;
+    // With a hover target: the visible dot keeps its size; a transparent circle on top carries the
+    // <title> over a larger, easy-to-hit area. Without one: the dot itself holds the <title> (default).
+    out.push(
+      `<circle cx="${n(cx)}" cy="${n(cy)}" r="4" fill="${esc(color)}" ` +
+        `fill-opacity="0.85" stroke="${esc(theme.bg)}" stroke-width="0.75">${hoverR ? '' : tip}</circle>`,
+    );
+    if (hoverR) {
+      // `fc-hit` + `data-fc-swatch` are the contract `attachReadout()` reads to show a styled DOM
+      // tooltip (the dot's color + the `<title>` text); the `<title>` stays as the no-JS fallback.
+      out.push(
+        `<circle class="fc-hit" data-fc-swatch="${esc(color)}" cx="${n(cx)}" cy="${n(cy)}" ` +
+          `r="${n(hoverR)}" fill="${esc(theme.bg)}" fill-opacity="0" pointer-events="all">${tip}</circle>`,
+      );
+    }
+  }
+  return out;
 }
 
 interface RefSummary {

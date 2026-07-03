@@ -8,9 +8,8 @@
  * from the value's position against its `limit`, so the bar reads without a legend. Agent-readable:
  * a rows table (value, limit, % of limit, status) + a one-line `<desc>`.
  */
-import { DEFAULT_PALETTE } from '../core/model.ts';
-import { resolveTheme, STATUS_COLORS, type Status, type SvgTheme } from './svg-theme.ts';
-import { anchor, embedSummary, esc, n, svgDocument } from './svg-util.ts';
+import { markColor, resolveTheme, type Status, type SvgTheme } from './svg-theme.ts';
+import { anchor, bgRect, embedSummary, esc, n, svgDocument, text } from './svg-util.ts';
 
 export interface BarRow {
   label: string;
@@ -77,7 +76,7 @@ export function buildBarsSVG(spec: { rows: readonly BarRow[] }, opts: BarsOption
   const xAt = (v: number): number => plotL + ((v - domMin) / span) * (plotR - plotL);
   const xZero = xAt(0);
 
-  const parts: string[] = [`<rect width="${n(width)}" height="${n(height)}" fill="${esc(theme.bg)}"/>`];
+  const parts: string[] = [bgRect(width, height, theme.bg)];
 
   // Zero baseline for signed mode.
   if (opts.signed) {
@@ -91,7 +90,7 @@ export function buildBarsSVG(spec: { rows: readonly BarRow[] }, opts: BarsOption
     const cy = M.top + i * rowH + rowH / 2;
     const bh = rowH * 0.55;
     const status = row.status ?? (row.limit !== undefined ? deriveStatus(row.value, row.limit) : undefined);
-    const color = row.color || (status ? STATUS_COLORS[status] : DEFAULT_PALETTE[0]);
+    const color = markColor(row.color, status);
 
     // Track.
     parts.push(
@@ -117,13 +116,8 @@ export function buildBarsSVG(spec: { rows: readonly BarRow[] }, opts: BarsOption
     }
     // Row label (left, drill-down link when href set) + value (right margin).
     parts.push(
-      anchor(
-        row.href,
-        `<text x="4" y="${n(cy + 4)}" font-family="system-ui,sans-serif" font-size="11" ` +
-          `fill="${esc(theme.tick)}">${esc(row.label)}</text>`,
-      ),
-      `<text x="${n(width - 4)}" y="${n(cy + 4)}" text-anchor="end" font-family="system-ui,sans-serif" ` +
-        `font-size="11" font-weight="600" fill="${esc(theme.tick)}">${esc(fmt(row.value))}</text>`,
+      anchor(row.href, text(4, cy + 4, esc(row.label), { fill: theme.tick })),
+      text(width - 4, cy + 4, esc(fmt(row.value)), { fill: theme.tick, anchor: 'end', weight: 600 }),
     );
   });
 

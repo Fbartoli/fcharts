@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { renderSVG } from '../src/renderers/render-svg.ts';
-import { darkTheme } from '../src/renderers/svg-theme.ts';
+import { darkTheme, lightTheme, resolveTheme } from '../src/renderers/svg-theme.ts';
 import { buildDonutSVG } from '../src/renderers/donut.ts';
 import { buildScatterSVG } from '../src/renderers/scatter.ts';
 import { buildSparklineSVG } from '../src/renderers/sparkline.ts';
@@ -351,4 +351,26 @@ test('buildProgressSVG: clamps the fill but reports the true percentage; 0 and o
   wellFormed(zeroMax);
   assert.match(zeroMax, /aria-label="Progress: 0%"/);
   assert.ok(!zeroMax.includes('NaN'));
+});
+
+// --- themes ---
+
+test('resolveTheme: light is the default base; a partial merges without touching unset fields', () => {
+  assert.equal(resolveTheme(), lightTheme);
+  assert.equal(resolveTheme(undefined, darkTheme), darkTheme);
+  const merged = resolveTheme({ bg: '#123456' });
+  assert.equal(merged.bg, '#123456');
+  assert.equal(merged.tick, lightTheme.tick);
+  assert.equal(merged.series, lightTheme.series);
+  const mergedDark = resolveTheme({ tick: '#ffffff' }, darkTheme);
+  assert.equal(mergedDark.tick, '#ffffff');
+  assert.equal(mergedDark.bg, darkTheme.bg);
+});
+
+test('lightTheme: every paint field is a non-empty color string (the no-theme default)', () => {
+  for (const key of ['bg', 'grid', 'axis', 'tick', 'label'] as const) {
+    assert.ok(lightTheme[key].length > 0, `lightTheme.${key} set`);
+    assert.ok(darkTheme[key].length > 0, `darkTheme.${key} set`);
+  }
+  assert.ok(lightTheme.series.length >= 3, 'palette has enough series colors');
 });

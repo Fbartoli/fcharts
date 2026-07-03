@@ -20,7 +20,7 @@ import {
 import type { LinearScale } from '../core/scales.ts';
 import { MIN_CANDLE_PX } from './renderer.ts';
 import { lightTheme, type SvgTheme } from './svg-theme.ts';
-import { embedSummary, esc, n, svgDocument } from './svg-util.ts';
+import { bgRect, embedSummary, esc, n, svgDocument, text } from './svg-util.ts';
 
 export interface SvgScene {
   width: number;
@@ -158,7 +158,7 @@ export function buildSVG(scene: SvgScene): string {
   const buf = { min: new Float32Array(cols), max: new Float32Array(cols) };
   const parts: string[] = [];
 
-  parts.push(`<rect width="${n(w)}" height="${n(h)}" fill="${esc(theme.bg)}"/>`);
+  parts.push(bgRect(w, h, theme.bg));
 
   // Grid.
   let grid = '';
@@ -202,22 +202,18 @@ export function buildSVG(scene: SvgScene): string {
   for (const v of scene.yTicks) {
     const py = yScale(v);
     if (py < top - 1 || py > bottom + 1) continue;
-    parts.push(`<text x="${n(left - 6)}" y="${n(py + 3)}" text-anchor="end" ` +
-      `font-family="system-ui,sans-serif" font-size="11" fill="${esc(theme.tick)}">${esc(scene.formatY(v))}</text>`);
+    parts.push(text(left - 6, py + 3, esc(scene.formatY(v)), { fill: theme.tick, anchor: 'end' }));
   }
   for (const t of scene.xTicks) {
     const px = xScale(t);
     if (px < left - 1 || px > right + 1) continue;
-    parts.push(`<text x="${n(px)}" y="${n(bottom + 16)}" text-anchor="middle" ` +
-      `font-family="system-ui,sans-serif" font-size="11" fill="${esc(theme.tick)}">${esc(scene.formatX(t))}</text>`);
+    parts.push(text(px, bottom + 16, esc(scene.formatX(t)), { fill: theme.tick, anchor: 'middle' }));
   }
   if (scene.yLabel) {
-    parts.push(`<text x="${n(left)}" y="${n(top - 6)}" font-family="system-ui,sans-serif" ` +
-      `font-size="10" fill="${esc(theme.label)}">${esc(scene.yLabel)}</text>`);
+    parts.push(text(left, top - 6, esc(scene.yLabel), { fill: theme.label, size: 10 }));
   }
   if (scene.xLabel) {
-    parts.push(`<text x="${n(right)}" y="${n(bottom + 16)}" text-anchor="end" ` +
-      `font-family="system-ui,sans-serif" font-size="10" fill="${esc(theme.label)}">${esc(scene.xLabel)}</text>`);
+    parts.push(text(right, bottom + 16, esc(scene.xLabel), { fill: theme.label, size: 10, anchor: 'end' }));
   }
 
   // Event markers (dots / rules), clipped to the plot, drawn over the series.
@@ -254,10 +250,7 @@ function annotationParts(scene: SvgScene, theme: SvgTheme): string[] {
           `stroke-width="1" stroke-dasharray="4 3"/>`,
       );
       if (a.showLabel) {
-        out.push(
-          `<text x="${n(px)}" y="${n(top + 9)}" text-anchor="middle" font-family="system-ui,sans-serif" ` +
-            `font-size="10" fill="${color}">${esc(a.label)}</text>`,
-        );
+        out.push(text(px, top + 9, esc(a.label), { fill: a.color, size: 10, anchor: 'middle' }));
       }
       continue;
     }
@@ -272,10 +265,7 @@ function annotationParts(scene: SvgScene, theme: SvgTheme): string[] {
         `fill="${color}" stroke="${esc(theme.bg)}" stroke-width="1.5"/>`,
     );
     if (a.showLabel) {
-      out.push(
-        `<text x="${n(px)}" y="${n(py - 9)}" text-anchor="middle" font-family="system-ui,sans-serif" ` +
-          `font-size="10" fill="${color}">${esc(a.label)}</text>`,
-      );
+      out.push(text(px, py - 9, esc(a.label), { fill: a.color, size: 10, anchor: 'middle' }));
     }
   }
   return out;
