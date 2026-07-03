@@ -16,7 +16,7 @@
  */
 import test, { before, after, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { voiceOver } from '@guidepup/guidepup';
+import { voiceOver, macOSActivate } from '@guidepup/guidepup';
 import { launchChartPage, withTimeout, CHART_LABEL, SERIES_NAME, type ChartPage } from './harness.ts';
 
 /** How long a phrase-log poll waits for VoiceOver to catch up with a focus/keystroke, in ms. */
@@ -51,11 +51,16 @@ let chart: ChartPage | undefined;
 let voiceOverStarted = false;
 let skip = staticSkipReason();
 
-/** One VoiceOver call with the shared ceiling; a timed-out read degrades to `fallback`. */
+/**
+ * One VoiceOver call with the shared ceiling; a timed-out read degrades to `fallback` — but
+ * LOUDLY: on a runner where every capture comes back empty, the diagnostics distinguish
+ * "VoiceOver spoke nothing" from "the AppleScript capture channel itself errors/hangs".
+ */
 async function voCall<T>(promise: Promise<T>, label: string, fallback: T): Promise<T> {
   try {
     return await withTimeout(promise, CALL_TIMEOUT, label);
-  } catch {
+  } catch (error) {
+    console.error(`AT-DIAG voCall(${label}) failed: ${(error as Error).message}`);
     return fallback;
   }
 }
@@ -72,13 +77,28 @@ async function waitForPhrase(re: RegExp, ms = PHRASE_TIMEOUT): Promise<string[]>
   return log;
 }
 
-/** Move DOM focus to `selector`, then return the phrase log once VoiceOver announces `expect`. */
+/**
+ * Move DOM focus to `selector`, ask VoiceOver to describe the focused item (VO+F4 — the same
+ * report-the-focus technique that made the NVDA suite green when focus-event announcements
+ * were not captured), and return every phrase captured on EITHER channel: the spoken-phrase
+ * log, plus the VO-cursor item text (a separate AppleScript path, in case one is broken on
+ * the runner).
+ */
 async function focusAndRead(selector: string, expect: RegExp): Promise<string[]> {
   const page = chart!.page;
   await page.bringToFront();
+  await voCall(macOSActivate('Chromium'), "macOSActivate('Chromium')", undefined);
   await voCall(voiceOver.clearSpokenPhraseLog(), 'clearSpokenPhraseLog()', undefined);
   await page.focus(selector);
-  return waitForPhrase(expect);
+  await new Promise((r) => setTimeout(r, 300)); // let focus settle before asking for the report
+  await voCall(
+    voiceOver.perform(voiceOver.keyboardCommands.describeItemWithKeyboardFocus),
+    'perform(describeItemWithKeyboardFocus)',
+    undefined,
+  );
+  const log = await waitForPhrase(expect);
+  const itemText = await voCall(voiceOver.itemText(), 'itemText()', '');
+  return itemText ? [...log, itemText] : log;
 }
 
 before(async () => {
@@ -134,6 +154,10 @@ test('ArrowRight moves the data cursor and speaks a new value', TEST_OPTS, async
   // polite live region.
   await voCall(voiceOver.press('ArrowRight'), "press('ArrowRight')", undefined);
   const log = await waitForPhrase(/\d/);
+  // Second capture channel for the live-region announcement, in case the phrase log is the
+  // broken piece on this runner.
+  const last = await voCall(voiceOver.lastSpokenPhrase(), 'lastSpokenPhrase()', '');
+  if (last) log.push(last);
   const valuePhrase = log.find((phrase) => /\d/.test(phrase));
   assert.ok(valuePhrase, `ArrowRight spoke no data value; log: ${JSON.stringify(log)}`);
   assert.match(valuePhrase, /revenue|day|\d/i, `value announcement lacks data: ${valuePhrase}`);
