@@ -228,7 +228,8 @@ before(async () => {
   page = await browser.newPage({ viewport: { width: 1280, height: 900 }, locale: 'en-US' });
   page.on('pageerror', (e) => console.error('page error:', e.message));
   await page.goto(`${url}.fc-features-entry.html`, { waitUntil: 'load' });
-  await page.waitForFunction(() => window.__ready === true, undefined, { timeout: 30_000 });
+  // 120s: cold CI runners transform the whole module graph on first visit; 30s flaked there.
+  await page.waitForFunction(() => window.__ready === true, undefined, { timeout: 120_000 });
 });
 
 after(async () => {
