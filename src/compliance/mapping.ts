@@ -68,7 +68,8 @@ export const SC_CHECKS: Readonly<Record<string, string[]>> = (() => {
   return m;
 })();
 
-const RANK: Record<Conformance, number> = {
+/** Strength order of applicable conformance claims; NA/Not Evaluated rank 0 (no claim). */
+export const RANK: Record<Conformance, number> = {
   Supports: 3,
   'Partially Supports': 2,
   'Does Not Support': 1,

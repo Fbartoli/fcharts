@@ -32,6 +32,12 @@ test('parseArgs: edition/format defaults are still applied for the fixture path'
   assert.deepEqual(a.formats, ['md', 'html', 'json']);
 });
 
+test('parseArgs: --compare captures its two file operands in order', () => {
+  const a = parseArgs(['--compare', 'old/acr.json', 'new/acr.json']);
+  assert.deepEqual(a.compare, ['old/acr.json', 'new/acr.json']);
+  assert.equal(a.fixtureExplicit, false);
+});
+
 // --- validateArgs: mutual exclusion + selector requirement ---
 
 const argsWith = (over: Partial<Args>): Args => ({
@@ -49,7 +55,27 @@ const argsWith = (over: Partial<Args>): Args => ({
 
 test('validateArgs: --fixture and --target together is an error', () => {
   const err = validateArgs(argsWith({ fixtureExplicit: true, target: 'https://x.test', selector: '#c' }));
-  assert.match(err ?? '', /not both/);
+  assert.match(err ?? '', /choose one mode/);
+});
+
+test('validateArgs: --compare is mutually exclusive with the other modes', () => {
+  const withTarget = validateArgs(
+    argsWith({ target: 'https://x.test', selector: '#c', compare: ['a.json', 'b.json'] }),
+  );
+  assert.match(withTarget ?? '', /choose one mode/);
+  const withFixture = validateArgs(
+    argsWith({ fixtureExplicit: true, compare: ['a.json', 'b.json'] }),
+  );
+  assert.match(withFixture ?? '', /choose one mode/);
+});
+
+test('validateArgs: --compare with a missing file operand names the requirement', () => {
+  const err = validateArgs(argsWith({ compare: ['a.json', undefined as unknown as string] }));
+  assert.match(err ?? '', /--compare needs two files/);
+});
+
+test('validateArgs: a valid --compare run passes', () => {
+  assert.equal(validateArgs(argsWith({ compare: ['a.json', 'b.json'] })), undefined);
 });
 
 test('validateArgs: neither mode is an error', () => {

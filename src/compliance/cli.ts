@@ -14,19 +14,29 @@
  *
  *   node src/compliance/cli.ts --target https://example.com/dash --selector "#chart" --out ./out
  *
+ * Compare mode (diff two generated ACRs — "what changed in conformance between versions"):
+ * pure JSON-in, text-out; needs neither Playwright nor Vite.
+ *
+ *   node src/compliance/cli.ts --compare old/acr-en301549.json new/acr-en301549.json
+ *
+ * Playwright and Vite are OPTIONAL peers, imported lazily per mode — `--help`, argument
+ * errors, and --compare all work without them, and a missing peer produces an install hint
+ * instead of a module-resolution stack trace.
+ *
  * Exit: 0 no regressions (or target-mode report written) · 1 regression(s) · 2 setup/harness error.
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync, realpathSync } from 'node:fs';
 import { resolve, relative } from 'node:path';
 import { execSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
-import { chromium, type Browser } from 'playwright';
-import { createServer, type ViteDevServer } from 'vite';
+import type { Browser } from 'playwright';
+import type { ViteDevServer } from 'vite';
 import { runConformance, countStatuses } from './conformance.ts';
+import { compareAcrs, describeNonAcr, isAcrModel, renderComparison } from './compare.ts';
 import { reduceToVerdicts } from './mapping.ts';
 import { CRITERIA } from './criteria.ts';
 import { buildModel, renderAcr, type AcrFormat } from './acr.ts';
-import type { CheckReport, EditionKey, EvaluationInfo, ProductInfo } from './types.ts';
+import type { AcrModel, CheckReport, EditionKey, EvaluationInfo, ProductInfo } from './types.ts';
 
 const SEL = '#fc-audit-root';
 const COMPONENT_SCOPE =
@@ -42,6 +52,8 @@ export interface Args {
   target?: string;
   /** Target mode: the CSS selector for the chart root element (required with --target). */
   selector?: string;
+  /** Compare mode: two ACR JSON paths (old, new). */
+  compare?: [string, string];
   editions: EditionKey[];
   out: string;
   background: string;
@@ -83,6 +95,7 @@ export function parseArgs(argv: string[]): Args {
     if (v === '--fixture') { a.fixture = next(); a.fixtureExplicit = true; }
     else if (v === '--target') a.target = next();
     else if (v === '--selector') a.selector = next();
+    else if (v === '--compare') a.compare = [next(), next()];
     else if (v === '--edition') a.editions.push(next() as EditionKey);
     else if (v === '--out') a.out = next();
     else if (v === '--background') a.background = next();
@@ -103,11 +116,15 @@ export function parseArgs(argv: string[]): Args {
 
 /** Validate the mode selection. Returns an actionable error string, or undefined when usable. */
 export function validateArgs(a: Args): string | undefined {
-  if (a.target && a.fixtureExplicit) {
-    return 'choose one mode: --fixture <path> (baseline gate) OR --target <url> (audit any page), not both';
+  const modes = [a.fixtureExplicit, !!a.target, !!a.compare].filter(Boolean).length;
+  if (modes > 1) {
+    return 'choose one mode: --fixture <path> (baseline gate), --target <url> (audit any page), or --compare <old.json> <new.json>';
   }
-  if (!a.target && !a.fixtureExplicit) {
-    return 'specify a mode: --fixture <path> (baseline gate) or --target <url> --selector <css> (audit any page)';
+  if (modes === 0) {
+    return 'specify a mode: --fixture <path> (baseline gate), --target <url> --selector <css> (audit any page), or --compare <old.json> <new.json>';
+  }
+  if (a.compare && !(a.compare[0] && a.compare[1])) {
+    return '--compare needs two files: --compare <old.json> <new.json> (the acr-<edition>.json outputs)';
   }
   if (a.target && !a.selector) {
     return '--target <url> requires --selector <css> (the chart root element to audit)';
@@ -130,7 +147,11 @@ function printHelp(): void {
       '                [--out <dir>] [--background <css>] [--json] [--quiet]\n' +
       '  In target mode --edition/--format/--attest are ignored (no ACR is generated) and the\n' +
       '  exit code is 0 (a diagnostic, not a CI gate). fcharts-specific checks report n/a.\n\n' +
-      '--fixture and --target are mutually exclusive; exactly one is required.',
+      'Compare mode (diff two generated ACRs — what changed in conformance between versions):\n' +
+      '  fcharts-audit --compare <old.json> <new.json>   [--json]\n' +
+      '  Takes the acr-<edition>.json files two runs wrote. Exit 1 when a claim weakened.\n' +
+      '  Pure JSON diff — needs neither playwright nor vite.\n\n' +
+      '--fixture, --target, and --compare are mutually exclusive; exactly one is required.',
   );
 }
 
@@ -209,7 +230,61 @@ async function main(): Promise<number> {
     console.error(`fcharts-audit: ${modeError}`);
     return 2;
   }
+  if (args.compare) return runCompareMode(args.compare, args.json);
   return args.target ? runTargetMode(args) : runFixtureMode(args);
+}
+
+/** Raised when an optional peer (playwright, vite) is missing — rendered as an install hint. */
+class PeerMissingError extends Error {}
+
+/**
+ * Import an optional peer lazily. Absence becomes a {@link PeerMissingError} with the install
+ * command; any other load failure propagates untouched.
+ */
+async function importPeer<T>(load: () => Promise<T>, name: string, hint: string): Promise<T> {
+  try {
+    return await load();
+  } catch (e) {
+    if ((e as { code?: string }).code === 'ERR_MODULE_NOT_FOUND') {
+      throw new PeerMissingError(
+        `the optional peer "${name}" is required for this mode — install it with: ${hint}`,
+      );
+    }
+    throw e;
+  }
+}
+
+const loadPlaywright = (): Promise<typeof import('playwright')> =>
+  importPeer(
+    () => import('playwright'),
+    'playwright',
+    'npm i -D playwright && npx playwright install chromium',
+  );
+const loadVite = (): Promise<typeof import('vite')> =>
+  importPeer(() => import('vite'), 'vite', 'npm i -D vite');
+
+/** Compare mode — pure: read, guard, diff, print. Exit 1 when a conformance claim weakened. */
+function runCompareMode(paths: [string, string], json: boolean): number {
+  const models: AcrModel[] = [];
+  for (const path of paths) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(readFileSync(resolve(path), 'utf8'));
+    } catch (e) {
+      console.error(`fcharts-audit: could not read ${path} — ${e instanceof Error ? e.message : e}`);
+      return 2;
+    }
+    if (!isAcrModel(parsed)) {
+      const why = describeNonAcr(parsed) ?? 'not an ACR model (expected the acr-<edition>.json output)';
+      console.error(`fcharts-audit: ${path}: ${why}`);
+      return 2;
+    }
+    models.push(parsed);
+  }
+  const comparison = compareAcrs(models[0], models[1]);
+  if (json) console.log(JSON.stringify(comparison, null, 2));
+  else console.log(renderComparison(comparison, models[0], models[1]));
+  return comparison.regression ? 1 : 0;
 }
 
 /** Fixture mode — the CI gate. Output is byte-stable against the committed baseline. */
@@ -224,6 +299,8 @@ async function runFixtureMode(args: Args): Promise<number> {
       console.error(`fcharts-audit: fixture not found: ${args.fixture}`);
       return 2;
     }
+    const { createServer } = await loadVite();
+    const { chromium } = await loadPlaywright();
     // A real HTML entry at the project root, so Vite transforms the inline module + its imports.
     writeFileSync(entryFile, auditHtml(fixtureWebPath(args.fixture)));
     server = await createServer({ root: process.cwd(), logLevel: 'silent' });
@@ -290,6 +367,10 @@ async function runFixtureMode(args: Args): Promise<number> {
 
     return failed ? 1 : 0;
   } catch (err) {
+    if (err instanceof PeerMissingError) {
+      console.error(`fcharts-audit: ${err.message}`);
+      return 2;
+    }
     console.error('fcharts-audit: harness error —', err instanceof Error ? err.message : err);
     return 2;
   } finally {
@@ -305,6 +386,7 @@ async function runTargetMode(args: Args): Promise<number> {
   const selector = args.selector ?? '';
   let browser: Browser | undefined;
   try {
+    const { chromium } = await loadPlaywright();
     browser = await chromium.launch();
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, locale: 'en-US' });
     try {
@@ -333,6 +415,10 @@ async function runTargetMode(args: Args): Promise<number> {
 
     return 0;
   } catch (err) {
+    if (err instanceof PeerMissingError) {
+      console.error(`fcharts-audit: ${err.message}`);
+      return 2;
+    }
     console.error('fcharts-audit: harness error —', err instanceof Error ? err.message : err);
     return 2;
   } finally {

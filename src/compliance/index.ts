@@ -23,4 +23,6 @@ export type { Rgba } from './contrast.ts';
 export { EDITIONS, buildSections } from './editions.ts';
 export { buildModel, renderAcr, tally, LEGAL } from './acr.ts';
 export type { BuildModelInput, AcrFormat } from './acr.ts';
+export { compareAcrs, isAcrModel, renderComparison } from './compare.ts';
+export type { AcrComparison, ChangeKind, CriterionChange, CriterionPresence } from './compare.ts';
 export type * from './types.ts';
