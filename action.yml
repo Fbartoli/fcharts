@@ -1,0 +1,94 @@
+# fcharts-audit as a reusable GitHub Action — add a functional chart-accessibility gate to any
+# repo in a few lines. Two modes, mirroring the CLI:
+#
+#   Audit any chart (report-only; works on Highcharts/ECharts/bare canvas — any library):
+#     - uses: Fbartoli/fcharts@v0.2.0
+#       with:
+#         target: https://preview.example.com/dashboard
+#         selector: '#price-chart'
+#
+#   Gate an fcharts chart against its committed baseline (fails the build on regression):
+#     - uses: Fbartoli/fcharts@v0.2.0
+#       with:
+#         fixture: ./a11y/fixture.ts
+#         editions: en301549 wcag
+#
+# Everything installs into an isolated prefix under $RUNNER_TEMP — the consumer's package.json
+# and node_modules are never touched.
+name: 'fcharts accessibility audit'
+description: >-
+  Functional accessibility audit for charts — keyboard navigation, screen-reader wiring, computed
+  contrast, target size. Finds the gap axe-core can't see, on charts from any library.
+author: 'Florent Bartoli'
+branding:
+  icon: 'bar-chart-2'
+  color: 'green'
+
+inputs:
+  target:
+    description: 'URL of a live page to audit (audit-any mode; requires `selector`)'
+    required: false
+    default: ''
+  selector:
+    description: 'CSS selector of the chart root element (audit-any mode)'
+    required: false
+    default: ''
+  fixture:
+    description: 'Path to an fcharts audit fixture (fixture mode; mutually exclusive with `target`)'
+    required: false
+    default: ''
+  editions:
+    description: 'Space-separated ACR editions to generate in fixture mode: en301549 wcag section508'
+    required: false
+    default: 'en301549'
+  out:
+    description: 'Directory the audit report (and ACR, in fixture mode) is written to'
+    required: false
+    default: './compliance-out'
+  version:
+    description: 'fcharts-js version to run'
+    required: false
+    default: 'latest'
+  node-version:
+    description: 'Node.js version to run the audit with'
+    required: false
+    default: '24'
+
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Install fcharts-audit (isolated prefix)
+      shell: bash
+      run: |
+        PREFIX="$RUNNER_TEMP/fcharts-audit"
+        mkdir -p "$PREFIX"
+        cd "$PREFIX"
+        npm init -y > /dev/null
+        # playwright and vite are the CLI's peer dependencies (browser driving + fixture builds).
+        npm install --no-audit --no-fund "fcharts-js@${{ inputs.version }}" playwright vite
+        npx playwright install --with-deps chromium
+
+    - name: Run the audit
+      shell: bash
+      run: |
+        BIN="$RUNNER_TEMP/fcharts-audit/node_modules/.bin/fcharts-audit"
+        ARGS=(--out "${{ inputs.out }}")
+        if [ -n "${{ inputs.target }}" ]; then
+          ARGS+=(--target "${{ inputs.target }}" --selector "${{ inputs.selector }}")
+        else
+          ARGS+=(--fixture "${{ inputs.fixture }}")
+          for e in ${{ inputs.editions }}; do ARGS+=(--edition "$e"); done
+        fi
+        "$BIN" "${ARGS[@]}"
+
+    - name: Upload the report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: chart-accessibility-report
+        path: ${{ inputs.out }}
+        if-no-files-found: ignore

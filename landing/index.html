@@ -191,6 +191,7 @@
         <a href="#proof">Proof</a>
         <a href="#why">Why now</a>
         <a href="/playground.html">Playground</a>
+        <a href="https://www.npmjs.com/package/fcharts-js" rel="noopener">npm</a>
         <a class="btn btn-primary" href="#get">Get early access</a>
       </div>
     </div>
@@ -207,7 +208,9 @@
         <a class="btn btn-primary" href="#get">Get early access</a>
         <a class="btn btn-ghost" href="/playground.html">Try the playground →</a>
       </div>
-      <p class="note">Zero runtime dependencies · ~21&nbsp;KB gzip core · Chrome, Firefox &amp; Safari, no flags</p>
+      <p class="note"><span class="mono" style="color:var(--ink)">npm install fcharts-js</span> —
+        the MIT renderer is on npm today · Zero runtime dependencies · ~21&nbsp;KB gzip core ·
+        Chrome, Firefox &amp; Safari, no flags</p>
 
       <div class="demo">
         <div class="demo-head">
@@ -300,6 +303,12 @@
           build, not hand-written. The same report your procurement team asks for.</p>
         <a class="btn btn-ghost" href="/acr-en301549.html" target="_blank" rel="noopener">View a sample report →</a>
       </div>
+      <div class="report-proof">
+        <p>Wondering where <b>your current charts</b> stand? Point the audit at any live page —
+          it runs the functional checks (keyboard, screen-reader wiring, contrast) an axe scan
+          skips, on charts from any library:<br>
+          <span class="mono" style="color:var(--ink)">npx -p fcharts-js -p playwright fcharts-audit --target https://your.app --selector '#chart'</span></p>
+      </div>
     </div>
   </section>
 
@@ -372,8 +381,11 @@
         <div class="fcard"><div class="ic">🔍</div><h3>Real text, not pixels</h3><p>Axis ticks and a hidden data table are real DOM — screen-reader-readable and Ctrl+F-findable.</p></div>
         <div class="fcard"><div class="ic">📄</div><h3>Audit-ready</h3><p>Zero serious axe-core violations out of the box. The conformance evidence comes with it.</p></div>
         <div class="fcard"><div class="ic">⚡</div><h3>O(viewport) rendering</h3><p>A min/max pyramid keeps frame cost flat from 10k to 250k+ points. No WebGL required.</p></div>
-        <div class="fcard"><div class="ic">🪶</div><h3>~11 KB, zero deps</h3><p>No supply-chain surface, no framework lock-in. Drop it into anything.</p></div>
+        <div class="fcard"><div class="ic">🪶</div><h3>~21 KB core, zero deps</h3><p>No supply-chain surface, no framework lock-in. Drop it into anything.</p></div>
         <div class="fcard"><div class="ic">🌐</div><h3>Works today</h3><p>Stock Chrome, Firefox and Safari — no experimental flags, verified in all three.</p></div>
+        <div class="fcard"><div class="ic">🧩</div><h3>Any stack</h3><p>React, Vue and Svelte adapters, a <span class="mono">&lt;f-chart&gt;</span> web component, and a CLI that renders SVG from JSON — one engine underneath.</p></div>
+        <div class="fcard"><div class="ic">🖥️</div><h3>SSR → interactive</h3><p>Render an accessible SVG on the server, then <span class="mono">hydrate()</span> upgrades it in place — no layout shift, content before JavaScript.</p></div>
+        <div class="fcard"><div class="ic">🗣️</div><h3>Tested on a real screen reader</h3><p>CI drives actual VoiceOver over a live chart and asserts on the spoken phrases — not just ARIA attributes.</p></div>
       </div>
     </div>
   </section>
@@ -382,8 +394,11 @@
     <div class="wrap">
       <div class="lead">Early access</div>
       <h2>Make your charts fast and compliant — without choosing.</h2>
-      <p>We're working with a handful of regulated fintech and data-platform teams who've
-        failed an accessibility audit on data-heavy views. If that's you, get in.</p>
+      <p>The renderer is MIT and on npm today (<span class="mono">npm install fcharts-js</span>).
+        Early access is for the <b style="color:var(--ink)">Compliance Pack</b> — the generated
+        VPAT/ACR and the CI gate that keeps it current. We're working with a handful of regulated
+        fintech and data-platform teams who've failed an accessibility audit on data-heavy views.
+        If that's you, get in.</p>
       <form class="waitlist" id="waitlist-form" novalidate>
         <input type="email" name="email" id="wl-email" required autocomplete="email"
           aria-label="Work email" placeholder="you@company.com" />

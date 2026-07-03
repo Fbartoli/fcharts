@@ -1,0 +1,50 @@
+# Publish to npm on a version tag. The publish itself re-runs the full gauntlet via
+# `prepublishOnly` (typecheck, lint, unit + browser tests, build, size budget), so a tag can
+# never ship an unverified tarball.
+#
+# Auth is npm Trusted Publishing (OIDC) — one-time setup on npmjs.com:
+#   package fcharts-js → Settings → Trusted Publisher → GitHub Actions →
+#   owner Fbartoli, repo fcharts, workflow release.yml.
+# No token secret needed. Provenance attestation attaches automatically once the repo is public.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write # OIDC for npm trusted publishing + provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      # packageManager pins pnpm 11.4.0; the package scripts (prepublishOnly) call `pnpm`.
+      - name: Enable pnpm via corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium (browser tests run inside prepublishOnly)
+        run: npx playwright install --with-deps chromium
+
+      - name: Tag must match package.json version
+        run: |
+          PKG="v$(node -p "require('./package.json').version")"
+          if [ "$PKG" != "$GITHUB_REF_NAME" ]; then
+            echo "tag $GITHUB_REF_NAME does not match package.json $PKG" >&2
+            exit 1
+          fi
+
+      - name: Publish
+        run: npm publish

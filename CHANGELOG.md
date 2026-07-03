@@ -3,6 +3,21 @@
 All notable changes to `fcharts-js`. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning: [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Reusable GitHub Action** (`action.yml`): run `fcharts-audit` in any repo — audit-any
+  (`target`/`selector`) or baseline-gated fixture mode — with the report uploaded as a build
+  artifact and all installs isolated from the consumer's workspace.
+- **Release automation** (`.github/workflows/release.yml`): pushing a `v*` tag publishes to npm
+  via trusted publishing (OIDC, no token), with the tag/version match asserted and the full
+  `prepublishOnly` gauntlet re-run; provenance attaches automatically once the repo is public.
+
+### Changed
+- Landing page: npm install path surfaced (the MIT renderer is live on npm), 0.2.0 capabilities
+  added (adapters, SSR hydration, real-VoiceOver CI), an "audit your current charts" one-liner,
+  and the last stale bundle-size claim fixed.
+
 ## [0.2.0] — 2026-07-03
 
 ### Added
