@@ -1,9 +1,11 @@
-# Real assistive-technology gate: drives Apple VoiceOver over a live FChart and asserts on the
-# phrases it speaks (test/at/voiceover.test.ts). This is environment-sensitive — it turns the
-# screen reader on and needs granted automation permission — so it is deliberately kept OFF
+# Real assistive-technology gate: drives actual screen readers over a live FChart and asserts
+# on the phrases they speak — NVDA on Windows (test/at/nvda.test.ts, expected to RUN) and Apple
+# VoiceOver on macOS (test/at/voiceover.test.ts, monitoring-only: VoiceOver automation has never
+# come up on GitHub's macOS images, so that job is green-but-skipping until an image permits it).
+# Environment-sensitive — screen readers get launched — so it is deliberately kept OFF
 # pull_request and out of branch protection. It runs on a schedule, on pushes to main, and on
 # demand, as a monitoring signal rather than a PR gate.
-name: assistive-tech (VoiceOver)
+name: assistive-tech (NVDA + VoiceOver)
 
 on:
   workflow_dispatch:
@@ -14,6 +16,34 @@ on:
     branches: [main]
 
 jobs:
+  nvda:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: npx pnpm@11.4.0 install --frozen-lockfile
+
+      - name: Install Chromium (headed for NVDA)
+        run: npx pnpm@11.4.0 exec playwright install chromium
+
+      # Installs guidepup's portable NVDA and prepares the runner for screen-reader automation.
+      - name: Enable screen-reader automation
+        uses: guidepup/setup-action@0.17.2
+
+      - name: NVDA harness
+        # --test-force-exit: a hung child process must not keep the run alive after the tests
+        # (with their own timeouts) have reported; the step budget is the backstop.
+        timeout-minutes: 15
+        env:
+          FCHARTS_NVDA: '1'
+        run: node --test --test-force-exit test/at/nvda.test.ts
+
   voiceover:
     runs-on: macos-14
     timeout-minutes: 20
