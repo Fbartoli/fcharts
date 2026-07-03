@@ -5,19 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WCAG requirements for charts, criterion by criterion — fcharts guides</title>
   <meta name="description" content="Which WCAG 2.2 success criteria actually apply to charts and data visualizations — what each one means for a chart, and how to verify it. Plus how chart conformance maps to VPAT/ACR, EN 301 549 and Section 508." />
-  <link rel="canonical" href="https://fcharts.pages.dev/guides/wcag-chart-requirements.html" />
+  <link rel="canonical" href="https://fcharts.dev/guides/wcag-chart-requirements" />
   <meta property="og:type" content="article" />
-  <meta property="og:url" content="https://fcharts.pages.dev/guides/wcag-chart-requirements.html" />
+  <meta property="og:url" content="https://fcharts.dev/guides/wcag-chart-requirements" />
   <meta property="og:title" content="WCAG requirements for charts, criterion by criterion" />
   <meta property="og:description" content="What each WCAG 2.2 criterion means for a chart, how to verify it, and how it maps to VPAT/ACR, EN 301 549 and Section 508." />
-  <meta property="og:image" content="https://fcharts.pages.dev/social-preview.png" />
+  <meta property="og:image" content="https://fcharts.dev/social-preview.png" />
   <meta name="twitter:card" content="summary_large_image" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "TechArticle",
     "headline": "WCAG requirements for charts, criterion by criterion",
-    "url": "https://fcharts.pages.dev/guides/wcag-chart-requirements.html",
+    "url": "https://fcharts.dev/guides/wcag-chart-requirements",
     "description": "Which WCAG 2.2 success criteria apply to charts, what each means in practice, and how chart conformance maps to VPAT/ACR, EN 301 549 and Section 508.",
     "author": { "@type": "Person", "name": "Florent Bartoli" }
   }
@@ -57,8 +57,8 @@
 <body>
   <nav><div class="wrap">
     <a class="logo" href="/">f<b>charts</b></a>
-    <a href="/guides/accessible-canvas-charts.html">Accessible canvas charts</a>
-    <a href="/guides/audit-any-chart.html">Audit any chart</a>
+    <a href="/guides/accessible-canvas-charts">Accessible canvas charts</a>
+    <a href="/guides/audit-any-chart">Audit any chart</a>
   </div></nav>
   <main class="wrap">
     <h1>WCAG requirements for charts, criterion by criterion</h1>
@@ -131,7 +131,7 @@
       rendered pixels, table parity with the data. Automated scanners check markup, and a
       canvas chart barely has any: a completely inaccessible canvas scores zero axe violations.
       Scanner-clean is necessary, never sufficient. The checks have to exercise the chart —
-      that's what <a href="/guides/audit-any-chart.html">a functional chart audit</a> does.
+      that's what <a href="/guides/audit-any-chart">a functional chart audit</a> does.
     </div>
 
     <h2>From criteria to paperwork: VPAT, ACR, EN 301 549, Section 508</h2>
@@ -145,13 +145,13 @@
       answers for itself; page-level criteria belong to the host app) and evidence freshness
       (a report generated from checks that run on every commit beats a PDF written once a
       year). fcharts generates its ACR — all three editions, Markdown/HTML/JSON — from the
-      committed audit on every build; <a href="/acr-en301549.html">here's the live sample</a>,
+      committed audit on every build; <a href="/acr-en301549">here's the live sample</a>,
       and <code>fcharts-audit --compare</code> diffs two of them so a buyer sees exactly what
       changed between versions.</p>
   </main>
   <footer class="cta"><div class="wrap">
-    Next: <a href="/guides/accessible-canvas-charts.html">how to actually build this on canvas</a>
-    · <a href="/guides/audit-any-chart.html">audit any chart in one command</a>
+    Next: <a href="/guides/accessible-canvas-charts">how to actually build this on canvas</a>
+    · <a href="/guides/audit-any-chart">audit any chart in one command</a>
   </div></footer>
 </body>
 </html>

@@ -5,19 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Audit any chart's accessibility in one command — fcharts guides</title>
   <meta name="description" content="Point a functional accessibility audit at any chart on any page — keyboard navigation, live regions, text alternatives, contrast, target size. The checks an axe scan can't run, in one npx command." />
-  <link rel="canonical" href="https://fcharts.pages.dev/guides/audit-any-chart.html" />
+  <link rel="canonical" href="https://fcharts.dev/guides/audit-any-chart" />
   <meta property="og:type" content="article" />
-  <meta property="og:url" content="https://fcharts.pages.dev/guides/audit-any-chart.html" />
+  <meta property="og:url" content="https://fcharts.dev/guides/audit-any-chart" />
   <meta property="og:title" content="Audit any chart's accessibility in one command" />
   <meta property="og:description" content="Functional chart accessibility checks — keyboard, live region, text alternative, contrast — against any URL. No integration required." />
-  <meta property="og:image" content="https://fcharts.pages.dev/social-preview.png" />
+  <meta property="og:image" content="https://fcharts.dev/social-preview.png" />
   <meta name="twitter:card" content="summary_large_image" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "TechArticle",
     "headline": "Audit any chart's accessibility in one command",
-    "url": "https://fcharts.pages.dev/guides/audit-any-chart.html",
+    "url": "https://fcharts.dev/guides/audit-any-chart",
     "description": "Run functional accessibility checks — keyboard navigation, live regions, text alternatives, computed contrast, target size — against any chart on any page with one npx command.",
     "author": { "@type": "Person", "name": "Florent Bartoli" }
   }
@@ -58,8 +58,8 @@
 <body>
   <nav><div class="wrap">
     <a class="logo" href="/">f<b>charts</b></a>
-    <a href="/guides/accessible-canvas-charts.html">Accessible canvas charts</a>
-    <a href="/guides/wcag-chart-requirements.html">WCAG requirements for charts</a>
+    <a href="/guides/accessible-canvas-charts">Accessible canvas charts</a>
+    <a href="/guides/wcag-chart-requirements">WCAG requirements for charts</a>
   </div></nav>
   <main class="wrap">
     <h1>Audit any chart's accessibility in one command</h1>
@@ -114,7 +114,7 @@ axe-core: 0 serious/critical violations</code></pre>
     <p>Target mode is a diagnostic. For charts you own, the same engine runs as a regression
       gate: <code>--fixture</code> mode mounts your configured chart, re-proves every
       automatable claim against a committed per-criterion baseline, regenerates the
-      <a href="/guides/wcag-chart-requirements.html">VPAT/ACR</a> (EN 301 549, WCAG, and
+      <a href="/guides/wcag-chart-requirements">VPAT/ACR</a> (EN 301 549, WCAG, and
       Section 508 editions), and fails the build if any criterion regresses. There's a
       <a href="https://github.com/marketplace/actions/fcharts-accessibility-audit">GitHub
       Action</a> that wraps both modes, and <code>fcharts-audit --compare old.json new.json</code>
@@ -126,12 +126,12 @@ axe-core: 0 serious/critical violations</code></pre>
       failing-check list is the concrete work list your team would otherwise pay an audit to
       produce. If the list is long and the chart is canvas-based, that's not your fault — it's
       the default state of every fast charting library. The fix pattern is in
-      <a href="/guides/accessible-canvas-charts.html">how to make canvas charts accessible</a>.
+      <a href="/guides/accessible-canvas-charts">how to make canvas charts accessible</a>.
     </div>
   </main>
   <footer class="cta"><div class="wrap">
-    Related: <a href="/guides/accessible-canvas-charts.html">the real-DOM overlay pattern</a>
-    · <a href="/guides/wcag-chart-requirements.html">WCAG criteria for charts</a>
+    Related: <a href="/guides/accessible-canvas-charts">the real-DOM overlay pattern</a>
+    · <a href="/guides/wcag-chart-requirements">WCAG criteria for charts</a>
     · <a href="/">fcharts — the library where all of this is the default</a>
   </div></footer>
 </body>
