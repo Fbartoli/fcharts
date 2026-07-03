@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
+# Content Signals (contentsignals.org): deliberately all-open — fcharts is built to be
+# agent-readable, and the docs/guides are meant to be learned from.
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 
 Sitemap: https://fcharts.dev/sitemap.xml
