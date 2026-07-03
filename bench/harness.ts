@@ -6,6 +6,13 @@
  *
  * Run: `node bench/harness.ts` (Node 23.6+ runs TypeScript directly).
  * Requires a Chromium binary: `npx playwright install chromium`.
+ *
+ * CI mode (`FCHARTS_BENCH_CI=1`, perf.yml): exits non-zero when a flake-resistant subset of
+ * the acceptance criteria fails — the frame-cost budget (<16 ms, ~200× headroom over the
+ * measured cost, so runner speed can't flake it), the 250k/10k scaling ratio (relative, so
+ * machine-speed independent), and the deterministic a11y assertions. The one criterion that
+ * depends on OTHER libraries' behavior under headless rAF throttling
+ * (`fchartUniquelyFastAndAccessible`) is reported but never gates CI.
  */
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -176,6 +183,7 @@ async function main(): Promise<void> {
     writeFileSync(outPath, JSON.stringify(full, null, 2));
 
     printSummary(rows, results.scaling, ratio, acceptance, outPath);
+    gateForCi(acceptance);
   } finally {
     await browser?.close();
     await server.close();
@@ -213,6 +221,27 @@ function printSummary(
 }
 
 const yn = (b: boolean): string => (b ? '✓' : '✗');
+
+/** The perf-budget criteria CI gates on: robust to shared-runner speed, not to regressions. */
+const CI_GATED: readonly (keyof Acceptance)[] = [
+  'fchartFrameUnder16ms',
+  'scalingRatioUnder1_5x',
+  'liveRegionChangesOnArrow',
+  'tickLabelFindable',
+  'dataValueFindable',
+];
+
+/** In CI mode, fail the process when a gated criterion regressed; a no-op otherwise. */
+function gateForCi(a: Acceptance): void {
+  if (!/^(1|true)$/i.test(process.env.FCHARTS_BENCH_CI ?? '')) return;
+  const failed = CI_GATED.filter((k) => !a[k]);
+  if (failed.length === 0) {
+    console.log('✓ perf budget holds (CI-gated criteria all pass)');
+    return;
+  }
+  console.error(`\n✗ PERF BUDGET REGRESSION — failed: ${failed.join(', ')}`);
+  process.exitCode = 1;
+}
 
 main().catch((err) => {
   console.error(err);
