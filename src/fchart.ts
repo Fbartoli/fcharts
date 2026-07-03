@@ -36,6 +36,7 @@ import { createCompositor, type Compositor } from './renderers/html-in-canvas.ts
 import type { Renderer, RenderScene } from './renderers/renderer.ts';
 import { buildSVG } from './renderers/svg-export.ts';
 import { injectStyles } from './a11y/styles.ts';
+import { buildReadout, type ReadoutEls } from './a11y/readout.ts';
 import { LiveRegion } from './a11y/live-region.ts';
 import { AxisTicks } from './a11y/ticks.ts';
 import { Legend } from './a11y/legend.ts';
@@ -115,13 +116,6 @@ const ANNOUNCE_DEBOUNCE_MS = 100;
 const ANNOTATION_HIT_PX = 11;
 
 let instanceSeq = 0;
-
-interface ReadoutEls {
-  el: HTMLElement;
-  swatch: HTMLElement;
-  name: HTMLElement;
-  value: HTMLElement;
-}
 
 export class FChart {
   private readonly root: HTMLElement;
@@ -1363,18 +1357,3 @@ function prefers(doc: Document, query: string): boolean {
   return doc.defaultView?.matchMedia?.(query).matches ?? false;
 }
 
-function buildReadout(doc: Document): ReadoutEls {
-  const el = doc.createElement('div');
-  el.className = 'fc-readout';
-  el.setAttribute('aria-hidden', 'true');
-  const series = doc.createElement('div');
-  series.className = 'fc-readout-series';
-  const swatch = doc.createElement('span');
-  swatch.className = 'fc-readout-swatch';
-  const name = doc.createElement('span');
-  series.append(swatch, name);
-  const value = doc.createElement('div');
-  value.className = 'fc-readout-val';
-  el.append(series, value);
-  return { el, swatch, name, value };
-}

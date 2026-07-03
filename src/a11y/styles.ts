@@ -31,6 +31,9 @@ const CSS = `
   font-size:.75rem;min-width:118px;box-shadow:0 8px 24px rgba(0,0,0,.35);opacity:0;
   transition:opacity .08s}
 .fc-readout.fc-show{opacity:1}
+/* attachReadout() variant for static-SVG charts: fixed to the viewport and positioned by JS
+   (left/top are the top-left corner, so no centering transform), clamped + edge-flipped there. */
+.fc-readout-fixed{position:fixed;transform:none}
 .fc-readout-series{display:flex;align-items:center;gap:6px;font-weight:600;margin-bottom:2px}
 .fc-readout-swatch{width:9px;height:9px;border-radius:2px;flex:none}
 .fc-readout-val{opacity:.85;font-variant-numeric:tabular-nums}

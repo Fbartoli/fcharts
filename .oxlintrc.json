@@ -1,0 +1,33 @@
+{
+  "categories": {
+    "correctness": "deny",
+    "suspicious": "deny",
+    "perf": "deny"
+  },
+  "rules": {
+    // Sequential awaits are intentional everywhere we use them: benchmarks must run one
+    // measurement at a time for isolation, and the audit CLI does ordered page IO.
+    "no-await-in-loop": "off",
+    // __bench / __auditReady / __test / __hic / __readout / __ready are deliberate page-global
+    // handshake hooks the Playwright harnesses poll for; the dunder marks them as test plumbing.
+    "no-underscore-dangle": [
+      "deny",
+      { "allow": ["__bench", "__auditReady", "__test", "__hic", "__readout", "__ready"] }
+    ]
+  },
+  "overrides": [
+    {
+      // tsconfig pins lib to ES2020 as a browser-compat guard, so toSorted() isn't
+      // available; the flagged sorts already operate on fresh copies ([...a].sort()).
+      "files": ["test/**"],
+      "rules": { "unicorn/no-array-sort": "off" }
+    },
+    {
+      // The playground deliberately uses the single-handler on* idiom on elements it just
+      // created (and relies on `ws.onclose = null` to mark a deliberate disconnect); the
+      // library itself uses addEventListener throughout.
+      "files": ["landing/playground.ts"],
+      "rules": { "unicorn/prefer-add-event-listener": "off" }
+    }
+  ]
+}

@@ -22,10 +22,12 @@ interviews, credentials, or real assistive-tech — not code an agent can write)
 > npm credentials), and *real* screen-reader / blind-user testing (needs NVDA/JAWS/VoiceOver and
 > ideally a user).
 >
-> **Update (2026-06-18):** the last two open *code* items closed — **linkable labels** (drill-down
-> `href` on donut slices + bar rows) and the **inline progress / gauge bar** (`buildProgressSVG`).
-> With those, **every agent-closable engineering item in this backlog is done**; the only remaining
-> rows are the human-gated ones above.
+> **Update (2026-06-18):** the open *code* items closed — **linkable labels** (drill-down `href` on
+> donut slices + bar rows), the **inline progress / gauge bar** (`buildProgressSVG`), and a **styled
+> hover readout for static-SVG charts** (`attachReadout`, sharing `FChart`'s `.fc-readout` box). With
+> those, **every agent-closable engineering item in this backlog is done**; the only remaining rows
+> are the human-gated ones above (plus the consumer-side step of Hecate deleting its hand-rolled
+> readout).
 
 | Area | Item | Priority | Status |
 |---|---|---|---|
@@ -41,6 +43,7 @@ interviews, credentials, or real assistive-tech — not code an agent can write)
 | Charts | [Event / point annotations on the time series (allocation/closure dots)](./chart-types.md#annotations) | P1 | ✅ done |
 | Charts | [Linkable labels (drill-down filter) on donut/bars — last 2 hand-rolled charts in Hecate](./chart-types.md#linkable-labels) | P1 | ✅ done |
 | Charts | [Thin inline progress / gauge bar (KPI cap bars)](./chart-types.md#progress-gauge) | P2 | ✅ done |
+| Charts | [Styled hover readout for static-SVG charts (`attachReadout`, `FChart` tooltip parity)](./chart-types.md#hover-readout) | P2 | ✅ done |
 | Bug | [Chart renders at 0 height when container height is indefinite (flash-then-disappear)](./bugs.md#zero-height-collapse) | P1 | ✅ fixed |
 | A11y | [Real screen-reader testing (NVDA/JAWS/VoiceOver) — to claim "blind-friendly"](./accessibility.md#sr-testing) | **P0** | ⚠ partial (automated SR-readiness test done; real-AT ☐ human-gated) |
 | GTM | [Launch post (HN/Lobsters) — lead with "axe can't see the gap"](./gtm.md#launch) | P1 | ☐ human-gated |

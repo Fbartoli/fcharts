@@ -30,3 +30,8 @@ export { buildBarsSVG } from './renderers/bars.ts';
 export type { BarRow, BarsOptions } from './renderers/bars.ts';
 export { buildProgressSVG } from './renderers/progress.ts';
 export type { ProgressOptions } from './renderers/progress.ts';
+
+// Styled hover readout for static-SVG charts — an opt-in DOM enhancement that gives the pure-SVG
+// primitives the same `.fc-readout` tooltip the interactive `FChart` shows (mounts client-side).
+export { attachReadout } from './a11y/svg-readout.ts';
+export type { AttachReadoutOptions } from './a11y/svg-readout.ts';

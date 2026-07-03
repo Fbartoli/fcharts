@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>fcharts — Hyperliquid live candles</title>
+  <style>
+    :root {
+      --fc-ink: #cfd8e3; --fc-tick-color: #8794a3; --fc-grid: rgba(110,231,168,.07);
+      --fc-axis: rgba(255,255,255,.14); --fc-cursor: rgba(255,255,255,.4); --fc-ring: #0b0f14;
+      --fc-focus: #6ee7a8; --fc-legend-border: rgba(255,255,255,.16);
+      --fc-readout-bg: #10151d; --fc-readout-ink: #e8eef4; --fc-readout-border: rgba(255,255,255,.16);
+    }
+    body { margin: 0; background: #0b0f14; color: #cfd8e3; font: 15px system-ui, sans-serif; padding: 24px; }
+    h1 { font-size: 18px; margin: 0 0 4px; } h1 b { color: #6ee7a8; }
+    p { color: #8794a3; margin: 0 0 18px; font-size: 13px; }
+    form, .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    form { margin: 0 0 10px; }
+    .row { margin: 0 0 12px; font-size: 13px; color: #8794a3; }
+    .row .group { display: flex; gap: 4px; align-items: center; }
+    input, button {
+      font: inherit; color: #e8eef4; background: #10151d;
+      border: 1px solid rgba(255,255,255,.16); border-radius: 8px; padding: 6px 12px;
+    }
+    input { width: 110px; }
+    button { cursor: pointer; }
+    .group button { padding: 4px 10px; font-size: 13px; }
+    button[aria-pressed="true"] { border-color: #6ee7a8; color: #6ee7a8; }
+    #status { font-size: 13px; color: #8794a3; }
+    #status.on { color: #6ee7a8; }
+    #status.err { color: #f87171; }
+    #chart { width: 100%; height: 360px; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; background: #0c1016; }
+    #volume { width: 100%; height: 160px; margin-top: 10px; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; background: #0c1016; }
+  </style>
+</head>
+<body>
+  <h1>f<b>charts</b> — Hyperliquid live candles</h1>
+  <p>Every trade on a Hyperliquid perp market streams in over WebSocket and is aggregated into
+    OHLC candles client-side — the forming candle updates in place via <code>amendLast()</code>,
+    completed ones land with <code>append()</code>, and traded volume fills the panel below.
+    Your browser connects straight to <code>api.hyperliquid.xyz</code>, no backend.
+    Raw ticks are kept, so switching the candle interval re-aggregates the history you've collected.</p>
+
+  <form id="controls">
+    <label for="coin">Coin</label>
+    <input id="coin" value="BTC" autocomplete="off" spellcheck="false" />
+    <!-- WCAG 2.2.2: auto-updating content needs a user-facing pause/stop control. -->
+    <button id="toggle" type="submit" aria-pressed="false">▶&nbsp;Connect</button>
+    <span id="status" role="status">Try BTC, ETH, SOL — any Hyperliquid perp coin.</span>
+  </form>
+  <div class="row">
+    <div class="group" role="group" aria-label="Candle interval">
+      Candles:
+      <button type="button" data-interval="1000">1s</button>
+      <button type="button" data-interval="10000" aria-pressed="true">10s</button>
+      <button type="button" data-interval="60000">1m</button>
+    </div>
+    <div class="group" role="group" aria-label="Visible time range">
+      View:
+      <button type="button" data-range="60000">1m</button>
+      <button type="button" data-range="300000">5m</button>
+      <button type="button" data-range="0">All</button>
+    </div>
+  </div>
+  <div id="chart"></div>
+  <div id="volume"></div>
+
+  <!-- Zero build: drop in the UMD bundle. (For bundlers: `import { FChart } from 'fcharts-js'`.) -->
+  <script src="../dist/fcharts.umd.cjs"></script>
+  <script>
+    const { FChart } = window.fcharts;
+
+    const WS_URL = 'wss://api.hyperliquid.xyz/ws';
+    const PING_MS = 30_000; // Hyperliquid closes idle sockets after 60s
+
+    const $ = (id) => document.getElementById(id);
+    const fmtUsd = (v) => '$' + v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    const fmtTime = (t) => new Date(t).toLocaleTimeString();
+
+    let ws = null;
+    let chart = null;
+    let volChart = null;
+    let ping = 0;
+    let live = false;
+    let trades = 0;
+    let interval = 10_000;
+
+    // Raw ticks, kept so an interval switch can re-aggregate the collected history.
+    const ticks = { t: [], px: [], sz: [] };
+    // The forming candle (last sample in both charts, updated in place via amendLast).
+    let candleT = -1;
+    let o = 0, h = 0, l = 0, c = 0, vol = 0;
+
+    function setStatus(msg, cls) {
+      const s = $('status');
+      s.textContent = msg;
+      s.classList.toggle('on', cls === 'on');
+      s.classList.toggle('err', cls === 'err');
+    }
+
+    function makeCharts(coin) {
+      chart?.destroy();
+      volChart?.destroy();
+      chart = new FChart($('chart'), {
+        series: [{ name: `${coin} price`, type: 'candle' }],
+        options: {
+          ariaLabel: `${coin} live price candles on Hyperliquid`,
+          yLabel: 'price',
+          formatX: fmtTime,
+          formatY: fmtUsd,
+          xPad: interval / 2, // candles are interval-wide; keep edge candles whole
+        },
+      });
+      chart.setData({ x: [], y: [[], [], [], []] }); // open, high, low, close
+      volChart = new FChart($('volume'), {
+        series: [{ name: `${coin} volume`, color: '#38bdf8', type: 'area', fillAlpha: 0.25 }],
+        options: {
+          ariaLabel: `${coin} traded volume per candle on Hyperliquid`,
+          xLabel: 'time',
+          yLabel: coin,
+          formatX: fmtTime,
+          xPad: interval / 2, // same pad as the candle panel → identical domains
+        },
+      });
+      volChart.setData({ x: [], y: [[]] });
+    }
+
+    /** Fold one trade into the forming candle, opening a new one when its bucket starts. */
+    function onTrade(time, price, size) {
+      ticks.t.push(time);
+      ticks.px.push(price);
+      ticks.sz.push(size);
+      const bucket = Math.floor(time / interval) * interval;
+      if (bucket < candleT) return; // out-of-order tick from before the forming candle
+      if (bucket > candleT || candleT === -1) {
+        candleT = bucket;
+        o = h = l = c = price;
+        vol = size;
+        chart.append(bucket, [o, h, l, c]);
+        volChart.append(bucket, [vol]);
+      } else {
+        if (price > h) h = price;
+        if (price < l) l = price;
+        c = price;
+        vol += size;
+        chart.amendLast([o, h, l, c]);
+        volChart.amendLast([vol]);
+      }
+    }
+
+    /** Re-aggregate all collected ticks at the current interval (after an interval switch). */
+    function rebuildCandles() {
+      const x = [], xo = [], xh = [], xl = [], xc = [], xv = [];
+      candleT = -1;
+      for (let i = 0; i < ticks.t.length; i++) {
+        const b = Math.floor(ticks.t[i] / interval) * interval;
+        const p = ticks.px[i];
+        if (b > candleT || candleT === -1) {
+          candleT = b;
+          x.push(b);
+          xo.push(p); xh.push(p); xl.push(p); xc.push(p);
+          xv.push(ticks.sz[i]);
+        } else {
+          const k = x.length - 1;
+          if (p > xh[k]) xh[k] = p;
+          if (p < xl[k]) xl[k] = p;
+          xc[k] = p;
+          xv[k] += ticks.sz[i];
+        }
+      }
+      const k = x.length - 1;
+      if (k >= 0) { o = xo[k]; h = xh[k]; l = xl[k]; c = xc[k]; vol = xv[k]; }
+      chart.update({ options: { xPad: interval / 2 } });
+      volChart.update({ options: { xPad: interval / 2 } });
+      chart.setData({ x, y: [xo, xh, xl, xc] });
+      volChart.setData({ x, y: [xv] });
+    }
+
+    /** Show the trailing `ms` of data (0 = everything); both panels stay in sync. */
+    function setRange(ms) {
+      if (!chart || candleT === -1) return;
+      const last = candleT + interval / 2; // the padded right edge (forming candle stays whole)
+      const first = Math.floor(ticks.t[0] / interval) * interval - interval / 2;
+      const d = ms ? [last - ms, last] : [first, last];
+      chart.renderSync(d);
+      volChart.renderSync(d);
+    }
+
+    function connect() {
+      const typed = $('coin').value.trim();
+      if (!/^[A-Za-z0-9@/_:-]{1,20}$/.test(typed)) {
+        setStatus('Enter a Hyperliquid coin like BTC, ETH, SOL.', 'err');
+        return;
+      }
+      // Perp coins are uppercase; map a casually-typed "btc" but leave mixed case
+      // (e.g. the kPEPE-style 1000x coins) untouched.
+      const coin = typed === typed.toLowerCase() ? typed.toUpperCase() : typed;
+
+      live = true;
+      trades = 0;
+      candleT = -1;
+      ticks.t.length = ticks.px.length = ticks.sz.length = 0;
+      makeCharts(coin);
+      $('toggle').setAttribute('aria-pressed', 'true');
+      $('toggle').innerHTML = '❚❚&nbsp;Disconnect';
+      setStatus(`Connecting to ${coin}…`, '');
+
+      try {
+        ws = new WebSocket(WS_URL);
+      } catch {
+        setStatus('Could not open a WebSocket connection.', 'err');
+        disconnect();
+        return;
+      }
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ method: 'subscribe', subscription: { type: 'trades', coin } }));
+        ping = setInterval(() => {
+          if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ method: 'ping' }));
+        }, PING_MS);
+      };
+      ws.onmessage = (ev) => {
+        const m = JSON.parse(ev.data);
+        if (m.channel === 'error') {
+          setStatus(`Hyperliquid rejected "${coin}" — check the coin name.`, 'err');
+          disconnect();
+          return;
+        }
+        if (m.channel !== 'trades') return; // subscriptionResponse, pong, …
+        // Trades arrive in batches: [{ coin, side, px, sz, time, tid, … }, …]
+        let price = NaN;
+        for (const t of m.data) {
+          price = Number(t.px);
+          onTrade(t.time, price, Number(t.sz));
+          trades += 1;
+        }
+        if (!Number.isFinite(price)) return;
+        setStatus(`● Live — ${coin} ${fmtUsd(price)} · ${trades.toLocaleString()} trades`, 'on');
+      };
+      ws.onerror = () =>
+        setStatus(`Couldn't reach Hyperliquid for ${coin}. Check the coin or your network.`, 'err');
+      ws.onclose = () => {
+        if (!live) return;
+        // Hyperliquid silently closes the socket for unknown coins — surface that.
+        const msg = trades === 0
+          ? `Hyperliquid closed the connection — is "${coin}" a real coin?`
+          : `Disconnected from ${coin}.`;
+        disconnect();
+        setStatus(msg, 'err');
+      };
+    }
+
+    function disconnect() {
+      live = false;
+      clearInterval(ping);
+      if (ws) {
+        ws.onclose = null; // a deliberate close, not an error
+        ws.close();
+        ws = null;
+      }
+      $('toggle').setAttribute('aria-pressed', 'false');
+      $('toggle').innerHTML = '▶&nbsp;Connect';
+      setStatus('Paused — the charts keep the history they collected.', '');
+    }
+
+    $('controls').onsubmit = (e) => {
+      e.preventDefault();
+      live ? disconnect() : connect();
+    };
+    for (const btn of document.querySelectorAll('[data-interval]')) {
+      btn.onclick = () => {
+        interval = Number(btn.dataset.interval);
+        for (const b of document.querySelectorAll('[data-interval]')) {
+          b.setAttribute('aria-pressed', String(b === btn));
+        }
+        if (chart) rebuildCandles();
+      };
+    }
+    for (const btn of document.querySelectorAll('[data-range]')) {
+      btn.onclick = () => setRange(Number(btn.dataset.range));
+    }
+    // Don't keep an offscreen tab hammering the socket; reconnecting on return is one click.
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && live) disconnect();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+# Quality gates: typecheck, lint (zero findings), unit tests, and the browser-level
+# interaction suite (Playwright Chromium). The a11y conformance gate runs separately in
+# a11y-gate.yml.
+name: checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install dependencies
+        run: npx pnpm@11.4.0 install --frozen-lockfile
+      - name: Install Chromium (browser tests)
+        run: npx playwright install --with-deps chromium
+      - name: Typecheck, lint, unit + browser tests
+        run: npx pnpm@11.4.0 run check
