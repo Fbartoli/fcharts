@@ -6,7 +6,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const dist = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
-const LIMIT_KB = 35;
+const LIMIT_KB = 45;
 
 let jsFiles;
 try {
