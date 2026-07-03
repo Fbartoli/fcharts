@@ -1,0 +1,5 @@
+# Cloudflare Pages headers (copied into dist-site/ by build:site).
+# RFC 8288 Link header: points agents at the machine-readable site description (llms.txt).
+# "describedby" is an IANA-registered relation; type marks it as Markdown.
+/*
+  Link: </llms.txt>; rel="describedby"; type="text/markdown"
