@@ -23,9 +23,8 @@ import {
 } from './core/model.ts';
 import { linearScale, logScale, type LinearScale } from './core/scales.ts';
 import {
+  defaultFormatters,
   effectiveTickCount,
-  formatTick,
-  formatTimeTick,
   logTicks,
   niceTicks,
   niceTimeTicks,
@@ -93,6 +92,12 @@ export interface FChartOptions {
   yScale?: 'linear' | 'log';
   xTickCount?: number;
   yTickCount?: number;
+  /** BCP-47 tag (e.g. `'de'`, `'fr-CH'`) localizing the DEFAULT tick/value formatters via
+   *  `Intl.NumberFormat`/`Intl.DateTimeFormat`. Only the defaults: an explicit `formatX`/
+   *  `formatY` always wins, and without `locale` the deterministic English defaults are
+   *  unchanged. Pairs with `strings` (e.g. `stringsDE`), which localizes the UI prose.
+   *  An invalid tag throws at construction. */
+  locale?: string;
   formatX?: Formatter;
   formatY?: Formatter;
   /** Force reduced-motion behavior (otherwise auto-detected). */
@@ -138,11 +143,15 @@ let instanceSeq = 0;
 
 /** Constructor options resolved onto their defaults (media-query autodetects included). */
 type ResolvedOptions = Required<
-  Omit<FChartOptions, 'ariaLabel' | 'xLabel' | 'yLabel' | 'strings' | 'onRenderPath' | 'xPad'>
+  Omit<
+    FChartOptions,
+    'ariaLabel' | 'xLabel' | 'yLabel' | 'strings' | 'onRenderPath' | 'xPad' | 'locale'
+  >
 > &
-  Pick<FChartOptions, 'ariaLabel' | 'xLabel' | 'yLabel' | 'onRenderPath' | 'xPad'>;
+  Pick<FChartOptions, 'ariaLabel' | 'xLabel' | 'yLabel' | 'onRenderPath' | 'xPad' | 'locale'>;
 
 function resolveOptions(config: FChartConfig, doc: Document): ResolvedOptions {
+  const fmt = defaultFormatters(config.options?.xType, config.options?.locale);
   return {
     legend: config.options?.legend ?? true,
     maxDpr: config.options?.maxDpr ?? 2,
@@ -152,9 +161,9 @@ function resolveOptions(config: FChartConfig, doc: Document): ResolvedOptions {
     yScale: config.options?.yScale ?? 'linear',
     xTickCount: config.options?.xTickCount ?? 8,
     yTickCount: config.options?.yTickCount ?? 6,
-    formatX:
-      config.options?.formatX ?? (config.options?.xType === 'time' ? formatTimeTick : formatTick),
-    formatY: config.options?.formatY ?? formatTick,
+    locale: config.options?.locale,
+    formatX: config.options?.formatX ?? fmt.x,
+    formatY: config.options?.formatY ?? fmt.y,
     reducedMotion:
       config.options?.reducedMotion ?? prefers(doc, '(prefers-reduced-motion: reduce)'),
     highContrast: config.options?.highContrast ?? prefers(doc, '(prefers-contrast: more)'),
