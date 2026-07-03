@@ -1,25 +1,32 @@
 #!/usr/bin/env node
 /**
- * `fcharts-audit` — the CI accessibility gate (ci-gate.md).
+ * `fcharts-audit` — the accessibility auditor, in two modes.
  *
- * Mounts a fixture chart in headless Chromium, runs the conformance engine, reduces the checks
- * against the committed baseline, regenerates the ACR(s), and exits non-zero on any regression.
- * Uses Vite + Playwright as dev/peer dependencies — never the shipped renderer.
+ * Fixture mode (the CI gate, ci-gate.md): mounts a fixture chart in headless Chromium, runs the
+ * conformance engine, reduces the checks against the committed baseline, regenerates the ACR(s),
+ * and exits non-zero on any regression. Uses Vite + Playwright as dev/peer dependencies.
  *
  *   node src/compliance/cli.ts --fixture ./a11y/fixture.ts --edition en301549 --out ./compliance-out
  *
- * Exit: 0 no regressions · 1 regression(s) · 2 setup/harness error.
+ * Target mode (audit ANY live chart on any page): navigates to a URL, waits for a selector, and
+ * runs the same functional checks against it. Report-only — no committed baseline, no ACR — so it
+ * always exits 0 (a diagnostic, not a gate). Checks that assume fcharts DOM report `not-applicable`.
+ *
+ *   node src/compliance/cli.ts --target https://example.com/dash --selector "#chart" --out ./out
+ *
+ * Exit: 0 no regressions (or target-mode report written) · 1 regression(s) · 2 setup/harness error.
  */
-import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync, realpathSync } from 'node:fs';
 import { resolve, relative } from 'node:path';
 import { execSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 import { chromium, type Browser } from 'playwright';
 import { createServer, type ViteDevServer } from 'vite';
 import { runConformance, countStatuses } from './conformance.ts';
 import { reduceToVerdicts } from './mapping.ts';
 import { CRITERIA } from './criteria.ts';
 import { buildModel, renderAcr, type AcrFormat } from './acr.ts';
-import type { EditionKey, EvaluationInfo, ProductInfo } from './types.ts';
+import type { CheckReport, EditionKey, EvaluationInfo, ProductInfo } from './types.ts';
 
 const SEL = '#fc-audit-root';
 const COMPONENT_SCOPE =
@@ -27,8 +34,14 @@ const COMPONENT_SCOPE =
   'DOM axis ticks, the legend, the focusable data surface, the live region, the hidden data table, ' +
   'the readout, and the embedded JSON summary. Page-level criteria are the host application’s.';
 
-interface Args {
+export interface Args {
   fixture: string;
+  /** Whether --fixture was passed explicitly (drives the mutually-exclusive mode check). */
+  fixtureExplicit: boolean;
+  /** Target mode: the page URL to audit. */
+  target?: string;
+  /** Target mode: the CSS selector for the chart root element (required with --target). */
+  selector?: string;
   editions: EditionKey[];
   out: string;
   background: string;
@@ -39,9 +52,23 @@ interface Args {
   quiet: boolean;
 }
 
-function parseArgs(argv: string[]): Args {
+/** The target-mode diagnostic report (report-only: no baseline gate, no ACR, no `pass`/`product`). */
+export interface TargetReport {
+  mode: 'target';
+  target: string;
+  selector: string;
+  generatedAt: string;
+  background: string;
+  checkCounts: Record<string, number>;
+  failingChecks: string[];
+  axeSeriousFailed: boolean;
+  report: CheckReport;
+}
+
+export function parseArgs(argv: string[]): Args {
   const a: Args = {
     fixture: './a11y/fixture.ts',
+    fixtureExplicit: false,
     editions: [],
     out: './compliance-out',
     background: '#ffffff',
@@ -53,7 +80,9 @@ function parseArgs(argv: string[]): Args {
   for (let i = 0; i < argv.length; i++) {
     const v = argv[i];
     const next = (): string => argv[++i];
-    if (v === '--fixture') a.fixture = next();
+    if (v === '--fixture') { a.fixture = next(); a.fixtureExplicit = true; }
+    else if (v === '--target') a.target = next();
+    else if (v === '--selector') a.selector = next();
     else if (v === '--edition') a.editions.push(next() as EditionKey);
     else if (v === '--out') a.out = next();
     else if (v === '--background') a.background = next();
@@ -63,14 +92,46 @@ function parseArgs(argv: string[]): Args {
     else if (v === '--json') a.json = true;
     else if (v === '--quiet') a.quiet = true;
     else if (v === '--help' || v === '-h') {
-      console.log('Usage: fcharts-audit [--fixture p] [--edition k]* [--out d] [--background css]' +
-        ' [--format md,html,json] [--stamp iso] [--attest p] [--json] [--quiet]');
+      printHelp();
       process.exit(0);
     }
   }
   if (a.editions.length === 0) a.editions = ['en301549'];
   if (a.formats.length === 0) a.formats = ['md', 'html', 'json'];
   return a;
+}
+
+/** Validate the mode selection. Returns an actionable error string, or undefined when usable. */
+export function validateArgs(a: Args): string | undefined {
+  if (a.target && a.fixtureExplicit) {
+    return 'choose one mode: --fixture <path> (baseline gate) OR --target <url> (audit any page), not both';
+  }
+  if (!a.target && !a.fixtureExplicit) {
+    return 'specify a mode: --fixture <path> (baseline gate) or --target <url> --selector <css> (audit any page)';
+  }
+  if (a.target && !a.selector) {
+    return '--target <url> requires --selector <css> (the chart root element to audit)';
+  }
+  if (a.selector && !a.target) {
+    return '--selector applies only with --target <url>';
+  }
+  return undefined;
+}
+
+function printHelp(): void {
+  console.log(
+    'fcharts-audit — WCAG 2.2 AA conformance for chart components.\n\n' +
+      'Fixture mode (CI gate against the committed baseline):\n' +
+      '  fcharts-audit --fixture <path> [--edition en301549|wcag|section508]*\n' +
+      '                [--out <dir>] [--background <css>] [--format md,html,json]\n' +
+      '                [--stamp <iso>] [--attest <path>] [--json] [--quiet]\n\n' +
+      'Target mode (audit ANY live chart on any page — report-only, no baseline):\n' +
+      '  fcharts-audit --target <url> --selector <css>\n' +
+      '                [--out <dir>] [--background <css>] [--json] [--quiet]\n' +
+      '  In target mode --edition/--format/--attest are ignored (no ACR is generated) and the\n' +
+      '  exit code is 0 (a diagnostic, not a CI gate). fcharts-specific checks report n/a.\n\n' +
+      '--fixture and --target are mutually exclusive; exactly one is required.',
+  );
 }
 
 function readProduct(): ProductInfo {
@@ -87,6 +148,22 @@ function readProduct(): ProductInfo {
     description: pkg.description ?? 'Fast, accessible charts.',
     url: pkg.homepage,
     componentScope: COMPONENT_SCOPE,
+  };
+}
+
+function buildEvaluation(): EvaluationInfo {
+  return {
+    methods: [
+      'Automated axe-core scan (scoped to the chart)',
+      'Functional probes: keyboard navigation, zoom, Escape-dismiss, live-region announcement',
+      'Computed contrast on library-controlled pairs',
+      'DOM-semantics assertions (roles, names, table, target size)',
+      'Manual attestation for perceptual + real-AT + integration-context criteria',
+    ],
+    notes:
+      'Automated/hybrid rows are re-proven on every run by this gate; manual-attestation rows ' +
+      'are listed for human sign-off. axe-clean alone is necessary, not sufficient.',
+    evaluator: 'fcharts-audit (automated)' + (commitSha() ? ` @ ${commitSha()}` : ''),
   };
 }
 
@@ -127,21 +204,18 @@ function auditHtml(fixturePath: string): string {
 
 async function main(): Promise<number> {
   const args = parseArgs(process.argv.slice(2));
-  const product = readProduct();
-  const evaluation: EvaluationInfo = {
-    methods: [
-      'Automated axe-core scan (scoped to the chart)',
-      'Functional probes: keyboard navigation, zoom, Escape-dismiss, live-region announcement',
-      'Computed contrast on library-controlled pairs',
-      'DOM-semantics assertions (roles, names, table, target size)',
-      'Manual attestation for perceptual + real-AT + integration-context criteria',
-    ],
-    notes:
-      'Automated/hybrid rows are re-proven on every run by this gate; manual-attestation rows ' +
-      'are listed for human sign-off. axe-clean alone is necessary, not sufficient.',
-    evaluator: 'fcharts-audit (automated)' + (commitSha() ? ` @ ${commitSha()}` : ''),
-  };
+  const modeError = validateArgs(args);
+  if (modeError) {
+    console.error(`fcharts-audit: ${modeError}`);
+    return 2;
+  }
+  return args.target ? runTargetMode(args) : runFixtureMode(args);
+}
 
+/** Fixture mode — the CI gate. Output is byte-stable against the committed baseline. */
+async function runFixtureMode(args: Args): Promise<number> {
+  const product = readProduct();
+  const evaluation = buildEvaluation();
   let server: ViteDevServer | undefined;
   let browser: Browser | undefined;
   const entryFile = resolve(process.cwd(), '.fc-audit-entry.html');
@@ -225,6 +299,67 @@ async function main(): Promise<number> {
   }
 }
 
+/** Target mode — audit any live chart on any page. Report-only, so it always exits 0 on success. */
+async function runTargetMode(args: Args): Promise<number> {
+  const target = args.target ?? '';
+  const selector = args.selector ?? '';
+  let browser: Browser | undefined;
+  try {
+    browser = await chromium.launch();
+    const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, locale: 'en-US' });
+    try {
+      await page.goto(target, { waitUntil: 'load', timeout: 30_000 });
+    } catch (e) {
+      console.error(`fcharts-audit: could not load ${target} — ${e instanceof Error ? e.message : e}`);
+      return 2;
+    }
+    try {
+      await page.waitForSelector(selector, { timeout: 15_000 });
+    } catch {
+      console.error(`fcharts-audit: selector not found on ${target}: ${selector}`);
+      return 2;
+    }
+
+    const report = await runConformance(page, selector, { background: args.background, axeSource: loadAxe() });
+    const counts = countStatuses(report);
+    const axeFailed = report.results.some((r) => r.id === 'axe-serious' && r.status === 'fail');
+    const auditReport = shapeTargetReport(args, counts, axeFailed, report);
+
+    mkdirSync(resolve(args.out), { recursive: true });
+    writeFileSync(resolve(args.out, 'audit-report.json'), JSON.stringify(auditReport, null, 2));
+
+    if (args.json) console.log(JSON.stringify(auditReport, null, 2));
+    else if (!args.quiet) printTargetSummary(args, report, counts, axeFailed);
+
+    return 0;
+  } catch (err) {
+    console.error('fcharts-audit: harness error —', err instanceof Error ? err.message : err);
+    return 2;
+  } finally {
+    await browser?.close();
+  }
+}
+
+/** Shape the target-mode report (pure): no baseline verdicts, no ACR — just the observed checks. */
+export function shapeTargetReport(
+  args: Args,
+  counts: Record<string, number>,
+  axeFailed: boolean,
+  report: CheckReport,
+): TargetReport {
+  return {
+    mode: 'target',
+    target: args.target ?? '',
+    selector: args.selector ?? '',
+    generatedAt: args.stamp,
+    background: args.background,
+    checkCounts: counts,
+    failingChecks: report.results.filter((r) => r.status === 'fail').map((r) => `${r.id}: ${r.detail}`),
+    axeSeriousFailed: axeFailed,
+    report,
+  };
+}
+
 function printSummary(
   verdicts: ReturnType<typeof reduceToVerdicts>,
   regressed: ReturnType<typeof reduceToVerdicts>,
@@ -256,4 +391,34 @@ function printSummary(
   }
 }
 
-main().then((code) => process.exit(code));
+function printTargetSummary(
+  args: Args,
+  report: CheckReport,
+  counts: Record<string, number>,
+  axeFailed: boolean,
+): void {
+  console.log(`\nfcharts-audit — external target "${args.selector}" @ ${args.target}`);
+  console.log(`checks: ${counts.pass} pass · ${counts.fail} fail · ${counts.na} n/a → report written to ${args.out}`);
+  const fails = report.results.filter((r) => r.status === 'fail');
+  if (fails.length === 0) {
+    console.log('✓ no functional accessibility failures detected on this target');
+  } else {
+    console.log(`\n✗ ${fails.length} functional check(s) failed on this target:`);
+    for (const r of fails) console.log(`     ✗ ${r.id}: ${r.detail}`);
+  }
+  if (axeFailed) console.log('✗ axe-core reported serious/critical violations');
+  console.log('\n(report-only: no committed baseline for an external chart — a diagnostic, not a gate)');
+}
+
+/** True when this module is the process entry, so importing it (e.g. for tests) never runs a scan. */
+function isEntryPoint(): boolean {
+  const arg = process.argv[1];
+  if (!arg) return false;
+  try {
+    return import.meta.url === pathToFileURL(realpathSync(arg)).href;
+  } catch {
+    return false;
+  }
+}
+
+if (isEntryPoint()) main().then((code) => process.exit(code));

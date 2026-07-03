@@ -17,8 +17,15 @@ import {
   type Margins,
   type SeriesConfig,
 } from '../core/model.ts';
-import { linearScale } from '../core/scales.ts';
-import { effectiveTickCount, formatTick, niceTicks } from '../core/ticks.ts';
+import { linearScale, logScale } from '../core/scales.ts';
+import {
+  effectiveTickCount,
+  formatTick,
+  formatTimeTick,
+  logTicks,
+  niceTicks,
+  niceTimeTicks,
+} from '../core/ticks.ts';
 import { buildSummary, describeSummary } from '../a11y/summary.ts';
 import { buildSVG } from './svg-export.ts';
 import { resolveTheme, type SvgTheme } from './svg-theme.ts';
@@ -34,6 +41,12 @@ export interface RenderSVGChartOptions {
   yTickCount?: number;
   /** Treat x as integer indices (ticks step >= 1). Default false. */
   xInteger?: boolean;
+  /** X-axis flavor. `'time'` treats x as epoch ms: calendar-boundary ticks + a date/clock
+   *  `formatX` default. Default `'linear'` (matches the live chart). */
+  xType?: 'linear' | 'time';
+  /** Y-axis scale. `'log'` (base 10) needs positive data; non-positive samples clamp to the
+   *  plot bottom. Default `'linear'` (matches the live chart). */
+  yScale?: 'linear' | 'log';
   /** Fractional y-extent padding. Default 0.06 (matches the live chart). */
   yPadding?: number;
 }
@@ -91,14 +104,24 @@ export function renderSVG(
   const visible: boolean[] = [];
   for (const s of series) for (let k = 0; k < s.slots; k++) visible.push(s.visible);
   const [yMin, yMax] = cd.yExtent(visible);
-  const yPad = (yMax - yMin) * (o.yPadding ?? 0.06);
-  const yDomain: [number, number] = [yMin - yPad, yMax + yPad];
+  const log = o.yScale === 'log';
+  let yDomain: [number, number];
+  if (log) {
+    // Same positive-domain fitting as the live chart's rescaleY (log-space padding).
+    const yhi = yMax > 0 ? yMax : 1;
+    const ylo = yMin > 0 ? yMin : yhi / 10;
+    const lpad = (Math.log10(yhi) - Math.log10(ylo) || 1) * (o.yPadding ?? 0.06);
+    yDomain = [Math.pow(10, Math.log10(ylo) - lpad), Math.pow(10, Math.log10(yhi) + lpad)];
+  } else {
+    const yPad = (yMax - yMin) * (o.yPadding ?? 0.06);
+    yDomain = [yMin - yPad, yMax + yPad];
+  }
 
   const xScale = linearScale(domain, [m.left, width - m.right]);
-  const yScale = linearScale(yDomain, [height - m.bottom, m.top]);
+  const yScale = (log ? logScale : linearScale)(yDomain, [height - m.bottom, m.top]);
   const xCount = effectiveTickCount(o.xTickCount ?? 8, width - m.left - m.right, 64);
   const yCount = effectiveTickCount(o.yTickCount ?? 6, height - m.top - m.bottom, 28);
-  const formatX = o.formatX ?? formatTick;
+  const formatX = o.formatX ?? (o.xType === 'time' ? formatTimeTick : formatTick);
   const formatY = o.formatY ?? formatTick;
   const title = o.ariaLabel ?? 'Chart';
   const summary = buildSummary(cd, series, title, annotations);
@@ -112,8 +135,11 @@ export function renderSVG(
     xScale,
     yScale,
     domain,
-    xTicks: niceTicks(domain[0], domain[1], xCount, o.xInteger ? 1 : 0),
-    yTicks: niceTicks(yDomain[0], yDomain[1], yCount),
+    xTicks:
+      o.xType === 'time'
+        ? niceTimeTicks(domain[0], domain[1], xCount)
+        : niceTicks(domain[0], domain[1], xCount, o.xInteger ? 1 : 0),
+    yTicks: log ? logTicks(yDomain[0], yDomain[1], yCount) : niceTicks(yDomain[0], yDomain[1], yCount),
     formatX,
     formatY,
     title,

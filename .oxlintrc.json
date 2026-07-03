@@ -8,11 +8,12 @@
     // Sequential awaits are intentional everywhere we use them: benchmarks must run one
     // measurement at a time for isolation, and the audit CLI does ordered page IO.
     "no-await-in-loop": "off",
-    // __bench / __auditReady / __test / __hic / __readout / __ready are deliberate page-global
-    // handshake hooks the Playwright harnesses poll for; the dunder marks them as test plumbing.
+    // __bench / __auditReady / __test / __feat / __hic / __readout / __ready are deliberate
+    // page-global handshake hooks the Playwright harnesses poll for; the dunder marks them as
+    // test plumbing.
     "no-underscore-dangle": [
       "deny",
-      { "allow": ["__bench", "__auditReady", "__test", "__hic", "__readout", "__ready"] }
+      { "allow": ["__bench", "__auditReady", "__test", "__feat", "__hic", "__readout", "__ready"] }
     ]
   },
   "overrides": [

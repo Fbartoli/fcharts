@@ -21,8 +21,15 @@ import {
   type SeriesConfig,
   type FChartData,
 } from './core/model.ts';
-import { linearScale, type LinearScale } from './core/scales.ts';
-import { niceTicks, formatTick, effectiveTickCount } from './core/ticks.ts';
+import { linearScale, logScale, type LinearScale } from './core/scales.ts';
+import {
+  effectiveTickCount,
+  formatTick,
+  formatTimeTick,
+  logTicks,
+  niceTicks,
+  niceTimeTicks,
+} from './core/ticks.ts';
 import { lowerBound, nearestIndex } from './core/downsample.ts';
 import { RenderScheduler } from './core/scheduler.ts';
 import { createCanvas2DRenderer } from './renderers/canvas2d.ts';
@@ -76,6 +83,14 @@ export interface FChartOptions {
   xPad?: number;
   /** Treat x as integer indices (ticks step >= 1). Default false. */
   xInteger?: boolean;
+  /** X-axis flavor. `'time'` treats x as epoch milliseconds: ticks land on calendar boundaries
+   *  (midnights, month starts) and `formatX` defaults to an adaptive date/clock formatter.
+   *  Default `'linear'`. The `formatX` default is resolved at construction — patch `formatX`
+   *  explicitly if you change `xType` via `update()`. */
+  xType?: 'linear' | 'time';
+  /** Y-axis scale. `'log'` (base 10) needs positive data: the domain is fitted to the positive
+   *  values and non-positive samples clamp to the plot bottom. Default `'linear'`. */
+  yScale?: 'linear' | 'log';
   xTickCount?: number;
   yTickCount?: number;
   formatX?: Formatter;
@@ -89,6 +104,10 @@ export interface FChartOptions {
   /** Play an audible tone for the focused value as the keyboard cursor moves (audio charts).
    *  Off by default. */
   sonify?: boolean;
+  /** Render a small "Download data (CSV)" button (localizable via `strings.exportCsv`) in the
+   *  plot's lower-left — a visible alternative-format affordance backing the hidden data table.
+   *  Off by default; fixed at construction. The data is always available via `toCSV()`. */
+  exportControl?: boolean;
   /** Notified when the live render path changes after construction — e.g. when the
    *  HTML-in-Canvas path self-heals to the DOM overlay because the experimental composite painted
    *  nothing. Read `chart.renderPath` for the initial value; this fires only on a change.
@@ -129,15 +148,19 @@ function resolveOptions(config: FChartConfig, doc: Document): ResolvedOptions {
     maxDpr: config.options?.maxDpr ?? 2,
     yPadding: config.options?.yPadding ?? 0.06,
     xInteger: config.options?.xInteger ?? false,
+    xType: config.options?.xType ?? 'linear',
+    yScale: config.options?.yScale ?? 'linear',
     xTickCount: config.options?.xTickCount ?? 8,
     yTickCount: config.options?.yTickCount ?? 6,
-    formatX: config.options?.formatX ?? formatTick,
+    formatX:
+      config.options?.formatX ?? (config.options?.xType === 'time' ? formatTimeTick : formatTick),
     formatY: config.options?.formatY ?? formatTick,
     reducedMotion:
       config.options?.reducedMotion ?? prefers(doc, '(prefers-reduced-motion: reduce)'),
     highContrast: config.options?.highContrast ?? prefers(doc, '(prefers-contrast: more)'),
     forcedColors: config.options?.forcedColors ?? prefers(doc, '(forced-colors: active)'),
     sonify: config.options?.sonify ?? false,
+    exportControl: config.options?.exportControl ?? false,
     onRenderPath: config.options?.onRenderPath,
     ariaLabel: config.options?.ariaLabel,
     xLabel: config.options?.xLabel,
@@ -243,11 +266,13 @@ export class FChart {
   private readonly sonifier: Sonifier | null;
   private readonly tableAlt: TableAlt;
   private readonly summaryEl: HTMLElement;
+  private readonly exportBtn: HTMLButtonElement | null;
   private readonly activeSample: HTMLElement;
   private readonly dataScript: HTMLElement;
   private readonly readout: ReadoutEls;
   private readonly resizeObserver: ResizeObserver;
   private readonly listeners = new AbortController();
+  private readonly domainListeners = new Set<(domain: readonly [number, number]) => void>();
 
   private dragging = false;
   private dragStartX = 0;
@@ -287,6 +312,7 @@ export class FChart {
       ? new Legend(this.series, (i) => this.toggleSeries(i), this.strings, this.doc)
       : null;
     this.pagers = new Pagers((dir) => this.panPage(dir), this.strings, this.doc);
+    this.exportBtn = this.options.exportControl ? this.buildExportButton() : null;
     const view = this.doc.defaultView;
     this.sonifier = this.options.sonify && view ? new Sonifier(view) : null;
 
@@ -344,6 +370,7 @@ export class FChart {
       this.summaryEl,
       this.dataScript,
     );
+    if (this.exportBtn) this.plot.append(this.exportBtn);
     this.root.append(this.plot);
   }
 
@@ -391,10 +418,10 @@ export class FChart {
     const height = this.height || 360;
     const m = this.margins;
     const xScale = linearScale(this.domain, [m.left, width - m.right]);
-    const yScale = linearScale(this.yDomain, [height - m.bottom, m.top]);
+    const makeY = this.options.yScale === 'log' ? logScale : linearScale;
+    const yScale = makeY(this.yDomain, [height - m.bottom, m.top]);
     const xCount = effectiveTickCount(this.options.xTickCount, width - m.left - m.right, 64);
     const yCount = effectiveTickCount(this.options.yTickCount, height - m.top - m.bottom, 28);
-    const xMinStep = this.options.xInteger ? 1 : 0;
     return buildSVG({
       width,
       height,
@@ -404,8 +431,8 @@ export class FChart {
       xScale,
       yScale,
       domain: this.domain,
-      xTicks: niceTicks(this.domain[0], this.domain[1], xCount, xMinStep),
-      yTicks: niceTicks(this.yDomain[0], this.yDomain[1], yCount),
+      xTicks: this.xAxisTicks(xCount),
+      yTicks: this.yAxisTicks(yCount),
       formatX: this.options.formatX,
       formatY: this.options.formatY,
       title: this.options.ariaLabel ?? 'Chart',
@@ -414,6 +441,52 @@ export class FChart {
       yLabel: this.options.yLabel,
       annotations: this.annotations,
     });
+  }
+
+  /**
+   * The full current dataset as CSV (RFC 4180 quoting): an x column (named after `xLabel`),
+   * then one column per line/area series and four (`open`/`high`/`low`/`close`, localized via
+   * `strings`) per candle series. Values are raw — not run through `formatX`/`formatY` — so the
+   * export round-trips; hidden series are included. The same data the hidden table samples,
+   * but complete.
+   */
+  toCSV(): string {
+    const header = [this.options.xLabel ?? 'x'];
+    for (const s of this.series) {
+      if (s.type === 'candle') {
+        const words = [this.strings.open, this.strings.high, this.strings.low, this.strings.close];
+        header.push(...words.map((w) => `${s.name} ${w}`));
+      } else {
+        header.push(s.name);
+      }
+    }
+    const lines = [header.map(csvQuote).join(',')];
+    for (let i = 0; i < this.data.n; i++) {
+      const row = [String(this.data.x[i])];
+      for (const s of this.series) {
+        for (let k = 0; k < s.slots; k++) row.push(String(this.data.y[s.index + k][i]));
+      }
+      lines.push(row.join(','));
+    }
+    return lines.join('\n');
+  }
+
+  private buildExportButton(): HTMLButtonElement {
+    const b = this.doc.createElement('button');
+    b.type = 'button';
+    b.className = 'fc-export';
+    b.textContent = this.strings.exportCsv;
+    b.addEventListener('click', () => this.downloadCsv(), { signal: this.listeners.signal });
+    return b;
+  }
+
+  private downloadCsv(): void {
+    const url = URL.createObjectURL(new Blob([this.toCSV()], { type: 'text/csv' }));
+    const a = this.doc.createElement('a');
+    a.href = url;
+    a.download = `${(this.options.ariaLabel ?? 'chart').replace(/[^\w-]+/g, '-').toLowerCase()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   /** Replace the dataset. Resets the view to the full x-domain. */
@@ -533,9 +606,24 @@ export class FChart {
   }
 
   /**
+   * Subscribe to x-domain changes — wheel/keyboard zoom, drag pan, pager pans, cursor
+   * follow-pans, and programmatic `renderSync(domain)` all notify (after clamping, only when
+   * the domain actually changed). `setData`'s full-extent reset does not. Returns an
+   * unsubscribe function. See {@link syncCharts} for the linked multi-pane helper built on it.
+   */
+  onDomainChange(cb: (domain: readonly [number, number]) => void): () => void {
+    this.domainListeners.add(cb);
+    return () => this.domainListeners.delete(cb);
+  }
+
+  private emitDomain(): void {
+    for (const cb of this.domainListeners) cb([this.domain[0], this.domain[1]]);
+  }
+
+  /**
    * Patch series, options, and/or data in place. Updatable options take effect immediately
-   * (labels, formatters, tick counts, modes, callbacks). `legend`, `sonify`, and `strings` wire
-   * subsystems at construction and cannot change here: a patch that would *change* one throws
+   * (labels, formatters, tick counts, modes, callbacks). `legend`, `sonify`, `exportControl`,
+   * and `strings` wire subsystems at construction and cannot change here: a patch that would *change* one throws
    * (passing the current value is a no-op). Recreate the chart to change them — the React
    * adapter remounts automatically.
    */
@@ -576,6 +664,9 @@ export class FChart {
   private assertUpdatable(patch: FChartOptions): void {
     if (patch.legend !== undefined && patch.legend !== this.options.legend) failFixed('legend');
     if (patch.sonify !== undefined && patch.sonify !== this.options.sonify) failFixed('sonify');
+    if (patch.exportControl !== undefined && patch.exportControl !== this.options.exportControl) {
+      failFixed('exportControl');
+    }
     for (const [key, value] of Object.entries(patch.strings ?? {})) {
       if (value !== undefined && value !== this.strings[key as keyof FChartStrings]) {
         failFixed('strings');
@@ -653,6 +744,16 @@ export class FChart {
     const visible: boolean[] = [];
     for (const s of this.series) for (let k = 0; k < s.slots; k++) visible.push(s.visible);
     const [yMin, yMax] = this.data.yExtent(visible);
+    if (this.options.yScale === 'log') {
+      // Log needs a positive domain; pad in log space so the visual margin matches linear's.
+      // Non-positive extents fall back to a decade below the max (samples <= 0 clamp to the
+      // plot bottom at render time — see logScale).
+      const hi = yMax > 0 ? yMax : 1;
+      const lo = yMin > 0 ? yMin : hi / 10;
+      const pad = (Math.log10(hi) - Math.log10(lo) || 1) * this.options.yPadding;
+      this.yDomain = [Math.pow(10, Math.log10(lo) - pad), Math.pow(10, Math.log10(hi) + pad)];
+      return;
+    }
     const pad = (yMax - yMin) * this.options.yPadding;
     this.yDomain = [yMin - pad, yMax + pad];
   }
@@ -749,8 +850,21 @@ export class FChart {
   private scales(): { xScale: LinearScale; yScale: LinearScale } {
     const m = this.margins;
     const xScale = linearScale(this.domain, [m.left, this.width - m.right]);
-    const yScale = linearScale(this.yDomain, [this.height - m.bottom, m.top]);
+    const makeY = this.options.yScale === 'log' ? logScale : linearScale;
+    const yScale = makeY(this.yDomain, [this.height - m.bottom, m.top]);
     return { xScale, yScale };
+  }
+
+  /** Axis tick values for the current domains, honoring `xType`/`xInteger` and `yScale`. */
+  private xAxisTicks(count: number): number[] {
+    const [d0, d1] = this.domain;
+    if (this.options.xType === 'time') return niceTimeTicks(d0, d1, count);
+    return niceTicks(d0, d1, count, this.options.xInteger ? 1 : 0);
+  }
+
+  private yAxisTicks(count: number): number[] {
+    const [d0, d1] = this.yDomain;
+    return this.options.yScale === 'log' ? logTicks(d0, d1, count) : niceTicks(d0, d1, count);
   }
 
   private frame(): void {
@@ -760,9 +874,8 @@ export class FChart {
     // Thin tick density at narrow sizes so fixed-size labels don't overlap (1.4.10 reflow).
     const xCount = effectiveTickCount(this.options.xTickCount, this.width - m.left - m.right, 64);
     const yCount = effectiveTickCount(this.options.yTickCount, this.height - m.top - m.bottom, 28);
-    const xMinStep = this.options.xInteger ? 1 : 0;
-    const xTicks = niceTicks(this.domain[0], this.domain[1], xCount, xMinStep);
-    const yTicks = niceTicks(this.yDomain[0], this.yDomain[1], yCount);
+    const xTicks = this.xAxisTicks(xCount);
+    const yTicks = this.yAxisTicks(yCount);
 
     if (this.ticksDirty) {
       this.axisTicks.update({
@@ -1107,7 +1220,9 @@ export class FChart {
       series: a.kind === 'rule' ? this.cursor.series : a.seriesIndex,
       index: pt ? pt.index : nearestIndex(this.data.x, a.x),
     };
+    const [b0, b1] = this.domain;
     this.domain = panToInclude(this.domain, a.x);
+    if (this.domain[0] !== b0 || this.domain[1] !== b1) this.emitDomain();
     this.ticksDirty = true;
     this.scheduleTableUpdate();
     this.updateActiveSample();
@@ -1207,6 +1322,7 @@ export class FChart {
     if (this.domain[0] !== b0 || this.domain[1] !== b1) {
       this.ticksDirty = true;
       this.scheduleTableUpdate();
+      this.emitDomain();
     }
     this.queueAnnounce();
     this.requestRender();
@@ -1358,6 +1474,7 @@ export class FChart {
     this.ticksDirty = true;
     this.scheduleTableUpdate();
     this.updatePagers();
+    this.emitDomain();
     return true;
   }
 
@@ -1375,6 +1492,7 @@ export class FChart {
 export function sameConstructionOptions(a: FChartOptions = {}, b: FChartOptions = {}): boolean {
   if ((a.legend ?? true) !== (b.legend ?? true)) return false;
   if ((a.sonify ?? false) !== (b.sonify ?? false)) return false;
+  if ((a.exportControl ?? false) !== (b.exportControl ?? false)) return false;
   const sa = a.strings ?? {};
   const sb = b.strings ?? {};
   const keys = Object.keys({ ...sa, ...sb }) as (keyof FChartStrings)[];
@@ -1390,5 +1508,10 @@ function failFixed(name: string): never {
 
 function prefers(doc: Document, query: string): boolean {
   return doc.defaultView?.matchMedia?.(query).matches ?? false;
+}
+
+/** RFC 4180 field quoting (only header cells can need it; data cells are numbers). */
+function csvQuote(s: string): string {
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
