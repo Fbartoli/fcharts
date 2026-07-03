@@ -5,19 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>How to make canvas charts accessible (WCAG) — fcharts guides</title>
   <meta name="description" content="Canvas charts are invisible to screen readers. The real-DOM overlay pattern fixes that without giving up 60fps: keyboard data cursor, live region, real-text ticks, hidden data table." />
-  <link rel="canonical" href="https://fcharts.pages.dev/guides/accessible-canvas-charts.html" />
+  <link rel="canonical" href="https://fcharts.dev/guides/accessible-canvas-charts" />
   <meta property="og:type" content="article" />
-  <meta property="og:url" content="https://fcharts.pages.dev/guides/accessible-canvas-charts.html" />
+  <meta property="og:url" content="https://fcharts.dev/guides/accessible-canvas-charts" />
   <meta property="og:title" content="How to make canvas charts accessible (WCAG)" />
   <meta property="og:description" content="The real-DOM overlay pattern: per-point screen-reader access on a canvas chart, without giving up 60fps." />
-  <meta property="og:image" content="https://fcharts.pages.dev/social-preview.png" />
+  <meta property="og:image" content="https://fcharts.dev/social-preview.png" />
   <meta name="twitter:card" content="summary_large_image" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "TechArticle",
     "headline": "How to make canvas charts accessible (WCAG)",
-    "url": "https://fcharts.pages.dev/guides/accessible-canvas-charts.html",
+    "url": "https://fcharts.dev/guides/accessible-canvas-charts",
     "description": "The real-DOM overlay pattern for canvas charts: keyboard data cursor, live region announcements, real-text axis ticks, and a hidden data table — per-point screen-reader access at 60fps.",
     "author": { "@type": "Person", "name": "Florent Bartoli" }
   }
@@ -57,8 +57,8 @@
 <body>
   <nav><div class="wrap">
     <a class="logo" href="/">f<b>charts</b></a>
-    <a href="/guides/wcag-chart-requirements.html">WCAG requirements for charts</a>
-    <a href="/guides/audit-any-chart.html">Audit any chart</a>
+    <a href="/guides/wcag-chart-requirements">WCAG requirements for charts</a>
+    <a href="/guides/audit-any-chart">Audit any chart</a>
   </div></nav>
   <main class="wrap">
     <h1>How to make canvas charts accessible</h1>
@@ -123,7 +123,7 @@
       so they can't see the problem — an axe-clean chart page proves nothing about the chart.
       Verification has to be functional: does keyboard navigation work, does the live region
       announce, does the table exist? See
-      <a href="/guides/audit-any-chart.html">auditing any chart in one command</a>.
+      <a href="/guides/audit-any-chart">auditing any chart in one command</a>.
     </div>
 
     <h2>Details that separate "has ARIA" from "works in a screen reader"</h2>
@@ -148,8 +148,8 @@
       <a href="/">live demo</a> runs 100k points at 60fps with everything described here turned on.</p>
   </main>
   <footer class="cta"><div class="wrap">
-    Next: <a href="/guides/wcag-chart-requirements.html">which WCAG criteria actually apply to
-    charts</a> · <a href="/guides/audit-any-chart.html">audit any chart in one command</a>
+    Next: <a href="/guides/wcag-chart-requirements">which WCAG criteria actually apply to
+    charts</a> · <a href="/guides/audit-any-chart">audit any chart in one command</a>
   </div></footer>
 </body>
 </html>

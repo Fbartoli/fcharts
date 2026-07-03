@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://fcharts.pages.dev/sitemap.xml
+Sitemap: https://fcharts.dev/sitemap.xml
