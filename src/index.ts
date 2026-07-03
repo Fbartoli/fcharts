@@ -5,13 +5,23 @@
  * screen-reader-announced, and find-in-page-able through a real-DOM accessibility layer.
  */
 export { FChart, sameConstructionOptions } from './fchart.ts';
-export type { FChartConfig, FChartOptions } from './fchart.ts';
+export type { FChartConfig, FChartOptions, Formatter } from './fchart.ts';
 export { syncCharts } from './sync.ts';
 export { hydrate } from './hydrate.ts';
 export { defineFChart } from './element.ts';
 export type { FChartElement } from './element.ts';
-export { DEFAULT_PALETTE, seriesSlots } from './core/model.ts';
-export type { SeriesConfig, FChartData, NumberArray, AnnotationSpec } from './core/model.ts';
+export { DEFAULT_PALETTE, seriesSlots, DEFAULT_MARGINS, ChartData } from './core/model.ts';
+export type {
+  SeriesConfig,
+  FChartData,
+  NumberArray,
+  AnnotationSpec,
+  Margins,
+  ResolvedSeries,
+  ResolvedAnnotation,
+  SeriesStats,
+} from './core/model.ts';
+export type { LinearScale } from './core/scales.ts';
 export type { RenderPath, HtmlInCanvasSupport } from './renderers/detect.ts';
 export type { ChartSummary, SeriesSummary, AnnotationSummary, Trend } from './a11y/summary.ts';
 export type { FChartStrings } from './a11y/strings.ts';

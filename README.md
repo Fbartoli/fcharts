@@ -138,6 +138,8 @@ hidden data table is in the accessibility tree (and find-in-page-able in Chromiu
 
 ## API
 
+Full generated reference (every export, from the TSDoc): **[fcharts.dev/api](https://fcharts.dev/api/)**.
+
 ```ts
 new FChart(el: HTMLElement, config: FChartConfig)
 

@@ -272,6 +272,7 @@ export class ChartData {
   x: Float64Array;
   y: Float64Array[];
   n: number;
+  /** @internal Downsample machinery — engine detail, not part of the public surface. */
   readonly pyramids: StreamingPyramid[];
   readonly stats: SeriesStats[];
 
