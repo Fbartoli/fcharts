@@ -4,9 +4,35 @@
   "description": "Charts that render 100k+ points at 60fps and pass the accessibility audit at the same time.",
   "type": "module",
   "license": "MIT",
+  "author": "Florent Bartoli <bartoli.florent@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Fbartoli/fcharts.git"
+  },
+  "homepage": "https://github.com/Fbartoli/fcharts#readme",
+  "bugs": "https://github.com/Fbartoli/fcharts/issues",
+  "keywords": [
+    "charts",
+    "canvas",
+    "svg",
+    "accessibility",
+    "a11y",
+    "wcag",
+    "data-visualization",
+    "screen-reader",
+    "sparkline",
+    "react"
+  ],
   "packageManager": "pnpm@11.4.0",
   "engines": {
-    "node": ">=23.6"
+    "node": ">=20.19"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": ">=23.6",
+      "onFail": "error"
+    }
   },
   "sideEffects": false,
   "files": [
@@ -23,8 +49,7 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/fcharts.js",
-      "require": "./dist/fcharts.umd.cjs"
+      "default": "./dist/fcharts.js"
     },
     "./compliance": {
       "types": "./dist/compliance/index.d.ts",
@@ -43,6 +68,7 @@
     "build:site": "SIGHTLINE_ENTRY=site vite build",
     "preview:site": "pnpm build:site && npx wrangler pages dev dist-site",
     "pack:sdk": "pnpm build && pnpm pack",
+    "prepublishOnly": "pnpm check && pnpm build",
     "preview": "vite preview",
     "test": "node --test test/*.test.ts",
     "test:browser": "node --test test/browser/*.test.ts",
