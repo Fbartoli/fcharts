@@ -74,7 +74,7 @@
     "dev": "vite",
     "landing": "FCHARTS_ROOT=landing vite",
     "build": "vite build && FCHARTS_ENTRY=react vite build && FCHARTS_ENTRY=adapters vite build && FCHARTS_ENTRY=cli vite build && FCHARTS_ENTRY=compliance vite build && tsc -p tsconfig.build.json && node scripts/fix-dts.mjs",
-    "build:site": "FCHARTS_ENTRY=site vite build",
+    "build:site": "FCHARTS_ENTRY=site vite build && cp landing/static/robots.txt landing/static/sitemap.xml llms.txt media/social-preview.png dist-site/",
     "preview:site": "pnpm build:site && npx wrangler pages dev dist-site",
     "pack:sdk": "pnpm build && pnpm pack",
     "prepublishOnly": "pnpm check && pnpm build && pnpm size",

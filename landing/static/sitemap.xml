@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Update the origin here (and in robots.txt + the canonical/og tags) if a custom domain lands. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://fcharts.pages.dev/</loc></url>
+  <url><loc>https://fcharts.pages.dev/playground.html</loc></url>
+  <url><loc>https://fcharts.pages.dev/acr-en301549.html</loc></url>
+</urlset>
