@@ -214,7 +214,13 @@ let page: Page;
 
 before(async () => {
   writeFileSync(ENTRY, PAGE_HTML);
-  server = await createServer({ root: process.cwd(), logLevel: 'silent' });
+  // Pre-bundle vue: without it, Vite discovers the dep on first visit and triggers a full page
+  // reload mid-run — the page re-initializes and the first evaluate times out (flaked in CI).
+  server = await createServer({
+    root: process.cwd(),
+    logLevel: 'silent',
+    optimizeDeps: { include: ['vue'] },
+  });
   await server.listen();
   const url = server.resolvedUrls?.local?.[0];
   if (!url) throw new Error('Vite did not report a local URL');
