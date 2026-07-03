@@ -89,7 +89,7 @@ Each engine's raw output is committed: `bench/results.json` (Chromium),
 | axe-core: 0 critical + 0 serious on fcharts | ✓ (uPlot's gap shown via functional checks, see caveat) |
 | Keyboard: arrows traverse samples + switch series; every move announced via live region | ✓ asserted in Playwright (`liveRegionChangesOnArrow`) |
 | Ctrl+F finds an axis tick label and a data value | ✓ verified via real `window.find()` (Chromium); browser-dependent for clipped text |
-| Core bundle < 30 KB min+gzip, zero runtime deps | ✓ 10.34 KB gzip, 0 deps |
+| Core bundle < 30 KB min+gzip, zero runtime deps | ✓ 10.34 KB gzip at validation, 0 deps (the library has since grown: ~19 KB core / ~33 KB full barrel — see `pnpm size`) |
 | Works in Chrome, Firefox, Safari with no flags (DOM-overlay) | ✓ thesis held in Chromium, Firefox, and WebKit (see cross-browser table) |
 
 ## What surprised us / honest caveats

@@ -260,7 +260,7 @@ mirrors how `FChart` upgrades a server-rendered fallback.
 
 Related consumer finding (same session, separate fix, tracked here for the theming-parity link):
 Hecate themes the interactive `FChart` with `--sl-*` CSS vars (`render.ts` `.fchart{…}`), but fcharts
-reads `--fc-*` (the sightline → fcharts rename). None of Hecate's `--sl-readout-bg` / `--sl-tick-color`
+reads `--fc-*` (renamed from the old `--sl-*` prefix). None of Hecate's `--sl-readout-bg` / `--sl-tick-color`
 / `--sl-grid` etc. are read, so the NAV chart silently runs on fcharts' defaults. Lesson for fcharts: a
 token rename with no migration shim or dev-time warning silently downgrades every consumer's theme.
 Worth a one-release dual-prefix read, or a `console.warn` when a legacy `--sl-*` var is detected on a

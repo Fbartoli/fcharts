@@ -10,12 +10,12 @@ const coreEntry = resolve(here, 'src/fchart.ts');
 
 // `vite` (serve)                       → serves the benchmark page (bench/ is the only HTML root).
 // `vite build`                         → core library: dist/fcharts.js (ESM) + .umd.cjs.
-// `SIGHTLINE_ENTRY=react vite build`   → the React adapter: dist/react.js (ESM; react + core external).
-// `SIGHTLINE_ENTRY=compliance vite build` → the Compliance Pack: dist/compliance/{index,cli}.js (Node ESM).
+// `FCHARTS_ENTRY=react vite build`   → the React adapter: dist/react.js (ESM; react + core external).
+// `FCHARTS_ENTRY=compliance vite build` → the Compliance Pack: dist/compliance/{index,cli}.js (Node ESM).
 export default defineConfig(({ command }) => {
   if (command === 'serve') {
-    // Default dev root is the benchmark; `SIGHTLINE_ROOT=landing vite` serves the site.
-    const sub = process.env.SIGHTLINE_ROOT ?? 'bench';
+    // Default dev root is the benchmark; `FCHARTS_ROOT=landing vite` serves the site.
+    const sub = process.env.FCHARTS_ROOT ?? 'bench';
     return {
       root: resolve(here, sub),
       // Per-root dep cache so the bench and landing dev servers can run at once without
@@ -27,7 +27,7 @@ export default defineConfig(({ command }) => {
       server: { port: 5180 },
     };
   }
-  if (process.env.SIGHTLINE_ENTRY === 'site') {
+  if (process.env.FCHARTS_ENTRY === 'site') {
     // Static marketing site build (landing + playground + the sample ACR), deployed to Cloudflare
     // Pages alongside functions/. Not a lib build — this is a real multi-page app build.
     return {
@@ -45,9 +45,9 @@ export default defineConfig(({ command }) => {
       },
     };
   }
-  if (process.env.SIGHTLINE_ENTRY === 'react') {
+  if (process.env.FCHARTS_ENTRY === 'react') {
     // Second build pass (after the core): keep React AND the core out of the bundle so a consumer
-    // who imports both `sightline` and `fcharts-js/react` ships one copy of the engine, not two.
+    // who imports both `fcharts-js` and `fcharts-js/react` ships one copy of the engine, not two.
     // emptyOutDir:false so we don't wipe the core build that ran first.
     return {
       build: {
@@ -68,7 +68,7 @@ export default defineConfig(({ command }) => {
       },
     };
   }
-  if (process.env.SIGHTLINE_ENTRY === 'compliance') {
+  if (process.env.FCHARTS_ENTRY === 'compliance') {
     // Third build pass: the Compliance Pack as Node ESM. Node refuses to strip types under
     // node_modules, so the bin + the `fcharts-js/compliance` subpath must ship compiled JS, not the
     // raw .ts source. Playwright/Vite/Node builtins stay external (optional peers at the consumer).

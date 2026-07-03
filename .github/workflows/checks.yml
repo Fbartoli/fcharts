@@ -22,3 +22,5 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Typecheck, lint, unit + browser tests
         run: npx pnpm@11.4.0 run check
+      - name: Build + bundle-size budget
+        run: npx pnpm@11.4.0 run build && npx pnpm@11.4.0 run size

@@ -1,5 +1,5 @@
-# Sightline's own accessibility gate — proves the chart layer stays WCAG 2.2 AA conformant on
-# every change. Runs the sightline-audit CLI against the demo fixture; the job fails (exit 1) on
+# fcharts' own accessibility gate — proves the chart layer stays WCAG 2.2 AA conformant on
+# every change. Runs the fcharts-audit CLI against the demo fixture; the job fails (exit 1) on
 # any regression below the committed baseline, and always uploads the regenerated ACR.
 #
 # Integrators run the equivalent against their own fixture — see compliance/ci-gate.md and the
@@ -12,7 +12,7 @@ on:
     branches: [main]
 
 jobs:
-  sightline-audit:
+  fcharts-audit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
