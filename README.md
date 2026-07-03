@@ -35,7 +35,7 @@ npm install fcharts-js       # ESM, for bundlers (Vite, webpack, esbuild…)
 ```
 
 Evaluating without publishing? Build a local, installable tarball: `pnpm pack:sdk` →
-`fcharts-js-0.2.0.tgz`, then `npm install ./fcharts-js-0.2.0.tgz`. Or open
+`fcharts-js-0.3.0.tgz`, then `npm install ./fcharts-js-0.3.0.tgz`. Or open
 [`examples/quickstart.html`](./examples/quickstart.html) directly (no server, no build).
 
 ## Quickstart
@@ -299,13 +299,13 @@ a few lines, no fcharts adoption required:
 
 ```yaml
 # Audit any chart on a live page (report-only; Highcharts, ECharts, bare canvas, …)
-- uses: Fbartoli/fcharts@v0.2.0
+- uses: Fbartoli/fcharts@v0.3.0
   with:
     target: https://preview.example.com/dashboard
     selector: '#price-chart'
 
 # Or gate an fcharts chart against its committed baseline (fails the build on regression)
-- uses: Fbartoli/fcharts@v0.2.0
+- uses: Fbartoli/fcharts@v0.3.0
   with:
     fixture: ./a11y/fixture.ts
     editions: en301549 wcag
