@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Audit any chart's accessibility in one command — fcharts guides</title>
+  <meta name="description" content="Point a functional accessibility audit at any chart on any page — keyboard navigation, live regions, text alternatives, contrast, target size. The checks an axe scan can't run, in one npx command." />
+  <link rel="canonical" href="https://fcharts.pages.dev/guides/audit-any-chart.html" />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://fcharts.pages.dev/guides/audit-any-chart.html" />
+  <meta property="og:title" content="Audit any chart's accessibility in one command" />
+  <meta property="og:description" content="Functional chart accessibility checks — keyboard, live region, text alternative, contrast — against any URL. No integration required." />
+  <meta property="og:image" content="https://fcharts.pages.dev/social-preview.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "Audit any chart's accessibility in one command",
+    "url": "https://fcharts.pages.dev/guides/audit-any-chart.html",
+    "description": "Run functional accessibility checks — keyboard navigation, live regions, text alternatives, computed contrast, target size — against any chart on any page with one npx command.",
+    "author": { "@type": "Person", "name": "Florent Bartoli" }
+  }
+  </script>
+  <style>
+    :root{--bg:#06080c;--panel:#0c1016;--ink:#e8eef4;--muted:#8794a3;--faint:#5a6675;
+      --line:rgba(255,255,255,.08);--accent:#6ee7a8;--danger:#f87171}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);line-height:1.65;
+      font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+    nav{border-bottom:1px solid var(--line);padding:14px 0}
+    .wrap{max-width:760px;margin:0 auto;padding:0 24px}
+    nav .wrap{display:flex;gap:18px;align-items:baseline}
+    .logo{font-weight:800;font-size:17px;color:var(--ink);text-decoration:none}
+    .logo b{color:var(--accent)}
+    nav a{color:var(--muted);font-size:13.5px;text-decoration:none}
+    nav a:hover{color:var(--ink)}
+    main{padding:40px 0 24px}
+    h1{font-size:clamp(26px,4.5vw,36px);line-height:1.15;letter-spacing:-.02em;margin:0 0 6px}
+    .sub{color:var(--muted);margin:0 0 28px;font-size:16.5px}
+    h2{font-size:21px;margin:36px 0 10px;letter-spacing:-.01em}
+    p{margin:12px 0;color:#cdd6e0}
+    a{color:var(--accent)}
+    code{font-family:ui-monospace,Menlo,monospace;font-size:.9em;background:#10151d;
+      padding:.12em .35em;border-radius:4px}
+    pre{background:#05070a;border:1px solid var(--line);border-radius:10px;padding:14px 16px;
+      overflow-x:auto;font-size:13px;line-height:1.55}
+    pre code{background:none;padding:0}
+    pre .x{color:var(--danger)}
+    ul{padding-left:22px;color:#cdd6e0}
+    li{margin:7px 0}
+    .callout{border:1px solid rgba(110,231,168,.35);background:rgba(110,231,168,.07);
+      border-radius:10px;padding:14px 18px;margin:22px 0}
+    .cta{border-top:1px solid var(--line);margin-top:44px;padding:28px 0 40px;color:var(--muted);
+      font-size:14.5px}
+  </style>
+</head>
+<body>
+  <nav><div class="wrap">
+    <a class="logo" href="/">f<b>charts</b></a>
+    <a href="/guides/accessible-canvas-charts.html">Accessible canvas charts</a>
+    <a href="/guides/wcag-chart-requirements.html">WCAG requirements for charts</a>
+  </div></nav>
+  <main class="wrap">
+    <h1>Audit any chart's accessibility in one command</h1>
+    <p class="sub">Functional checks — keyboard, live region, text alternative, contrast —
+      against any chart on any page. No integration, no signup.</p>
+
+    <pre><code>npx -p fcharts-js -p playwright fcharts-audit \
+  --target https://your.app/dashboard --selector '#chart'</code></pre>
+    <p>That loads the page in headless Chromium, scopes to the element you pointed at, and runs
+      the functional check battery a markup scanner can't: it presses the keys, reads the
+      accessibility tree, measures the rendered pixels. Report-only — it never gates or blocks
+      anything on a page you don't own — and it works on charts from any library: Chart.js,
+      ECharts, uPlot, Highcharts, a hand-rolled canvas.</p>
+
+    <h2>What it actually checks</h2>
+    <ul>
+      <li><strong>Keyboard:</strong> is there a focusable chart surface at all? Do arrow keys
+        move a data cursor? Is there keyboard zoom? Does Escape dismiss? Can focus leave (no
+        trap)?</li>
+      <li><strong>Screen-reader wiring:</strong> a polite live region that actually changes on
+        navigation; name/role/description on the surface; canvas hidden from the tree so it
+        doesn't read as a mystery object.</li>
+      <li><strong>Text alternative:</strong> a real data table with scoped headers — and tick
+        labels that exist as findable text, not pixels.</li>
+      <li><strong>Rendered-pixel facts:</strong> computed contrast for text and marks on the
+        actual background, target sizes, fluid sizing and legend reflow, reduced-motion /
+        forced-colors / focus-visible handling.</li>
+      <li><strong>Plus a scoped axe-core pass</strong> — necessary, never sufficient (see below).</li>
+    </ul>
+
+    <h2>What a real run looks like</h2>
+    <p>Here's the (lightly trimmed) output of a run against the public demo of a widely used
+      dashboard product's time-series panel — a fast, canvas-based chart, exactly the kind
+      teams ship every day:</p>
+    <pre><code>checks: 5 pass · 17 fail · 13 n/a → report written to ./audit-out
+
+<span class="x">✗ 17 functional check(s) failed on this target:</span>
+   ✗ keyboard-announce: no [role="application"] surface to receive keyboard focus
+   ✗ live-region-present: no aria-live=polite aria-atomic region
+   ✗ text-alternative: no data table with caption + scoped headers
+   ✗ canvas-hidden: canvas missing aria-hidden=true
+   ✗ keyboard-zoom · escape-dismiss · no-keyboard-trap · focus-visible · …
+
+axe-core: 0 serious/critical violations</code></pre>
+    <p>Read that last line again. <strong>Zero axe violations — and seventeen functional
+      failures.</strong> The scanner gave this chart a clean bill of health because a canvas
+      has almost no markup to scan. This is the single most important thing to understand
+      about chart accessibility: scanner-clean and screen-reader-usable are different claims,
+      and only one of them is the one your users (and auditors) care about.</p>
+
+    <h2>From diagnostic to CI gate</h2>
+    <p>Target mode is a diagnostic. For charts you own, the same engine runs as a regression
+      gate: <code>--fixture</code> mode mounts your configured chart, re-proves every
+      automatable claim against a committed per-criterion baseline, regenerates the
+      <a href="/guides/wcag-chart-requirements.html">VPAT/ACR</a> (EN 301 549, WCAG, and
+      Section 508 editions), and fails the build if any criterion regresses. There's a
+      <a href="https://github.com/marketplace/actions/fcharts-accessibility-audit">GitHub
+      Action</a> that wraps both modes, and <code>fcharts-audit --compare old.json new.json</code>
+      diffs two reports so a reviewer sees exactly what changed in conformance between
+      versions.</p>
+
+    <div class="callout">
+      <strong>Try it on your own dashboard first.</strong> It takes about a minute, and the
+      failing-check list is the concrete work list your team would otherwise pay an audit to
+      produce. If the list is long and the chart is canvas-based, that's not your fault — it's
+      the default state of every fast charting library. The fix pattern is in
+      <a href="/guides/accessible-canvas-charts.html">how to make canvas charts accessible</a>.
+    </div>
+  </main>
+  <footer class="cta"><div class="wrap">
+    Related: <a href="/guides/accessible-canvas-charts.html">the real-DOM overlay pattern</a>
+    · <a href="/guides/wcag-chart-requirements.html">WCAG criteria for charts</a>
+    · <a href="/">fcharts — the library where all of this is the default</a>
+  </div></footer>
+</body>
+</html>

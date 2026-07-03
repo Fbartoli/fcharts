@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>How to make canvas charts accessible (WCAG) — fcharts guides</title>
+  <meta name="description" content="Canvas charts are invisible to screen readers. The real-DOM overlay pattern fixes that without giving up 60fps: keyboard data cursor, live region, real-text ticks, hidden data table." />
+  <link rel="canonical" href="https://fcharts.pages.dev/guides/accessible-canvas-charts.html" />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://fcharts.pages.dev/guides/accessible-canvas-charts.html" />
+  <meta property="og:title" content="How to make canvas charts accessible (WCAG)" />
+  <meta property="og:description" content="The real-DOM overlay pattern: per-point screen-reader access on a canvas chart, without giving up 60fps." />
+  <meta property="og:image" content="https://fcharts.pages.dev/social-preview.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "How to make canvas charts accessible (WCAG)",
+    "url": "https://fcharts.pages.dev/guides/accessible-canvas-charts.html",
+    "description": "The real-DOM overlay pattern for canvas charts: keyboard data cursor, live region announcements, real-text axis ticks, and a hidden data table — per-point screen-reader access at 60fps.",
+    "author": { "@type": "Person", "name": "Florent Bartoli" }
+  }
+  </script>
+  <style>
+    :root{--bg:#06080c;--panel:#0c1016;--ink:#e8eef4;--muted:#8794a3;--faint:#5a6675;
+      --line:rgba(255,255,255,.08);--accent:#6ee7a8}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);line-height:1.65;
+      font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+    nav{border-bottom:1px solid var(--line);padding:14px 0}
+    .wrap{max-width:760px;margin:0 auto;padding:0 24px}
+    nav .wrap{display:flex;gap:18px;align-items:baseline}
+    .logo{font-weight:800;font-size:17px;color:var(--ink);text-decoration:none}
+    .logo b{color:var(--accent)}
+    nav a{color:var(--muted);font-size:13.5px;text-decoration:none}
+    nav a:hover{color:var(--ink)}
+    main{padding:40px 0 24px}
+    h1{font-size:clamp(26px,4.5vw,36px);line-height:1.15;letter-spacing:-.02em;margin:0 0 6px}
+    .sub{color:var(--muted);margin:0 0 28px;font-size:16.5px}
+    h2{font-size:21px;margin:36px 0 10px;letter-spacing:-.01em}
+    p{margin:12px 0;color:#cdd6e0}
+    a{color:var(--accent)}
+    code{font-family:ui-monospace,Menlo,monospace;font-size:.9em;background:#10151d;
+      padding:.12em .35em;border-radius:4px}
+    pre{background:#05070a;border:1px solid var(--line);border-radius:10px;padding:14px 16px;
+      overflow-x:auto;font-size:13px;line-height:1.55}
+    pre code{background:none;padding:0}
+    ul{padding-left:22px;color:#cdd6e0}
+    li{margin:7px 0}
+    .callout{border:1px solid rgba(110,231,168,.35);background:rgba(110,231,168,.07);
+      border-radius:10px;padding:14px 18px;margin:22px 0}
+    .cta{border-top:1px solid var(--line);margin-top:44px;padding:28px 0 40px;color:var(--muted);
+      font-size:14.5px}
+  </style>
+</head>
+<body>
+  <nav><div class="wrap">
+    <a class="logo" href="/">f<b>charts</b></a>
+    <a href="/guides/wcag-chart-requirements.html">WCAG requirements for charts</a>
+    <a href="/guides/audit-any-chart.html">Audit any chart</a>
+  </div></nav>
+  <main class="wrap">
+    <h1>How to make canvas charts accessible</h1>
+    <p class="sub">The real-DOM overlay pattern: per-point screen-reader access on a
+      <code>&lt;canvas&gt;</code> chart, without giving up 60fps.</p>
+
+    <p>To a screen reader, a canvas chart is a single opaque rectangle. No values, no keyboard
+      path, nothing find-in-page can reach. The usual advice — "add an <code>aria-label</code>" —
+      turns a thousand data points into one sentence, which fails the moment a user asks the
+      obvious question: <em>what was the value on Tuesday?</em></p>
+    <p>The common conclusion is that you must switch to SVG and render a DOM node per point.
+      That works until it doesn't: at tens of thousands of points, per-point DOM is why
+      accessible charts have a reputation for being slow. But the trade-off isn't fundamental.
+      The fix is to keep canvas for <em>pixels</em> and build a small, real DOM for
+      <em>meaning</em>.</p>
+
+    <h2>What assistive technology actually needs</h2>
+    <ul>
+      <li><strong>A name and a summary.</strong> On focus, the chart should identify itself and
+        give the shape of the data (range, current value, trend) — not just "chart".</li>
+      <li><strong>Per-point access.</strong> A keyboard cursor: arrow keys move between samples,
+        each move is announced with its x and y values.</li>
+      <li><strong>Announcements that reach the reader.</strong> Value changes go through a
+        polite <code>aria-live</code> region, debounced so holding a key doesn't flood it.</li>
+      <li><strong>A text alternative with structure.</strong> A (visually hidden) data
+        <code>&lt;table&gt;</code> with real headers, so users can leave interaction mode and
+        read rows.</li>
+      <li><strong>Real text where there is text.</strong> Axis ticks drawn as DOM text are
+        readable, translatable, and Ctrl+F-findable; ticks painted into the canvas are pixels.</li>
+    </ul>
+
+    <h2>The overlay pattern, piece by piece</h2>
+    <p>Everything sits inside the chart container, positioned over the canvas:</p>
+    <pre><code>&lt;div class="chart-root"&gt;
+  &lt;canvas aria-hidden="true"&gt;&lt;/canvas&gt;      &lt;!-- pixels only --&gt;
+  &lt;div role="application" tabindex="0"        &lt;!-- the keyboard surface --&gt;
+       aria-label="Revenue over time. Arrow keys move between samples…"
+       aria-describedby="summary" aria-details="data-table"&gt;&lt;/div&gt;
+  &lt;div class="ticks"&gt;…real text nodes…&lt;/div&gt;
+  &lt;div aria-live="polite" aria-atomic="true" class="visually-hidden"&gt;&lt;/div&gt;
+  &lt;p id="summary" class="visually-hidden"&gt;Revenue ranges 180–290, now 287, up 12%.&lt;/p&gt;
+  &lt;table id="data-table" class="visually-hidden"&gt;…downsampled rows…&lt;/table&gt;
+&lt;/div&gt;</code></pre>
+    <ul>
+      <li><code>role="application"</code> on the focus surface tells screen readers to pass
+        arrow keys through to your handler instead of consuming them for virtual-cursor
+        navigation. Name the keys in the accessible name — users can't discover an interaction
+        model that is never announced.</li>
+      <li>The keyboard handler moves a data cursor and writes one sentence into the live region
+        per settled position. Debounce (~100&nbsp;ms): key-repeat should announce the landing
+        point, not every step.</li>
+      <li>The table doesn't need every point. Downsample to a bounded number of rows over the
+        visible range — structure matters more than completeness.</li>
+      <li>Cost discipline: the DOM layer updates on <em>interaction</em>, never per frame. The
+        render loop stays canvas-only, which is why this pattern doesn't move the frame
+        budget.</li>
+    </ul>
+
+    <div class="callout">
+      <strong>The trap to avoid:</strong> a bare, completely inaccessible canvas scores
+      <strong>zero axe-core violations</strong>. Automated scanners can't see inside a canvas,
+      so they can't see the problem — an axe-clean chart page proves nothing about the chart.
+      Verification has to be functional: does keyboard navigation work, does the live region
+      announce, does the table exist? See
+      <a href="/guides/audit-any-chart.html">auditing any chart in one command</a>.
+    </div>
+
+    <h2>Details that separate "has ARIA" from "works in a screen reader"</h2>
+    <ul>
+      <li><strong>Test with a real reader, continuously.</strong> ARIA attributes are claims;
+        the spoken output is the truth. fcharts runs NVDA in CI on every push and asserts on
+        the actual phrases — attribute-level tests missed things the reader caught.</li>
+      <li><strong>Respect user preferences in the canvas too:</strong>
+        <code>prefers-reduced-motion</code> (stop auto-scroll/animation),
+        <code>forced-colors</code> (remap canvas colors for Windows High Contrast),
+        visible <code>:focus-visible</code> ring around the surface.</li>
+      <li><strong>Non-text contrast (WCAG 1.4.11)</strong> applies to the marks themselves —
+        series lines and UI affordances need ≥3:1 against the background.</li>
+      <li><strong>Keyboard parity for pointer gestures:</strong> wheel-zoom needs
+        <code>+</code>/<code>-</code>; drag-pan needs an alternative (WCAG 2.5.7).</li>
+    </ul>
+
+    <h2>Steal the implementation</h2>
+    <p>All of the above ships by default in <a href="https://github.com/Fbartoli/fcharts">fcharts</a>
+      (MIT, zero dependencies, ~21&nbsp;KB gzip): the overlay layer is a dozen small files under
+      <code>src/a11y/</code>, renderer-agnostic, and liftable into other canvas charts. The
+      <a href="/">live demo</a> runs 100k points at 60fps with everything described here turned on.</p>
+  </main>
+  <footer class="cta"><div class="wrap">
+    Next: <a href="/guides/wcag-chart-requirements.html">which WCAG criteria actually apply to
+    charts</a> · <a href="/guides/audit-any-chart.html">audit any chart in one command</a>
+  </div></footer>
+</body>
+</html>
