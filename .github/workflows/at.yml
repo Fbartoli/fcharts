@@ -47,6 +47,11 @@ jobs:
   voiceover:
     runs-on: macos-14
     timeout-minutes: 20
+    # Monitoring-only: VoiceOver on GitHub's macOS images has never produced usable speech
+    # capture (2026-07: `voiceOver.start()` now succeeds on macos-14 but the phrase log stays
+    # empty — see todos/next.md). NVDA above is the hard real-AT signal; this job must not
+    # redden the workflow while Apple's runner support evolves.
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
