@@ -16,9 +16,10 @@
 # Everything installs into an isolated prefix under $RUNNER_TEMP — the consumer's package.json
 # and node_modules are never touched.
 name: 'fcharts accessibility audit'
+# Marketplace requires < 125 characters here.
 description: >-
-  Functional accessibility audit for charts — keyboard navigation, screen-reader wiring, computed
-  contrast, target size. Finds the gap axe-core can't see, on charts from any library.
+  Functional accessibility audit for charts — keyboard, screen reader, contrast. Finds the gap
+  axe can't see, on any library.
 author: 'Florent Bartoli'
 branding:
   icon: 'bar-chart-2'
