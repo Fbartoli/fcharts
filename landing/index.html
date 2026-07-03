@@ -300,7 +300,9 @@
       <div class="report-proof">
         <p>Every chart ships with its conformance evidence — a per-criterion
           <b>VPAT/ACR</b> for the chart layer, <b>generated</b> from the committed audit on every
-          build, not hand-written. The same report your procurement team asks for.</p>
+          build, not hand-written. Machine-readable JSON included, and
+          <span class="mono" style="color:var(--ink)">fcharts-audit --compare</span> diffs two
+          reports so procurement sees exactly what changed between versions.</p>
         <a class="btn btn-ghost" href="/acr-en301549.html" target="_blank" rel="noopener">View a sample report →</a>
       </div>
       <div class="report-proof">
@@ -385,7 +387,7 @@
         <div class="fcard"><div class="ic">🌐</div><h3>Works today</h3><p>Stock Chrome, Firefox and Safari — no experimental flags, verified in all three.</p></div>
         <div class="fcard"><div class="ic">🧩</div><h3>Any stack</h3><p>React, Vue and Svelte adapters, a <span class="mono">&lt;f-chart&gt;</span> web component, and a CLI that renders SVG from JSON — one engine underneath.</p></div>
         <div class="fcard"><div class="ic">🖥️</div><h3>SSR → interactive</h3><p>Render an accessible SVG on the server, then <span class="mono">hydrate()</span> upgrades it in place — no layout shift, content before JavaScript.</p></div>
-        <div class="fcard"><div class="ic">🗣️</div><h3>Tested on a real screen reader</h3><p>CI drives actual VoiceOver over a live chart and asserts on the spoken phrases — not just ARIA attributes.</p></div>
+        <div class="fcard"><div class="ic">🗣️</div><h3>Tested on a real screen reader</h3><p>CI drives an actual NVDA over a live chart and asserts on the phrases it speaks — name, values, legend state — green on every push, not just ARIA attributes.</p></div>
       </div>
     </div>
   </section>

@@ -17,17 +17,19 @@ constraint is still demand validation — resist building tier C without a desig
 | **Marketplace listing** (human) | Next release: tick "Publish this Action to the Marketplace" (`action.yml` is in every ref after 0.2.0). |
 | **VoiceOver on the macOS runner** | Monitoring-only (`continue-on-error` in `at.yml`). New observation (2026-07-03): `voiceOver.start()` now **succeeds** on macos-14 but the spoken-phrase log stays empty — same class of issue NVDA had with focus events. First thing to try when picked up: assert via a VO describe/report command (the fix that made NVDA green) instead of event announcements. Not worth CI round-trips while NVDA carries the claim. |
 
-## Launch — demand-validation assets (next increment)
+## Launch — demand-validation assets
 
-The GTM motion (months 1–3: OSS adoption at self-identified-gap targets) has no backlog items
-behind it. Agent-buildable, human-launched:
+The agent-buildable assets shipped 2026-07-03: README **keyboard-nav demo GIF**
+(`media/keyboard-nav.gif`, re-recordable via `scripts/record-demo.ts`) + quickstart→audit
+path; **StackBlitz starters** for all four integrations (`examples/README.md`, each verified
+to install+build against the npm package); landing **ACR lead-magnet block** upgraded
+(`--compare`, machine-readable JSON) and the AT card upgraded to the NVDA-green claim; **HN
+post draft** at `todos/launch/hn-post.md`. What remains is human-gated:
 
-| Item | Sketch |
+| Item | Who / what |
 |---|---|
-| **Sample-ACR lead magnet** | `compliance/samples/` already ships on the landing origin (`/acr-en301549.html`); link it prominently from the landing page as "see a real chart-layer ACR" + a one-line "generate yours" CTA. |
-| **README quickstart + demo GIF** | 60-second install→chart→audit path at the top of the README; a short GIF of keyboard/SR navigation (the unmatched demo, in motion). |
-| **HN launch post draft** | Around the side-by-side demo + the honest FINDINGS story; owner edits and picks the moment. |
-| **StackBlitz per-adapter examples** | `examples/` with React/Vue/Svelte/web-component minimal projects + "Open in StackBlitz" links — cuts design-partner onboarding to one click. |
+| **Redeploy the landing** (human-ish) | `pnpm build:site` + Cloudflare Pages per `landing/DEPLOY.md` — the NVDA/`--compare` copy isn't live until then. |
+| **Post the HN launch** (human) | Edit `todos/launch/hn-post.md`, pick the moment, stay for the comments. |
 
 ## B — compliance-wedge products (differentiators, mostly small)
 

@@ -8,6 +8,8 @@ over at scale. fcharts is a validation MVP built to prove you can have both: a
 **min/max downsample renderer** on `<canvas>` (frame cost ≈ O(viewport width),
 independent of point count) plus a **real-DOM accessibility layer** overlaid on top.
 
+![A 100,000-point fcharts chart driven entirely by keyboard: the focus ring, the data cursor stepping through samples with its value readout, keyboard zoom, and — mirrored below the plot — the live-region announcement a screen reader speaks for every move.](./media/keyboard-nav.gif)
+
 - **Zero runtime dependencies.** ~21 KB min+gzip for the canvas core (tree-shaken);
   ~39 KB with every SVG primitive, locale pack, and integration helper included.
 - **Fast.** A precomputed min/max pyramid keeps per-frame cost flat from 10k to 250k+ points.
@@ -59,6 +61,13 @@ const pressure = Float64Array.from(x, (i) => 40 + Math.sin(i * 9e-4) * 26);
 const temperature = Float64Array.from(x, (i) => 5 + Math.sin(i * 2.1e-3) * 18);
 const vibration = Float64Array.from(x, (i) => -32 + Math.sin(i * 4e-3) * 22);
 chart.setData({ x, y: [pressure, temperature, vibration] });
+```
+
+Then prove it's accessible — point the auditor at the page you just built (it runs the
+functional checks an axe scan skips: keyboard, live region, contrast, target size):
+
+```sh
+npx -p fcharts-js -p playwright fcharts-audit --target http://localhost:5173 --selector '#chart'
 ```
 
 ### Sizing
@@ -224,6 +233,8 @@ Everything below is a thin layer over the same imperative class — one engine, 
   (`<div use:fchart={{ series, data }} />`). Same contract everywhere: identity-changed props
   forward via `update()`, a change to a construction-fixed option remounts cleanly. React/Vue
   are optional peer deps on separate entries — the core never pulls a framework in.
+  One-click starters for all four integrations: [`examples/`](./examples/README.md)
+  (each opens directly in StackBlitz).
 - **Web component** — `defineFChart()` registers `<f-chart>` (light DOM, so the a11y layer
   stays in the page's accessibility tree); configure via the element's `config` property.
 - **SSR + hydration** — render on the server with `renderSVG(config, data, { width, height })`
