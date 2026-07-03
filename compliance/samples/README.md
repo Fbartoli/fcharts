@@ -1,7 +1,7 @@
 # Sample Accessibility Conformance Report (ACR)
 
-These files are an **auto-generated chart-layer ACR** for Sightline, produced by the
-`sightline-audit` CI gate from a real passing run against [`a11y/fixture.ts`](../../a11y/fixture.ts):
+These files are an **auto-generated chart-layer ACR** for fcharts, produced by the
+`fcharts-audit` CI gate from a real passing run against [`a11y/fixture.ts`](../../a11y/fixture.ts):
 
 | File | What |
 |---|---|

@@ -22,7 +22,7 @@ Effort: S (mostly process/decisions) — **not codeable by an agent.**
 
 The *paid layer* is consumable from the built package.
 
-- [x] Multi-entry build (`vite build && SIGHTLINE_ENTRY=react vite build && SIGHTLINE_ENTRY=compliance
+- [x] Multi-entry build (`vite build && FCHARTS_ENTRY=react vite build && FCHARTS_ENTRY=compliance
       vite build && tsc -p tsconfig.build.json`) emits `dist/compliance/index.js` + `dist/compliance/cli.js`
       (with shebang).
 - [x] `package.json`: `exports["./compliance"]`, `bin: { "fcharts-audit": "./dist/compliance/cli.js" }`,

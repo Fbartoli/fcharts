@@ -1,36 +1,39 @@
-# Sightline
+# fcharts
 
 > A dependency-free TypeScript charting library that renders 100k+ data points at 60fps on a
 > `<canvas>` while staying fully accessible — keyboard-navigable, screen-reader-announced,
 > find-in-page-able — through a real-DOM overlay. Because the data lives in the DOM (not just
 > canvas pixels), the same layer makes charts **machine-readable to AI agents**. Web platform
-> only (browsers); ~12KB gzip ESM, zero runtime dependencies.
+> only (browsers); ~19 KB gzip for the tree-shaken canvas core (~33 KB with every SVG
+> primitive), zero runtime dependencies. npm package: `fcharts-js`.
 
-This file is everything an agent needs to build on Sightline. Source of truth: the public
-API below. Chart family today: time-series **line + area**, multiple series.
+This file is everything an agent needs to build on fcharts. Source of truth: the public
+API below. Chart family today: time-series **line + area + candle** (multiple series, live
+streaming) on canvas, plus server-safe **SVG primitives** (donut, scatter, sparkline, bars,
+progress) and a **React adapter**.
 
 ## Install
 
 ```sh
-npm install sightline
+npm install fcharts-js
 ```
 ```html
-<script src="https://unpkg.com/sightline/dist/sightline.umd.cjs"></script>
-<script>const { Sightline } = window.Sightline;</script>
+<script src="https://unpkg.com/fcharts-js/dist/fcharts.umd.cjs"></script>
+<script>const { FChart } = window.fcharts;</script>
 ```
 
 ## Minimal usage
 
 ```ts
-import { Sightline } from 'sightline';
+import { FChart } from 'fcharts-js';
 
 // The container must have a non-zero size (e.g. width:100%; height:420px). Styles auto-inject.
-const chart = new Sightline(document.getElementById('chart'), {
+const chart = new FChart(document.getElementById('chart'), {
   series: [
     { name: 'Price', color: '#16a34a', type: 'area' },
     { name: 'VWAP', color: '#d97706' },
   ],
-  options: { ariaLabel: 'Sensor telemetry', xLabel: 'time', yLabel: 'value' },
+  options: { ariaLabel: 'Price vs VWAP', xLabel: 'time', yLabel: 'value' },
 });
 
 // x is shared and non-decreasing; one y per series, each the same length as x.
@@ -42,29 +45,34 @@ chart.setData({ x, y: [seriesA, seriesB] }); // seriesA/B: Float64Array | number
 ## Public API
 
 ```ts
-new Sightline(el: HTMLElement, config: SightlineConfig)
+new FChart(el: HTMLElement, config: FChartConfig)
 
-interface SightlineConfig {
+interface FChartConfig {
   series: SeriesConfig[];
-  data?: SightlineData;          // optional; or call setData later
-  options?: SightlineOptions;
+  data?: FChartData;             // optional; or call setData later
+  options?: FChartOptions;
+  annotations?: AnnotationSpec[]; // event/point markers, announced + agent-readable
 }
 
 interface SeriesConfig {
   name: string;                  // announced to SR, shown in legend/tooltip
   color: string;                 // CSS color
-  type?: 'line' | 'area';        // default 'line'
+  type?: 'line' | 'area' | 'candle';  // default 'line'
   visible?: boolean;             // default true
   width?: number;                // stroke px, default 1.25
   fillAlpha?: number;            // area fill 0..1, default 0.15
+  upColor?: string;              // candle body, close >= open (default palette green)
+  downColor?: string;            // candle body, close < open (default palette red)
 }
 
-interface SightlineData {
+interface FChartData {
   x: Float64Array | readonly number[];        // shared, NON-DECREASING, finite
-  y: (Float64Array | readonly number[])[];    // one per series, each length === x.length, finite
+  y: (Float64Array | readonly number[])[];    // one per series slot (candle series take FOUR
+                                              // arrays — open, high, low, close), each length
+                                              // === x.length, finite
 }
 
-interface SightlineOptions {
+interface FChartOptions {
   ariaLabel?: string;            // accessible chart name (also the summary label)
   xLabel?: string; yLabel?: string;
   legend?: boolean;              // default true
@@ -77,14 +85,16 @@ interface SightlineOptions {
   formatY?: (v: number) => string;  // tick + readout y formatter
   reducedMotion?: boolean;       // else auto from prefers-reduced-motion
   highContrast?: boolean;        // else auto from prefers-contrast
-  strings?: Partial<SightlineStrings>;  // localize fixed UI text (legend, keyboard help,
-                                        // data summary, table caption) for non-English pages
+  strings?: Partial<FChartStrings>;  // localize fixed UI text (legend, keyboard help,
+                                     // data summary, table caption) for non-English pages
 }
 
 // Methods (setData/update/renderSync return `this` for chaining)
-chart.setData(data: SightlineData): Sightline      // replace data, reset view to full x-domain
-chart.update(patch: Partial<SightlineConfig>): Sightline  // patch series/options/data in place
-chart.renderSync(domain?: readonly [number, number]): Sightline  // synchronous render / programmatic zoom
+chart.setData(data: FChartData): FChart            // replace data, reset view to full x-domain
+chart.append(x: number, ys: number[]): FChart      // append one sample, amortized O(1) — streaming
+chart.amendLast(ys: number[]): FChart              // rewrite the last sample in place — forming candles
+chart.update(patch: Partial<FChartConfig>): FChart // patch series/options/data in place
+chart.renderSync(domain?: readonly [number, number]): FChart  // synchronous render / programmatic zoom
 chart.summary(): ChartSummary                      // structured machine-readable summary (see below)
 chart.destroy(): void                              // remove DOM, listeners, observers, timers
 chart.renderPath: 'dom-overlay' | 'html-in-canvas' // getter; DOM-overlay is the default, no-flags path
@@ -93,6 +103,7 @@ chart.htmlInCanvas: { supported: boolean; via: string | null } // getter
 interface ChartSummary {
   label: string; points: number; xStart: number; xEnd: number;
   series: SeriesSummary[];
+  annotations?: AnnotationSummary[];   // present when the chart has annotations
 }
 interface SeriesSummary {
   name: string; visible: boolean;
@@ -103,20 +114,32 @@ interface SeriesSummary {
 }
 ```
 
+## Real-time / streaming
+
+`append(x, ys)` adds one sample without rebuilding anything (only the pyramid tail updates), so
+cost stays flat as the series grows. `x` must be >= the current last x; pass one y per series
+slot. `amendLast(ys)` rewrites the last sample in place (forming candle bucket). The view follows
+the live tail when already showing it; a user panned back into history stays put. The library
+never auto-updates on its own — if you drive `append` on a timer, provide a Pause/Stop control
+and respect `prefers-reduced-motion` (WCAG 2.2.2).
+
 ## Agent-readable: how an AI agent reads the data
 
-A canvas chart is opaque pixels. Sightline puts the data in the DOM, so an agent can read it
+A canvas chart is opaque pixels. fcharts puts the data in the DOM, so an agent can read it
 three ways (all inside the chart container):
 
 1. **JS, if you hold the instance:** `chart.summary()` → `ChartSummary`.
-2. **Embedded JSON, from the DOM:** `JSON.parse(container.querySelector('script[data-sightline]').textContent)` → the same `ChartSummary`.
+2. **Embedded JSON, from the DOM:** `JSON.parse(container.querySelector('script[data-fcharts]').textContent)` → the same `ChartSummary`.
 3. **Accessibility tree:** the focusable `[role="application"]` surface has `aria-describedby`
    pointing to a one-line natural-language summary (values + trend), `aria-details` pointing to
-   a hidden `<table class="sl-table-alt">` of downsampled rows, and an `[aria-live="polite"]`
-   region that announces the focused sample. Axis ticks are real `.sl-tick` text.
+   a hidden `<table class="fc-table-alt">` of downsampled rows, and an `[aria-live="polite"]`
+   region that announces the focused sample. Axis ticks are real text inside `.fc-ticks`.
 
 To navigate values programmatically: focus the surface, dispatch ArrowLeft/Right/Up/Down/Home/End,
 and read the `[aria-live]` element's textContent after each step.
+
+Static SVGs produced by the primitives below embed the same summary as
+`<script type="application/json" data-fcharts="summary">`.
 
 ## Interaction model
 
@@ -124,24 +147,61 @@ and read the `[aria-live]` element's textContent after each step.
 - Focus the `[role="application"]` surface, then: `ArrowLeft`/`ArrowRight` move between samples,
   `ArrowUp`/`ArrowDown` switch series, `Home`/`End` jump to ends, hold `Shift` for fine (1-sample)
   steps, `+`/`-` zoom in/out (keyboard equivalent of the wheel), `Escape` dismisses the cursor
-  (keeping focus). The focused sample is also exposed as a programmatic value via the surface's
-  `aria-describedby` (updated in lockstep), so agents can read the current point without listening
-  to the live region.
+  (keeping focus). The focused sample is also exposed via the surface's `aria-describedby`
+  (updated in lockstep), so agents can read the current point without listening to the live region.
 - Legend buttons (`aria-pressed`) toggle series visibility.
+
+## Server-side SVG (Node-safe, no DOM)
+
+```ts
+import {
+  renderSVG,                       // line/area/candle chart → standalone SVG string
+  buildDonutSVG, buildScatterSVG,  // categorical primitives
+  buildSparklineSVG, buildBarsSVG, buildProgressSVG,
+  buildSVG,                        // low-level scene primitive
+  lightTheme, darkTheme, resolveTheme, STATUS_COLORS,
+} from 'fcharts-js';
+
+const svg = renderSVG(
+  { series: [{ name: 'Price', color: '#16a34a' }], options: { ariaLabel: 'Price' } },
+  { x, y: [price] },
+  { width: 640, height: 320, theme: darkTheme },
+);
+```
+
+Every builder outputs a self-contained accessible SVG (`role="img"`, `<title>`, embedded data
+summary). For interactivity on a static SVG, `attachReadout(container, opts)` (client-side,
+optional) adds the same `.fc-readout` hover tooltip the live `FChart` shows.
+
+## React adapter (`fcharts-js/react`)
+
+```tsx
+import { FChart } from 'fcharts-js/react';
+<FChart series={[{ name: 'Price', color: '#16a34a' }]} data={{ x, y: [price] }}
+        options={{ ariaLabel: 'Price' }} style={{ height: 320 }} />
+```
+
+Thin declarative wrapper over the imperative class: mounts once, applies prop-identity changes
+via `chart.update()`, destroys on unmount. React is an optional peer dependency; the adapter is
+a separate entry so the core never pulls React in. Memoize `data`/`series`/`options` — passing a
+stable `data` reference avoids an unnecessary view reset.
 
 ## Theming
 
 CSS custom properties on the container or `:root` (a few examples; all have sensible defaults):
-`--sl-ink` (DOM text), `--sl-tick-color`, `--sl-grid`, `--sl-axis`, `--sl-cursor`, `--sl-ring`
-(cursor-dot outline), `--sl-focus` (focus ring), `--sl-readout-bg/-ink/-border` (tooltip).
+`--fc-ink` (DOM text), `--fc-tick-color`, `--fc-grid`, `--fc-axis`, `--fc-cursor`,
+`--fc-focus` (focus ring), plus readout (tooltip) colors. SVG primitives take a `theme` object
+(`lightTheme` / `darkTheme` / `resolveTheme(partial)`) instead.
 
 ## Data contract & gotchas
 
-- `x` must be non-decreasing; `x` and every `y` must be the same length; values should be finite
+- `x` must be non-decreasing; every `y` must be the same length as `x`; values should be finite
   (non-finite y is skipped from stats and renders as a gap).
-- One shared `x` across all series (columnar). For irregular/clustered x the renderer still draws
-  a gap-free envelope.
-- The container needs an explicit size. Styles are injected once per document — no CSS import.
+- One shared `x` across all series (columnar). A `candle` series consumes four consecutive
+  arrays in `data.y` (open, high, low, close); `line`/`area` take one each.
+- The container needs an explicit size; `height:100%` needs a definite-height ancestor (the
+  chart warns once in the console when it measures zero height).
+- Styles are injected once per document — no CSS import.
 - HTML-in-Canvas is feature-detected; the DOM-overlay path is the default and works in stock
   Chrome/Firefox/Safari with no flags.
 
@@ -149,39 +209,41 @@ CSS custom properties on the container or `:root` (a few examples; all have sens
 
 - Render cost is O(viewport width), independent of point count: a precomputed min/max pyramid is
   picked per frame so per-frame work tracks pixels, not N. Frame cost is ~flat from 10k to 250k
-  points (measured ratio ~1.2x; <16ms budget with large headroom).
+  points (<16ms budget with large headroom).
 - `setData` is O(N) once (builds the pyramid + stats); rendering never iterates raw N.
+  `append` is amortized O(1); `amendLast` is O(log n).
 
-## Compliance Pack (the paid layer; separate entry `src/compliance/`)
+## Compliance Pack (separate entry: `fcharts-js/compliance`)
 
 The MIT renderer is accessible; the Compliance Pack proves it and keeps the proof current. Never
 bundled into the core chart (it imports Playwright as a dev/peer dep).
 
-- **WCAG 2.2 AA evidence map** for the chart layer: 28 Supports / 7 Partially / 20 Not Applicable
-  across the 55 Level A+AA criteria, with `file:line` evidence (`compliance/scope-and-evidence-map.md`).
+- **WCAG 2.2 AA evidence map** for the chart layer: 33 Supports / 2 Partially Supports / 20 Not
+  Applicable across the 55 Level A+AA criteria, with `file:line` evidence
+  (`compliance/scope-and-evidence-map.md`).
 - **`buildModel()` + `renderAcr(model, 'md'|'html'|'json')`** — generate a VPAT/ACR for the
   `en301549` (EU), `wcag`, or `section508` edition from one dependency-free generator. Functional-
   performance rows are derived from the WCAG rows (can't contradict them). Unsigned → DRAFT; a
   real auditor signs the manual-attestation rows. Sample: `compliance/samples/`.
-- **`sightline-audit` CLI** (`runConformance` engine + `reduceToVerdicts`) — runs functional a11y
+- **`fcharts-audit` CLI** (`runConformance` engine + `reduceToVerdicts`) — runs functional a11y
   checks (keyboard, zoom, Escape, live region, computed contrast, target size, DOM semantics)
   against a live chart, fails the build on any regression below the baseline, regenerates the ACR.
   Wire it in CI per `compliance/ci-gate.md`. Pure helpers (contrast math, the reducer, the
-  baseline) are importable and unit-tested. Entry: `src/compliance/index.ts` (`buildModel`,
-  `renderAcr`, `CRITERIA`, `runConformance`, contrast helpers); it ships as a separate `compliance`
-  export, never folded into the core chart bundle.
+  baseline) are importable and unit-tested. Entry: `fcharts-js/compliance` (`buildModel`,
+  `renderAcr`, `CRITERIA`, `runConformance`, contrast helpers).
 
 ## Scope (today) and what's NOT included
 
-- IN: time-series line + area, multiple series; wheel-zoom/drag-pan; keyboard cursor; legend;
-  the accessibility + agent-readable layer.
-- NOT YET: candlestick/OHLC/bars/heatmap, real-time streaming appends, framework adapters
-  (React/Vue/Svelte), SSR. The renderer-agnostic `core/` (scales, ticks, pyramid, scheduler)
-  is platform-agnostic, so a WebGL backend or a React Native (Skia) renderer can slot in later,
-  but they are not built. This is a web library — it does not run natively in React Native as-is.
+- IN: canvas time-series line + area + candle with live streaming (`append`/`amendLast`) and
+  annotations; wheel-zoom/drag-pan; keyboard cursor; legend; the accessibility + agent-readable
+  layer; server-safe SVG primitives (donut, scatter, sparkline, bars, progress) with themes;
+  React adapter; the Compliance Pack.
+- NOT: heatmap/treemap/geo, Vue/Svelte adapters, WebGL backend, React Native. The
+  renderer-agnostic `core/` (scales, ticks, pyramid, scheduler) is platform-agnostic, so those
+  can slot in later, but they are not built. This is a web library.
 
 ## Links
 
-- Quickstart + theming: README.md
+- Quickstart + theming + worked streaming example: README.md
 - Live demo + benchmark vs uPlot/SVG: bench/ (run `pnpm bench`), landing/ (run `pnpm landing`)
 - Honest validation results: FINDINGS.md

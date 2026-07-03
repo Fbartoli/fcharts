@@ -8,7 +8,8 @@ over at scale. fcharts is a validation MVP built to prove you can have both: a
 **min/max downsample renderer** on `<canvas>` (frame cost ≈ O(viewport width),
 independent of point count) plus a **real-DOM accessibility layer** overlaid on top.
 
-- **Zero runtime dependencies.** ~10 KB min+gzip.
+- **Zero runtime dependencies.** ~19 KB min+gzip for the canvas core (tree-shaken);
+  ~33 KB with every SVG primitive included.
 - **Fast.** A precomputed min/max pyramid keeps per-frame cost flat from 10k to 250k+ points.
 - **Accessible by default — not a flag.** Keyboard-navigable data cursor with `aria-live`
   announcements, real-text axis ticks, an accessible legend, and a hidden data `<table>`
@@ -289,5 +290,5 @@ pnpm dev              # serve the benchmark page
 pnpm bench            # headless FPS + axe-core run (Chromium) → bench/results.json
 node bench/harness.ts firefox   # or `webkit` — cross-browser run → results-<engine>.json
 pnpm a11y-audit       # run the WCAG 2.2 AA conformance gate → ACR in ./compliance-out
-pnpm size             # assert the bundle stays under 30 KB gzip
+pnpm size             # assert the bundle stays under 35 KB gzip
 ```
