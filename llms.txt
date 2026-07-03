@@ -4,13 +4,14 @@
 > `<canvas>` while staying fully accessible — keyboard-navigable, screen-reader-announced,
 > find-in-page-able — through a real-DOM overlay. Because the data lives in the DOM (not just
 > canvas pixels), the same layer makes charts **machine-readable to AI agents**. Web platform
-> only (browsers); ~19 KB gzip for the tree-shaken canvas core (~33 KB with every SVG
-> primitive), zero runtime dependencies. npm package: `fcharts-js`.
+> only (browsers); ~21 KB gzip for the tree-shaken canvas core (~39 KB with everything
+> included), zero runtime dependencies. npm package: `fcharts-js`.
 
 This file is everything an agent needs to build on fcharts. Source of truth: the public
 API below. Chart family today: time-series **line + area + candle** (multiple series, live
-streaming) on canvas, plus server-safe **SVG primitives** (donut, scatter, sparkline, bars,
-progress) and a **React adapter**.
+streaming, linked panes, time/log axes) on canvas, plus server-safe **SVG primitives**
+(donut, scatter, sparkline, bars, progress, heatmap) and **React / Vue / Svelte / web
+component** adapters, SSR hydration, and a no-code render CLI.
 
 ## Install
 
@@ -76,6 +77,9 @@ interface FChartOptions {
   ariaLabel?: string;            // accessible chart name (also the summary label)
   xLabel?: string; yLabel?: string;
   legend?: boolean;              // default true
+  xType?: 'linear' | 'time';     // 'time': x = epoch ms, calendar-boundary ticks + date labels
+  yScale?: 'linear' | 'log';     // 'log': base-10; needs positive data (<=0 clamps to bottom)
+  exportControl?: boolean;       // visible "Download data (CSV)" button; default false
   maxDpr?: number;               // device-pixel-ratio cap, default 2
   yPadding?: number;             // y-extent padding fraction, default 0.06
   xInteger?: boolean;            // integer-stepped x ticks, default false
@@ -96,6 +100,8 @@ chart.amendLast(ys: number[]): FChart              // rewrite the last sample in
 chart.update(patch: Partial<FChartConfig>): FChart // patch series/options/data in place
 chart.renderSync(domain?: readonly [number, number]): FChart  // synchronous render / programmatic zoom
 chart.summary(): ChartSummary                      // structured machine-readable summary (see below)
+chart.toCSV(): string                              // full dataset as CSV (candles → 4 OHLC columns)
+chart.onDomainChange(cb): () => void               // x-domain change subscription (returns unsubscribe)
 chart.destroy(): void                              // remove DOM, listeners, observers, timers
 chart.renderPath: 'dom-overlay' | 'html-in-canvas' // getter; DOM-overlay is the default, no-flags path
 chart.htmlInCanvas: { supported: boolean; via: string | null } // getter
@@ -157,7 +163,7 @@ Static SVGs produced by the primitives below embed the same summary as
 import {
   renderSVG,                       // line/area/candle chart → standalone SVG string
   buildDonutSVG, buildScatterSVG,  // categorical primitives
-  buildSparklineSVG, buildBarsSVG, buildProgressSVG,
+  buildSparklineSVG, buildBarsSVG, buildProgressSVG, buildHeatmapSVG,
   buildSVG,                        // low-level scene primitive
   lightTheme, darkTheme, resolveTheme, STATUS_COLORS,
 } from 'fcharts-js';
@@ -172,19 +178,38 @@ const svg = renderSVG(
 Every builder outputs a self-contained accessible SVG (`role="img"`, `<title>`, embedded data
 summary). For interactivity on a static SVG, `attachReadout(container, opts)` (client-side,
 optional) adds the same `.fc-readout` hover tooltip the live `FChart` shows.
+`buildHeatmapSVG({ rows, cols, cells }, { width })` renders a rows × cols matrix on a two-stop
+sequential ramp (missing cells draw as outlined slots, values live in `<title>` + JSON).
 
-## React adapter (`fcharts-js/react`)
+Also available:
+- **`hydrate(container, config)`** — swap a server-rendered `renderSVG` inside `container` for
+  the live interactive chart, synchronously, with no layout shift.
+- **`syncCharts([a, b, …])`** — link panes so zoom/pan on one moves the others (returns unlink).
+- **`defineFChart()`** — register the `<f-chart>` web component (light DOM; configure via the
+  `config` property).
+- **`stringsDE` / `stringsFR` / `stringsES`** — complete UI-string translations for
+  `options.strings`.
+- **`fcharts-render` CLI** — `fcharts-render spec.json > chart.svg` (or stdin), spec =
+  `{ config, data, svg: { width, height, theme } }`; no browser, no code.
+
+## Framework adapters (`fcharts-js/react`, `fcharts-js/vue`, `fcharts-js/svelte`)
 
 ```tsx
-import { FChart } from 'fcharts-js/react';
+import { FChart } from 'fcharts-js/react';   // React 18+ component
 <FChart series={[{ name: 'Price', color: '#16a34a' }]} data={{ x, y: [price] }}
         options={{ ariaLabel: 'Price' }} style={{ height: 320 }} />
 ```
+```ts
+import { FChart } from 'fcharts-js/vue';     // Vue 3 component, same props
+import { fchart } from 'fcharts-js/svelte';  // Svelte action: <div use:fchart={{ series, data }} />
+```
 
-Thin declarative wrapper over the imperative class: mounts once, applies prop-identity changes
-via `chart.update()`, destroys on unmount. React is an optional peer dependency; the adapter is
-a separate entry so the core never pulls React in. Memoize `data`/`series`/`options` — passing a
-stable `data` reference avoids an unnecessary view reset.
+All three are thin wrappers over the imperative class with the same contract: mount once,
+forward identity-changed props via `chart.update()`, remount only when a construction-fixed
+option (`legend`, `sonify`, `exportControl`, `strings`) changes, destroy on unmount. React and
+Vue are optional peer dependencies (separate entries; the core never pulls them in); the Svelte
+action imports nothing from Svelte. Pass stable `data`/`series`/`options` references — a new
+`data` identity resets the view.
 
 ## Theming
 
@@ -231,14 +256,23 @@ bundled into the core chart (it imports Playwright as a dev/peer dep).
   Wire it in CI per `compliance/ci-gate.md`. Pure helpers (contrast math, the reducer, the
   baseline) are importable and unit-tested. Entry: `fcharts-js/compliance` (`buildModel`,
   `renderAcr`, `CRITERIA`, `runConformance`, contrast helpers).
+- **Audit any chart** — `fcharts-audit --target <url> --selector <css>` points the same
+  functional checks at a chart you don't own (Highcharts, ECharts, a bare canvas). Report-only
+  (no baseline gate): it writes `audit-report.json` + a console tally showing exactly which
+  keyboard/SR/contrast checks fail — the gap axe-core can't see.
+- **Real screen-reader CI** — `pnpm test:at` drives actual VoiceOver over a live chart via
+  guidepup and asserts on the spoken phrases (`.github/workflows/at.yml`, macOS runner; skips
+  cleanly where VoiceOver automation isn't permitted).
 
 ## Scope (today) and what's NOT included
 
-- IN: canvas time-series line + area + candle with live streaming (`append`/`amendLast`) and
-  annotations; wheel-zoom/drag-pan; keyboard cursor; legend; the accessibility + agent-readable
-  layer; server-safe SVG primitives (donut, scatter, sparkline, bars, progress) with themes;
-  React adapter; the Compliance Pack.
-- NOT: heatmap/treemap/geo, Vue/Svelte adapters, WebGL backend, React Native. The
+- IN: canvas time-series line + area + candle with live streaming (`append`/`amendLast`),
+  annotations, time/log axes, linked panes, and CSV export; wheel-zoom/drag-pan; keyboard
+  cursor; legend; the accessibility + agent-readable layer (localized de/fr/es packs included);
+  server-safe SVG primitives (donut, scatter, sparkline, bars, progress, heatmap) with themes;
+  SSR hydration; React/Vue/Svelte/web-component adapters; a render CLI; the Compliance Pack
+  (incl. audit-any-chart and a VoiceOver CI harness).
+- NOT: treemap/geo, WebGL backend, worker rendering, brush/minimap, React Native. The
   renderer-agnostic `core/` (scales, ticks, pyramid, scheduler) is platform-agnostic, so those
   can slot in later, but they are not built. This is a web library.
 

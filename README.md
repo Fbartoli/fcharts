@@ -8,8 +8,8 @@ over at scale. fcharts is a validation MVP built to prove you can have both: a
 **min/max downsample renderer** on `<canvas>` (frame cost ≈ O(viewport width),
 independent of point count) plus a **real-DOM accessibility layer** overlaid on top.
 
-- **Zero runtime dependencies.** ~19 KB min+gzip for the canvas core (tree-shaken);
-  ~33 KB with every SVG primitive included.
+- **Zero runtime dependencies.** ~21 KB min+gzip for the canvas core (tree-shaken);
+  ~39 KB with every SVG primitive, locale pack, and integration helper included.
 - **Fast.** A precomputed min/max pyramid keeps per-frame cost flat from 10k to 250k+ points.
 - **Accessible by default — not a flag.** Keyboard-navigable data cursor with `aria-live`
   announcements, real-text axis ticks, an accessible legend, and a hidden data `<table>`
@@ -135,6 +135,8 @@ chart.amendLast([y0, y1, …])      // rewrite the last sample in place, O(log n
 chart.update({ series, options }) // patch series/options in place
 chart.renderSync(domain?)         // synchronous render (programmatic zoom / capture)
 chart.summary()                   // structured ChartSummary (see "Agent-readable")
+chart.toCSV()                     // full dataset as CSV (candles → four OHLC columns)
+chart.onDomainChange(cb)          // x-domain subscription (zoom/pan); returns unsubscribe
 chart.destroy()                   // remove DOM, listeners, observers
 chart.renderPath                  // 'dom-overlay' | 'html-in-canvas'
 chart.htmlInCanvas                // { supported, via }
@@ -183,6 +185,9 @@ interface FChartOptions {
   maxDpr?: number;          // device-pixel-ratio cap, default 2
   yPadding?: number;        // y-extent padding fraction, default 0.06
   xInteger?: boolean;       // integer index ticks, default false
+  xType?: 'linear' | 'time';  // 'time': x = epoch ms → calendar ticks + date labels
+  yScale?: 'linear' | 'log';  // 'log': base 10, needs positive data
+  exportControl?: boolean;  // visible "Download data (CSV)" button, default false
   xTickCount?: number; yTickCount?: number;
   formatX?: (v: number) => string;
   formatY?: (v: number) => string;
@@ -208,6 +213,30 @@ A handful of CSS custom properties on the container (or `:root`) cover theming:
 }
 ```
 
+## Adapters & integrations
+
+Everything below is a thin layer over the same imperative class — one engine, one a11y layer.
+
+- **React / Vue / Svelte** — `fcharts-js/react` and `fcharts-js/vue` export a declarative
+  `<FChart>` component; `fcharts-js/svelte` exports a dependency-free action
+  (`<div use:fchart={{ series, data }} />`). Same contract everywhere: identity-changed props
+  forward via `update()`, a change to a construction-fixed option remounts cleanly. React/Vue
+  are optional peer deps on separate entries — the core never pulls a framework in.
+- **Web component** — `defineFChart()` registers `<f-chart>` (light DOM, so the a11y layer
+  stays in the page's accessibility tree); configure via the element's `config` property.
+- **SSR + hydration** — render on the server with `renderSVG(config, data, { width, height })`
+  (pure, Node-safe; donut/scatter/sparkline/bars/progress/heatmap builders included), then
+  upgrade in place with `hydrate(container, config)` — synchronous, no layout shift; the static
+  SVG is real, agent-readable content before any JS runs.
+- **Linked panes** — `syncCharts([price, volume])` shares the x-window across charts (zoom/pan
+  any pane, the others follow); built on the public `chart.onDomainChange()`.
+- **Time & log axes** — `xType: 'time'` puts ticks on calendar boundaries with adaptive date
+  labels; `yScale: 'log'` gives decade ticks (positive data).
+- **Localized UI strings** — complete `stringsDE`/`stringsFR`/`stringsES` packs for
+  `options.strings` (the a11y layer's fixed prose; WCAG 3.1.2).
+- **`fcharts-render` CLI** — `fcharts-render spec.json > chart.svg` (or stdin): charts from
+  shells, report pipelines, and agents with no browser and no code.
+
 ## Accessibility & the Compliance Pack
 
 The MIT renderer is accessible by construction. The **Compliance Pack** is the paid layer on top —
@@ -227,6 +256,15 @@ the *proof*, kept current automatically. (Both live in this repo; the Pack is a 
   baseline — the thing a whole-site scanner does badly: prove a complex interactive component stays
   per-point accessible. See [`compliance/conformance-test-plan.md`](./compliance/conformance-test-plan.md)
   and [`compliance/ci-gate.md`](./compliance/ci-gate.md).
+- **Audit a chart you don't own**: `npx fcharts-audit --target https://your.app/dashboard
+  --selector '#chart'` points the same functional checks (keyboard, live region, contrast,
+  target size) at any existing chart — Highcharts, ECharts, a bare canvas — and reports exactly
+  which ones fail. Report-only, no baseline needed.
+- **Real screen-reader testing in CI**: `pnpm test:at` drives actual **VoiceOver** over a live
+  chart (via guidepup) and asserts on the spoken phrases — focus announcement, per-sample
+  arrow-key announcements, legend state. Runs weekly + on main in
+  [`.github/workflows/at.yml`](./.github/workflows/at.yml) (macOS runner); skips cleanly on
+  machines without VoiceOver automation permission.
 
 > Why a gate and not just a scan? The benchmark's own finding (see [`FINDINGS.md`](./FINDINGS.md)):
 > a bare inaccessible `<canvas>` scores **0 axe violations** too. Real conformance needs functional
@@ -282,6 +320,7 @@ same `Renderer` interface later without touching the public API.
 pnpm install          # pnpm 11+ (cooldown + script-blocking for supply-chain safety)
 pnpm test             # unit tests on Node's built-in test runner (no test framework dep)
 pnpm test:browser     # interaction tests (keyboard/wheel/drag/streaming) in headless Chromium
+pnpm test:at          # real VoiceOver assertions via guidepup (macOS; skips elsewhere)
 pnpm typecheck
 pnpm lint             # oxlint: correctness + suspicious + perf, zero findings allowed
 pnpm check            # typecheck + lint + unit + browser tests (what CI runs)
@@ -290,5 +329,5 @@ pnpm dev              # serve the benchmark page
 pnpm bench            # headless FPS + axe-core run (Chromium) → bench/results.json
 node bench/harness.ts firefox   # or `webkit` — cross-browser run → results-<engine>.json
 pnpm a11y-audit       # run the WCAG 2.2 AA conformance gate → ACR in ./compliance-out
-pnpm size             # assert the bundle stays under 35 KB gzip
+pnpm size             # assert the bundle stays under 45 KB gzip
 ```
