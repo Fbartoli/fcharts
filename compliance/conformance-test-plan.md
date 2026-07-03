@@ -9,7 +9,7 @@
 
 ## 1. Principle: checks attest to claims, claims drive the ACR
 
-The validation MVP's headline lesson (`FINDINGS.md` caveat #1): **axe-clean ≠ accessible**. So the
+The validation benchmark's headline lesson: **axe-clean ≠ accessible**. So the
 engine does not ask "are there axe violations?" and stop. For every WCAG criterion the evidence
 map marks **automated** or **hybrid**, the engine runs a concrete check that *re-proves the
 specific claim* on a live chart. The map says what's true; the engine proves it stays true; the
