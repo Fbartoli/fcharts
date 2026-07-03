@@ -5,19 +5,17 @@ What's left after the 0.2.0 feature release, ranked by strategic fit: items that
 constraint is still demand validation — resist building tier C without a design partner asking.
 
 > **Reconciliation (2026-07-03, evening):** ACR diffing (`--compare`), the Intl `locale` option,
-> and the `fcharts-audit` lazy-peer fix shipped (see CHANGELOG "Unreleased"). The NVDA CI job is
-> in flight on its own branch. VoiceOver-on-the-macOS-runner is demoted from active work to
-> passive monitoring: the weekly harness self-skips at zero cost, and NVDA-on-Windows is the
-> better path to real spoken-phrase assertions in CI.
+> the `fcharts-audit` lazy-peer fix, **and the NVDA CI job** shipped (see CHANGELOG
+> "Unreleased"). NVDA runs green on `windows-latest` asserting real spoken phrases — the
+> "real screen reader in CI" claim is now substantiated by a job that *runs*, not skips.
 
 ## A — finish what 0.2.0 started (small, high leverage)
 
 | Item | Why / state |
 |---|---|
-| **NVDA job on a Windows runner** | *(in flight)* guidepup drives NVDA, Windows runners have a real interactive desktop, and guidepup's own CI runs NVDA on `windows-latest` — the fastest path to *real* spoken-phrase assertions in CI. `test/at/nvda.test.ts` mirrors the VoiceOver suite; job in `at.yml`, off the PR gate. |
 | **Trusted-publisher setup** (human) | One-time npmjs.com config — see `RELEASING.md`. Unblocks hands-free tag publishing with provenance. |
 | **Marketplace listing** (human) | Next release: tick "Publish this Action to the Marketplace" (`action.yml` is in every ref after 0.2.0). |
-| **VoiceOver on the macOS runner** | Demoted to monitoring: `at.yml` stays weekly + on-main and self-skips cleanly; if a future macOS image lets `voiceOver.start()` come up, it lights up on its own. Don't burn CI round-trips iterating images/timeouts while NVDA covers the "real AT in CI" claim. |
+| **VoiceOver on the macOS runner** | Monitoring-only (`continue-on-error` in `at.yml`). New observation (2026-07-03): `voiceOver.start()` now **succeeds** on macos-14 but the spoken-phrase log stays empty — same class of issue NVDA had with focus events. First thing to try when picked up: assert via a VO describe/report command (the fix that made NVDA green) instead of event announcements. Not worth CI round-trips while NVDA carries the claim. |
 
 ## Launch — demand-validation assets (next increment)
 

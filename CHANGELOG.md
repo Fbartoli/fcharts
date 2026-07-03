@@ -20,6 +20,11 @@ versioning: [SemVer](https://semver.org/).
   *default* tick/value formatters via `Intl.DateTimeFormat`/`Intl.NumberFormat` — month names,
   date order, decimal separators — completing what the de/fr/es string packs started. Explicit
   `formatX`/`formatY` still win; without `locale`, output is byte-identical to before.
+- **NVDA in CI, actually speaking** (`test/at/nvda.test.ts`): a real NVDA drives a live chart on
+  the Windows runner and the suite asserts on the spoken phrases — accessible name + data
+  summary via focus report, per-sample arrow-key value announcements through the live region,
+  legend toggle state. Runs green on every push to main (`at.yml`); the VoiceOver sibling stays
+  as macOS monitoring (`continue-on-error`) until Apple's images capture speech.
 
 ### Changed
 - Landing page: npm install path surfaced (the MIT renderer is live on npm), 0.2.0 capabilities

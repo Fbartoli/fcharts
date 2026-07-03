@@ -1,10 +1,10 @@
 /**
- * Shared plumbing for the real-screen-reader (VoiceOver) harness.
+ * Shared plumbing for the real-screen-reader harnesses (VoiceOver on macOS, NVDA on Windows).
  *
- * Serves one small FChart from a Vite dev server into a **headed** Chromium window — VoiceOver
- * can only read a real, on-screen window, so unlike the headless browser suite this page must be
- * visible. The chart uses a distinctive accessible name and a clear upward trend so the spoken
- * phrases are easy to assert on tolerantly (substrings / regexes, never exact strings).
+ * Serves one small FChart from a Vite dev server into a **headed** Chromium window — a screen
+ * reader can only read a real, on-screen window, so unlike the headless browser suite this page
+ * must be visible. The chart uses a distinctive accessible name and a clear upward trend so the
+ * spoken phrases are easy to assert on tolerantly (substrings / regexes, never exact strings).
  *
  * Kept separate from `voiceover.test.ts` so the test file is just the gate + the three
  * assertions; everything environment-shaped (server, browser, timeouts) lives here.
@@ -23,7 +23,7 @@ const ENTRY_FILE = '.fc-at-entry.html';
 
 /** A single line chart with a monotonic upward trend, so the summary carries a clear direction. */
 const PAGE_HTML = `<!doctype html><html lang="en"><head><meta charset="utf-8">
-<title>fcharts VoiceOver harness</title>
+<title>fcharts AT harness</title>
 <style>html,body{margin:0;background:#fff}#root{width:720px;height:360px;margin:24px}</style></head>
 <body><div id="root"></div>
 <script type="module">

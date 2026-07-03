@@ -266,9 +266,10 @@ bundled into the core chart (it imports Playwright as a dev/peer dep).
   outputs) reports per-criterion conformance changes (improved / regressed / scope-changed /
   remarks-only) and exits 1 when a claim weakened. Pure JSON diff — needs neither Playwright nor
   Vite; `--help` and `--compare` work without any optional peer installed.
-- **Real screen-reader CI** — `pnpm test:at` drives actual VoiceOver over a live chart via
-  guidepup and asserts on the spoken phrases (`.github/workflows/at.yml`, macOS runner; skips
-  cleanly where VoiceOver automation isn't permitted).
+- **Real screen-reader CI** — `pnpm test:at` drives actual screen readers over a live chart via
+  guidepup and asserts on the spoken phrases: NVDA runs green on every push to main (Windows
+  runner); a VoiceOver sibling runs as macOS monitoring (`.github/workflows/at.yml`; both skip
+  cleanly where screen-reader automation isn't available).
 
 ## Scope (today) and what's NOT included
 

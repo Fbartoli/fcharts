@@ -268,11 +268,13 @@ the *proof*, kept current automatically. (Both live in this repo; the Pack is a 
   answers procurement's actual question — *what changed in conformance between versions* —
   criterion by criterion (improved / regressed / scope-changed / remarks-only), exiting non-zero
   when a claim weakened. Pure JSON diff: needs neither Playwright nor Vite.
-- **Real screen-reader testing in CI**: `pnpm test:at` drives actual **VoiceOver** over a live
-  chart (via guidepup) and asserts on the spoken phrases — focus announcement, per-sample
-  arrow-key announcements, legend state. Runs weekly + on main in
-  [`.github/workflows/at.yml`](./.github/workflows/at.yml) (macOS runner); skips cleanly on
-  machines without VoiceOver automation permission.
+- **Real screen-reader testing in CI**: `pnpm test:at` drives actual screen readers over a live
+  chart (via guidepup) and asserts on the phrases they speak. The **NVDA** suite **runs green on
+  every push to main** (Windows runner): the chart's accessible name + data summary, per-sample
+  arrow-key value announcements, and legend toggle state, as NVDA actually renders them. A
+  **VoiceOver** sibling suite runs as monitoring on macOS (Apple's CI images don't yet capture
+  VoiceOver speech). Both in [`.github/workflows/at.yml`](./.github/workflows/at.yml); both skip
+  cleanly on machines without screen-reader automation.
 
 > Why a gate and not just a scan? The benchmark's own finding (see [`FINDINGS.md`](./FINDINGS.md)):
 > a bare inaccessible `<canvas>` scores **0 axe violations** too. Real conformance needs functional
