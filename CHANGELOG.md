@@ -3,6 +3,16 @@
 All notable changes to `fcharts-js`. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning: [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Perf-budget CI monitor** (`.github/workflows/perf.yml`): the committed benchmark runs on
+  every push to main + weekly, failing on a flake-resistant subset of its acceptance criteria
+  — frame cost < 16 ms, the relative 250k/10k scaling ratio, and the deterministic a11y
+  assertions (`FCHARTS_BENCH_CI=1`). The competitor-comparison criterion is reported but never
+  gated: other libraries' numbers under headless rAF throttling are environmental. Like the
+  assistive-tech workflow, it monitors main — it is not a PR gate.
+
 ## [0.3.0] — 2026-07-03
 
 ### Added

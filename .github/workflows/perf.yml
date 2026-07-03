@@ -1,0 +1,47 @@
+# Perf-budget monitor: runs the committed benchmark (bench/harness.ts) and fails when a
+# flake-resistant subset of its acceptance criteria regresses — frame cost < 16 ms (~200×
+# headroom, immune to runner speed), the 250k/10k scaling ratio (relative, machine-speed
+# independent), and the deterministic a11y assertions. The competitor-comparison criterion is
+# reported but never gated (headless rAF throttling makes other libs' numbers environmental).
+#
+# Monitoring, not a PR gate — deliberately OFF pull_request and out of branch protection,
+# mirroring at.yml: it runs on pushes to main, weekly, and on demand.
+name: perf budget
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly, Monday 07:30 UTC (offset from at.yml's 07:00).
+    - cron: '30 7 * * 1'
+  push:
+    branches: [main]
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: npx pnpm@11.4.0 install --frozen-lockfile
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Benchmark + perf budget
+        env:
+          FCHARTS_BENCH_CI: '1'
+        run: node bench/harness.ts
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-results
+          path: bench/results.json
+          retention-days: 90

@@ -21,7 +21,9 @@ independent of point count) plus a **real-DOM accessibility layer** overlaid on 
 
 > This is a **validation MVP**, not a product. The benchmark harness behind every performance
 > claim is committed under [`bench/`](./bench/) — three browser engines, axe scans, and real
-> keyboard + find-in-page assertions, with the result JSONs checked in.
+> keyboard + find-in-page assertions, with the result JSONs checked in — and CI re-runs it on
+> every push to main ([`perf.yml`](./.github/workflows/perf.yml)), failing when the frame
+> budget or the flat-scaling ratio regresses.
 
 ## Install
 
