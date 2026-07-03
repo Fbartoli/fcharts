@@ -9,7 +9,7 @@
  */
 import { trendOf } from '../a11y/summary.ts';
 import { STATUS_COLORS, resolveTheme, type SvgTheme } from './svg-theme.ts';
-import { esc, n } from './svg-util.ts';
+import { esc, n, svgRoot, text } from './svg-util.ts';
 
 export interface SparklineOptions {
   width: number;
@@ -102,20 +102,16 @@ export function buildSparklineSVG(values: readonly number[], opts: SparklineOpti
 
   if (deltaText) {
     parts.push(
-      `<text x="${n(width - 2)}" y="${n(height / 2 + 4)}" text-anchor="end" ` +
-        `font-family="system-ui,sans-serif" font-size="11" font-weight="600" ` +
-        `fill="${esc(TREND_COLOR[trend])}">${esc(deltaText)}</text>`,
+      text(width - 2, height / 2 + 4, esc(deltaText), {
+        fill: TREND_COLOR[trend], anchor: 'end', weight: 600,
+      }),
     );
   }
 
+  // svgRoot mirrors the aria-label into a <title> so older AT that ignores aria-label on inline
+  // SVG still gets the trend (matches the title/desc contract of the other primitives).
   const ariaLabel = `${opts.label ?? 'Trend'}: ${trend} ${Math.abs(deltaPct).toFixed(1)}%`;
-  return (
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n(width)} ${n(height)}" ` +
-    `width="${n(width)}" height="${n(height)}" role="img" aria-label="${esc(ariaLabel)}">` +
-    // A <title> mirrors the aria-label so older AT that ignores aria-label on inline SVG still
-    // gets the trend (matches the title/desc contract of the other primitives).
-    `<title>${esc(ariaLabel)}</title>${parts.join('')}</svg>`
-  );
+  return svgRoot({ width, height, label: ariaLabel, body: parts.join('') });
 }
 
 function defaultDelta(deltaPct: number): string {

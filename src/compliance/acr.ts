@@ -237,7 +237,7 @@ const HTML_CSS =
   'padding:.6rem .8rem;border-radius:6px}.signed{background:#dcfce7;border:1px solid #16a34a;' +
   'padding:.6rem .8rem;border-radius:6px}code{background:#f3f4f6;padding:.1rem .3rem;border-radius:3px}';
 
-function renderHtml(m: AcrModel): string {
+function htmlHeader(m: AcrModel): string[] {
   const parts: string[] = [];
   parts.push(`<h1>Accessibility Conformance Report — ${escapeHtml(m.product.name)} ${escapeHtml(m.product.version)}</h1>`);
   parts.push(`<p><strong>${escapeHtml(m.edition.title)}</strong></p>`);
@@ -249,7 +249,11 @@ function renderHtml(m: AcrModel): string {
   } else if (m.signed) {
     parts.push(`<p class="signed">✅ <strong>Signed</strong> by ${escapeHtml(m.signed.signer)} on ${escapeHtml(m.signed.date)}.</p>`);
   }
+  return parts;
+}
 
+function htmlProductTable(m: AcrModel): string[] {
+  const parts: string[] = [];
   parts.push('<h2>Product &amp; evaluation</h2>');
   parts.push(
     htmlTable(
@@ -267,11 +271,18 @@ function renderHtml(m: AcrModel): string {
     ),
   );
   if (m.evaluation.notes) parts.push(`<p>${escapeHtml(m.evaluation.notes)}</p>`);
+  return parts;
+}
 
-  parts.push('<h2>Conformance terms</h2><ul>');
+function htmlConformanceTerms(): string[] {
+  const parts: string[] = ['<h2>Conformance terms</h2><ul>'];
   for (const [t, d] of CONFORMANCE_TERMS) parts.push(`<li><strong>${t}</strong> — ${escapeHtml(d)}</li>`);
   parts.push('</ul>');
+  return parts;
+}
 
+function htmlSummary(m: AcrModel): string[] {
+  const parts: string[] = [];
   parts.push('<h2>Summary</h2>');
   parts.push(`<p><strong>${escapeHtml(summaryLine(m))}</strong> across ${wcagRows(m).length} WCAG 2.2 A/AA success criteria.</p>`);
   parts.push(
@@ -289,7 +300,11 @@ function renderHtml(m: AcrModel): string {
       }),
     ),
   );
+  return parts;
+}
 
+function htmlPrinciples(m: AcrModel): string[] {
+  const parts: string[] = [];
   for (const [digit, name] of PRINCIPLES) {
     const rows = wcagRows(m).filter((c) => c.num.startsWith(`${digit}.`));
     if (!rows.length) continue;
@@ -301,18 +316,23 @@ function renderHtml(m: AcrModel): string {
       ),
     );
   }
+  return parts;
+}
 
+function htmlAdaptations(m: AcrModel): string[] {
   const adapt = adaptationRows(m);
-  if (adapt.length) {
-    parts.push('<h2>Additional adaptations (beyond Level A/AA)</h2>');
-    parts.push(
-      htmlTable(
-        ['Feature', 'Conformance Level', 'Remarks and Explanations'],
-        adapt.map((c) => [c.name, c.conformance, c.remarks]),
-      ),
-    );
-  }
+  if (!adapt.length) return [];
+  return [
+    '<h2>Additional adaptations (beyond Level A/AA)</h2>',
+    htmlTable(
+      ['Feature', 'Conformance Level', 'Remarks and Explanations'],
+      adapt.map((c) => [c.name, c.conformance, c.remarks]),
+    ),
+  ];
+}
 
+function htmlSections(m: AcrModel): string[] {
+  const parts: string[] = [];
   for (const s of m.sections) {
     parts.push(`<h2>${escapeHtml(s.title)}</h2>`);
     if (s.intro) parts.push(`<p>${escapeHtml(s.intro)}</p>`);
@@ -323,8 +343,11 @@ function renderHtml(m: AcrModel): string {
       ),
     );
   }
+  return parts;
+}
 
-  parts.push('<h2>Attestation</h2>');
+function htmlAttestation(m: AcrModel): string[] {
+  const parts: string[] = ['<h2>Attestation</h2>'];
   const att = attestationRows(m);
   if (m.signed) parts.push(`<p>Signed by <strong>${escapeHtml(m.signed.signer)}</strong> on <strong>${escapeHtml(m.signed.date)}</strong>.</p>`);
   else if (att.length) {
@@ -332,12 +355,30 @@ function renderHtml(m: AcrModel): string {
     for (const c of att) parts.push(`<li><strong>${c.num} ${escapeHtml(c.name)}</strong> — ${c.verification}</li>`);
     parts.push('</ul>');
   } else parts.push('<p>No criteria require manual attestation.</p>');
+  return parts;
+}
 
-  parts.push(`<h2>Legal</h2><p>${escapeHtml(m.legal)}</p>`);
-  parts.push(`<p><em>Generated ${escapeHtml(m.generatedAt)}.</em></p>`);
-  // Embed the model so the HTML is itself machine-readable (fcharts' agent-readable ethos).
-  parts.push(`<script type="application/json" data-acr>${JSON.stringify(m).replace(/</g, '\\u003c')}</script>`);
+function htmlFooter(m: AcrModel): string[] {
+  return [
+    `<h2>Legal</h2><p>${escapeHtml(m.legal)}</p>`,
+    `<p><em>Generated ${escapeHtml(m.generatedAt)}.</em></p>`,
+    // Embed the model so the HTML is itself machine-readable (fcharts' agent-readable ethos).
+    `<script type="application/json" data-acr>${JSON.stringify(m).replace(/</g, '\\u003c')}</script>`,
+  ];
+}
 
+function renderHtml(m: AcrModel): string {
+  const parts: string[] = [
+    ...htmlHeader(m),
+    ...htmlProductTable(m),
+    ...htmlConformanceTerms(),
+    ...htmlSummary(m),
+    ...htmlPrinciples(m),
+    ...htmlAdaptations(m),
+    ...htmlSections(m),
+    ...htmlAttestation(m),
+    ...htmlFooter(m),
+  ];
   return (
     `<!doctype html><html lang="en"><head><meta charset="utf-8">` +
     `<meta name="viewport" content="width=device-width,initial-scale=1">` +

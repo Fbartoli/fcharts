@@ -62,3 +62,11 @@ export const STATUS_COLORS: Record<Status, string> = {
 export function resolveTheme(theme?: Partial<SvgTheme>, base: SvgTheme = lightTheme): SvgTheme {
   return theme ? { ...base, ...theme } : base;
 }
+
+/**
+ * A mark's paint: explicit color wins, then its status color, then the palette default —
+ * the shared fallback chain for status-bearing marks (bar rows, scatter dots).
+ */
+export function markColor(color: string | undefined, status: Status | undefined): string {
+  return color || (status ? STATUS_COLORS[status] : DEFAULT_PALETTE[0]);
+}

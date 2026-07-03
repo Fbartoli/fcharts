@@ -44,25 +44,18 @@ function scFromAxeTags(tags: string[]): string[] {
   return out;
 }
 
-/** Run the full check catalog against the chart at `sel`. */
-export async function runConformance(
+/** The visible x-tick label texts, in DOM order (shared by the zoom/reflow/pan checks). */
+const xTicks = (page: Page, sel: string): Promise<string[]> =>
+  page.$$eval(`${sel} .fc-tick-x`, (els) => els.map((e) => e.textContent ?? ''));
+
+/** --- axe (necessary baseline) --- */
+async function checkAxe(
   page: Page,
   sel: string,
-  opts: ConformanceOptions = {},
-): Promise<CheckReport> {
-  const bg = opts.background ?? '#ffffff';
-  const announceWait = opts.announceWaitMs ?? 260;
-  const results: CheckResult[] = [];
-  const axeViolations: AxeViolation[] = [];
-
-  // Let the first render + the (debounced, ~150ms) data-table build settle before asserting,
-  // so steady-state DOM is checked regardless of how soon the caller invokes the engine.
-  await page
-    .waitForFunction((s) => !!document.querySelector(`${s} .fc-table-alt caption`), sel, { timeout: 3000 })
-    .catch(() => undefined);
-  await page.waitForTimeout(60);
-
-  // --- axe (necessary baseline) ---
+  opts: ConformanceOptions,
+  results: CheckResult[],
+  axeViolations: AxeViolation[],
+): Promise<void> {
   if (opts.axeSource) {
     await page.addScriptTag({ content: opts.axeSource });
     const violations = await page.evaluate(async (s) => {
@@ -81,9 +74,11 @@ export async function runConformance(
   } else {
     results.push(na('axe-serious', [], 'no axe source supplied'));
   }
+}
 
-  // --- DOM-structure checks (one page.evaluate, returns a bag of facts) ---
-  const dom = await page.evaluate((s) => {
+/** --- DOM-structure facts gathered in one page.evaluate (a bag of facts) --- */
+async function evaluateDomFacts(page: Page, sel: string) {
+  return page.evaluate((s) => {
     const root = document.querySelector(s);
     const q = (sub: string): Element | null => root?.querySelector(sub) ?? null;
     const surface = q('[role="application"]');
@@ -149,7 +144,14 @@ export async function runConformance(
       })(),
     };
   }, sel);
+}
 
+/** --- DOM-structure checks (assertions over the fact bag) --- */
+function checkDomStructure(
+  dom: Awaited<ReturnType<typeof evaluateDomFacts>>,
+  bg: string,
+  results: CheckResult[],
+): void {
   results.push(status(dom.canvasHidden, 'canvas-hidden', ['1.1.1', '4.1.2'], 'canvas missing aria-hidden=true'));
   results.push(
     status(dom.hasDataTable && dom.tableHasCaption && dom.tableHasScopedHeaders, 'text-alternative',
@@ -234,8 +236,15 @@ export async function runConformance(
   results.push(status(
     dom.css.split('}').filter((r) => /overflow:\s*hidden/.test(r)).every((r) => /\.fc-sr-only/.test(r)),
     'text-spacing', ['1.4.12'], 'visible text may be clipped (overflow:hidden outside .fc-sr-only)'));
+}
 
-  // --- functional keyboard checks ---
+/** --- functional keyboard checks --- */
+async function checkKeyboard(
+  page: Page,
+  sel: string,
+  announceWait: number,
+  results: CheckResult[],
+): Promise<void> {
   const startUrl = page.url();
   await page.focus(`${sel} [role="application"]`);
   await page.waitForTimeout(80);
@@ -269,12 +278,10 @@ export async function runConformance(
   results.push(status(activePopulated, 'active-value', ['4.1.2'], 'focused-sample value target not populated'));
 
   // keyboard-zoom (R2): '+' changes the visible x-ticks.
-  const xTicks = async (): Promise<string[]> =>
-    page.$$eval(`${sel} .fc-tick-x`, (els) => els.map((e) => e.textContent ?? ''));
-  const ticksBefore = await xTicks();
+  const ticksBefore = await xTicks(page, sel);
   await page.keyboard.press('+');
   await page.waitForTimeout(80);
-  const ticksAfter = await xTicks();
+  const ticksAfter = await xTicks(page, sel);
   results.push(status(JSON.stringify(ticksBefore) !== JSON.stringify(ticksAfter), 'keyboard-zoom', ['2.1.1'],
     'pressing "+" did not change the visible domain'));
 
@@ -301,8 +308,10 @@ export async function runConformance(
   const leftSurface = await page.evaluate((s) =>
     document.activeElement !== document.querySelector(`${s} [role="application"]`), sel);
   results.push(status(leftSurface, 'no-keyboard-trap', ['2.1.2'], 'Tab did not move focus off the surface'));
+}
 
-  // tick-findable (1.4.5/1.3.1): real find-in-page locates a tick label (Chromium).
+/** tick-findable (1.4.5/1.3.1): real find-in-page locates a tick label (Chromium). */
+async function checkTickFindable(page: Page, sel: string, results: CheckResult[]): Promise<void> {
   const tickFind = await page.evaluate((s) => {
     const tick = document.querySelector(`${s} .fc-tick`)?.textContent?.trim() ?? '';
     const w = window as unknown as { find?: (q: string) => boolean; getSelection?: () => Selection | null };
@@ -314,8 +323,10 @@ export async function runConformance(
       ? na('tick-findable', ['1.4.5', '1.3.1'], 'window.find unavailable (non-Chromium)')
       : status(tickFind, 'tick-findable', ['1.4.5', '1.3.1'], 'tick label not findable via window.find'),
   );
+}
 
-  // contrast checks (computed colors).
+/** contrast checks (computed colors). */
+async function checkContrast(page: Page, sel: string, bg: string, results: CheckResult[]): Promise<void> {
   const colors = await page.evaluate((s) => {
     const cs = (sub: string, prop: string): string => {
       const el = document.querySelector(`${s} ${sub}`);
@@ -341,11 +352,13 @@ export async function runConformance(
       : status(tickRatio >= AA_NORMAL, 'contrast-default-text', ['1.4.3'],
           `tick contrast ${tickRatio.toFixed(2)}:1 vs ${bg} < ${AA_NORMAL}:1`, `${tickRatio.toFixed(2)}:1 vs ${bg}`),
   );
+}
 
-  // reflow-adaptive (1.4.10, R7): narrowing the chart thins the x-tick density so labels do not
-  // collide (effectiveTickCount). Narrow RELATIVE to the current width (so it works whatever size
-  // the host gives the chart — a 336px bench cell or a 900px fixture), then restore.
-  const tickXCount = async (): Promise<number> => (await xTicks()).length;
+/** reflow-adaptive (1.4.10, R7): narrowing the chart thins the x-tick density so labels do not
+ * collide (effectiveTickCount). Narrow RELATIVE to the current width (so it works whatever size
+ * the host gives the chart — a 336px bench cell or a 900px fixture), then restore. */
+async function checkReflowAdaptive(page: Page, sel: string, results: CheckResult[]): Promise<void> {
+  const tickXCount = async (): Promise<number> => (await xTicks(page, sel)).length;
   const setRootWidth = (w: string): Promise<void> =>
     page.evaluate(({ s, w: width }) => {
       const r = document.querySelector(s) as HTMLElement | null;
@@ -367,9 +380,11 @@ export async function runConformance(
       `x-tick density did not thin when narrowed (${Math.round(curWidth)}px→${narrowPx}px: wide=${wideTicks}, narrow=${narrowTicks})`,
       `${Math.round(curWidth)}px→${narrowPx}px: ticks ${wideTicks}→${narrowTicks}`));
   }
+}
 
-  // resize-text-rem (1.4.4, R7): the tick font is in rem, so doubling the root font-size doubles
-  // it (a px font would not move). Read, scale the root, re-read, restore.
+/** resize-text-rem (1.4.4, R7): the tick font is in rem, so doubling the root font-size doubles
+ * it (a px font would not move). Read, scale the root, re-read, restore. */
+async function checkResizeTextRem(page: Page, sel: string, results: CheckResult[]): Promise<void> {
   const tickFontPx = async (): Promise<number> =>
     page.evaluate((s) => {
       const t = document.querySelector(`${s} .fc-tick`);
@@ -384,14 +399,16 @@ export async function runConformance(
   results.push(status(fontBefore > 0 && fontAfter >= fontBefore * 1.8, 'resize-text-rem', ['1.4.4'],
     `tick font did not scale with root font size (${fontBefore}px -> ${fontAfter}px); fonts may be px not rem`,
     `${fontBefore}px -> ${fontAfter}px @ 2x root`));
+}
 
-  // single-pointer-pan (2.5.7, R4): once zoomed in, the pan pagers appear and a single click
-  // shifts the visible window (no dragging required).
+/** single-pointer-pan (2.5.7, R4): once zoomed in, the pan pagers appear and a single click
+ * shifts the visible window (no dragging required). */
+async function checkSinglePointerPan(page: Page, sel: string, results: CheckResult[]): Promise<void> {
   await page.focus(`${sel} [role="application"]`);
   await page.keyboard.press('+');
   await page.keyboard.press('+');
   await page.waitForTimeout(80);
-  const ticksPrePan = await xTicks();
+  const ticksPrePan = await xTicks(page, sel);
   const pan = await page.evaluate((s) => {
     const pagers = [...document.querySelectorAll(`${s} .fc-pager`)] as HTMLButtonElement[];
     const visible = pagers.filter((b) => b.offsetParent !== null);
@@ -404,15 +421,17 @@ export async function runConformance(
   }, sel);
   if (pan.enabled > 0) await page.click(`${sel} .fc-pager:not(:disabled)`);
   await page.waitForTimeout(80);
-  const ticksPostPan = await xTicks();
+  const ticksPostPan = await xTicks(page, sel);
   results.push(status(
     pan.count === 2 && pan.allButtons && pan.visible >= 1 && pan.enabled >= 1 &&
       JSON.stringify(ticksPrePan) !== JSON.stringify(ticksPostPan),
     'single-pointer-pan', ['2.5.7'],
     `pagers count=${pan.count} buttons=${pan.allButtons} visible=${pan.visible} enabled=${pan.enabled}; click ${JSON.stringify(ticksPrePan) !== JSON.stringify(ticksPostPan) ? 'panned' : 'did NOT pan'}`));
+}
 
-  // forced-colors-canvas (forced-colors / 1.4.11, R12): turning forced-colors on must change the
-  // canvas bitmap (it repaints in system colors) — proving the canvas participates, not just the DOM.
+/** forced-colors-canvas (forced-colors / 1.4.11, R12): turning forced-colors on must change the
+ * canvas bitmap (it repaints in system colors) — proving the canvas participates, not just the DOM. */
+async function checkForcedColorsCanvas(page: Page, sel: string, results: CheckResult[]): Promise<void> {
   const canvasSig = async (): Promise<string> =>
     page.evaluate((s) => {
       const c = document.querySelector(`${s} canvas.fc-canvas`) as HTMLCanvasElement | null;
@@ -432,6 +451,35 @@ export async function runConformance(
     'forced-colors-canvas', ['forced-colors', '1.4.11'],
     'canvas bitmap did not change under forced-colors:active (did not participate)',
     'canvas repainted in system colors under forced-colors'));
+}
+
+/** Run the full check catalog against the chart at `sel`. */
+export async function runConformance(
+  page: Page,
+  sel: string,
+  opts: ConformanceOptions = {},
+): Promise<CheckReport> {
+  const bg = opts.background ?? '#ffffff';
+  const announceWait = opts.announceWaitMs ?? 260;
+  const results: CheckResult[] = [];
+  const axeViolations: AxeViolation[] = [];
+
+  // Let the first render + the (debounced, ~150ms) data-table build settle before asserting,
+  // so steady-state DOM is checked regardless of how soon the caller invokes the engine.
+  await page
+    .waitForFunction((s) => !!document.querySelector(`${s} .fc-table-alt caption`), sel, { timeout: 3000 })
+    .catch(() => undefined);
+  await page.waitForTimeout(60);
+
+  await checkAxe(page, sel, opts, results, axeViolations);
+  checkDomStructure(await evaluateDomFacts(page, sel), bg, results);
+  await checkKeyboard(page, sel, announceWait, results);
+  await checkTickFindable(page, sel, results);
+  await checkContrast(page, sel, bg, results);
+  await checkReflowAdaptive(page, sel, results);
+  await checkResizeTextRem(page, sel, results);
+  await checkSinglePointerPan(page, sel, results);
+  await checkForcedColorsCanvas(page, sel, results);
 
   // Static / unit-covered checks the live page cannot prove (recorded as n/a, see baseline).
   results.push(na('no-canvas-text', ['1.4.5'], 'static source check (no fillText/strokeText); covered by baseline'));

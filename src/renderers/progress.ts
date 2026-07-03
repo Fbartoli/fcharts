@@ -9,7 +9,7 @@
  * micro-element, not a queryable chart.
  */
 import { resolveTheme, type SvgTheme } from './svg-theme.ts';
-import { esc, n } from './svg-util.ts';
+import { esc, n, svgRoot } from './svg-util.ts';
 
 export interface ProgressOptions {
   width: number;
@@ -72,12 +72,8 @@ export function buildProgressSVG(value: number, opts: ProgressOptions): string {
   const pct = max > 0 ? (value / max) * 100 : 0;
   const cap =
     opts.limit !== undefined && max > 0 ? ` (cap ${pctStr((opts.limit / max) * 100)}%)` : '';
+  // svgRoot mirrors the aria-label into a <title> so older AT that ignores aria-label on inline
+  // SVG still reads the value (matches the title contract of the sparkline).
   const ariaLabel = `${opts.label ?? 'Progress'}: ${pctStr(pct)}%${cap}`;
-  return (
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n(width)} ${n(height)}" ` +
-    `width="${n(width)}" height="${n(height)}" role="img" aria-label="${esc(ariaLabel)}">` +
-    // A <title> mirrors the aria-label so older AT that ignores aria-label on inline SVG still
-    // reads the value (matches the title contract of the sparkline).
-    `<title>${esc(ariaLabel)}</title>${parts.join('')}</svg>`
-  );
+  return svgRoot({ width, height, label: ariaLabel, body: parts.join('') });
 }

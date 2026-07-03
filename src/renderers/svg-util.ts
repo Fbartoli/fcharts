@@ -39,6 +39,43 @@ export function anchor(href: string | undefined, inner: string): string {
 }
 
 /**
+ * A `<text>` element in the shared chart font. `content` is raw markup — callers `esc()` their
+ * strings (and may include `<tspan>`s), keeping escaping explicit and grep-able at each site.
+ */
+export function text(
+  x: number,
+  y: number,
+  content: string,
+  o: { fill: string; size?: number; anchor?: 'middle' | 'end'; weight?: 600 },
+): string {
+  return (
+    `<text x="${n(x)}" y="${n(y)}"` +
+    (o.anchor ? ` text-anchor="${o.anchor}"` : '') +
+    ` font-family="system-ui,sans-serif" font-size="${n(o.size ?? 11)}"` +
+    (o.weight ? ` font-weight="${o.weight}"` : '') +
+    ` fill="${esc(o.fill)}">${content}</text>`
+  );
+}
+
+/** The full-document background rect every axed chart starts with. */
+export function bgRect(width: number, height: number, fill: string): string {
+  return `<rect width="${n(width)}" height="${n(height)}" fill="${esc(fill)}"/>`;
+}
+
+/**
+ * The minimal accessible SVG envelope — `role="img"` + `aria-label` + a mirroring `<title>`
+ * (older AT ignores aria-label on inline SVG). Used directly by the micro-elements (sparkline,
+ * progress) that carry no `<desc>`/summary; {@link svgDocument} builds on it for full charts.
+ */
+export function svgRoot(opts: { width: number; height: number; label: string; body: string }): string {
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n(opts.width)} ${n(opts.height)}" ` +
+    `width="${n(opts.width)}" height="${n(opts.height)}" role="img" aria-label="${esc(opts.label)}">` +
+    `<title>${esc(opts.label)}</title>${opts.body}</svg>`
+  );
+}
+
+/**
  * Wrap body parts in a complete, standalone SVG document with an accessible name + description.
  * `extra` is appended after `<desc>` (e.g. the embedded JSON summary).
  */
@@ -50,10 +87,10 @@ export function svgDocument(opts: {
   body: string;
   extra?: string;
 }): string {
-  return (
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n(opts.width)} ${n(opts.height)}" ` +
-    `width="${n(opts.width)}" height="${n(opts.height)}" role="img" aria-label="${esc(opts.title)}">` +
-    `<title>${esc(opts.title)}</title><desc>${esc(opts.desc)}</desc>` +
-    `${opts.extra ?? ''}${opts.body}</svg>`
-  );
+  return svgRoot({
+    width: opts.width,
+    height: opts.height,
+    label: opts.title,
+    body: `<desc>${esc(opts.desc)}</desc>${opts.extra ?? ''}${opts.body}`,
+  });
 }
