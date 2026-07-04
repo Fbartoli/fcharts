@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gallery — every chart, source above render — fcharts</title>
+  <meta name="description" content="Every fcharts chart type with the exact source above each render: live keyboard-navigable canvas charts and accessible SVG builders — donut, bars, sparklines, scatter, heatmap, progress." />
+  <link rel="canonical" href="https://fcharts.dev/gallery" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://fcharts.dev/gallery" />
+  <meta property="og:title" content="fcharts gallery — every chart, source above render" />
+  <meta property="og:description" content="Live keyboard-navigable canvas charts and accessible SVG builders, each with the exact code that produced it." />
+  <meta property="og:image" content="https://fcharts.dev/social-preview.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <style>
+    :root{--bg:#06080c;--panel:#0c1016;--ink:#e8eef4;--muted:#8794a3;--faint:#5a6675;
+      --line:rgba(255,255,255,.08);--line-2:rgba(255,255,255,.22);--accent:#6ee7a8;
+      /* fcharts theme for the live examples */
+      --fc-ink:#cfd8e3;--fc-tick-color:#8794a3;--fc-axis-title:#5a6675;
+      --fc-grid:rgba(110,231,168,.06);--fc-axis:rgba(255,255,255,.12);
+      --fc-cursor:rgba(255,255,255,.4);--fc-ring:#06080c;--fc-focus:#6ee7a8;
+      --fc-legend-border:rgba(255,255,255,.45);--fc-legend-border-hover:rgba(255,255,255,.72);
+      --fc-readout-bg:#10151d;--fc-readout-ink:#e8eef4;--fc-readout-border:rgba(255,255,255,.16)}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);line-height:1.6;
+      font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+    nav{border-bottom:1px solid var(--line);padding:14px 0}
+    .wrap{max-width:860px;margin:0 auto;padding:0 24px}
+    nav .wrap{display:flex;gap:18px;align-items:baseline}
+    .logo{font-weight:800;font-size:17px;color:var(--ink);text-decoration:none}
+    .logo b{color:var(--accent)}
+    nav a{color:var(--muted);font-size:13.5px;text-decoration:none}
+    nav a:hover{color:var(--ink)}
+    main{padding:40px 0 60px}
+    h1{font-size:clamp(26px,4.5vw,36px);line-height:1.15;letter-spacing:-.02em;margin:0 0 6px}
+    .sub{color:var(--muted);margin:0 0 8px;font-size:16px;max-width:64ch}
+    .hint{color:var(--faint);font-size:13.5px;margin:0 0 28px}
+    .hint kbd{font-family:ui-monospace,monospace;font-size:11px;background:var(--panel);
+      border:1px solid var(--line-2);border-bottom-width:2px;border-radius:5px;padding:1px 6px;
+      color:var(--ink)}
+    section{margin:38px 0;border-top:1px solid var(--line);padding-top:26px}
+    h2{font-size:20px;margin:0 0 6px;letter-spacing:-.01em}
+    .note{color:var(--muted);font-size:14.5px;margin:0 0 14px;max-width:70ch}
+    pre{background:#05070a;border:1px solid var(--line);border-radius:10px;padding:14px 16px;
+      overflow-x:auto;font-size:12.5px;line-height:1.55;margin:0 0 14px}
+    code{font-family:ui-monospace,Menlo,monospace}
+    .output{border:1px solid var(--line);border-radius:12px;background:var(--panel);
+      padding:16px;overflow-x:auto}
+    a{color:var(--accent)}
+  </style>
+</head>
+<body>
+  <nav><div class="wrap">
+    <a class="logo" href="/">f<b>charts</b></a>
+    <a href="/guides/accessible-canvas-charts">Guides</a>
+    <a href="/api/">API</a>
+    <a href="/playground">Playground</a>
+  </div></nav>
+  <main class="wrap">
+    <h1>Gallery</h1>
+    <p class="sub">Every chart type, with the exact source above each render — the displayed
+      code is the executed code, extracted from the same function that draws the output.</p>
+    <p class="hint">Everything below is accessible by construction: <kbd>Tab</kbd> into the
+      live charts and use <kbd>←</kbd> <kbd>→</kbd> — values are announced. <kbd>Ctrl</kbd>+<kbd>F</kbd>
+      finds tick labels and data in the static SVGs. All of it reads to screen readers and agents.</p>
+    <div id="gallery"></div>
+  </main>
+  <script type="module" src="./gallery.ts"></script>
+</body>
+</html>
