@@ -38,6 +38,8 @@ export interface FChartStrings {
   summaryEvents: string;
   /** x-range phrase within the summary. Tokens: `{start}` `{end}`. */
   summarySpan: string;
+  /** Announced once a keyboard zoom settles. Tokens: `{start}` `{end}`. */
+  zoomRange: string;
   /** Direction phrases. `{pct}` for up/down; flat has no token. */
   trendUp: string;
   trendDown: string;
@@ -74,6 +76,7 @@ export const DEFAULT_STRINGS: FChartStrings = {
   summaryPart: '{name} ranges {min} to {max}, now {last} ({dir})',
   summaryEvents: '{count} events: {labels}',
   summarySpan: '{start} to {end}',
+  zoomRange: 'Showing {start} to {end}',
   trendUp: 'up {pct}%',
   trendDown: 'down {pct}%',
   trendFlat: 'flat',

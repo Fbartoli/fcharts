@@ -57,6 +57,8 @@ export interface Args {
   editions: EditionKey[];
   out: string;
   background: string;
+  /** Whether --background was passed explicitly (target mode auto-detects when it wasn't). */
+  backgroundExplicit: boolean;
   formats: AcrFormat[];
   stamp: string;
   attest?: string;
@@ -84,6 +86,7 @@ export function parseArgs(argv: string[]): Args {
     editions: [],
     out: './compliance-out',
     background: '#ffffff',
+    backgroundExplicit: false,
     formats: [],
     stamp: new Date().toISOString().slice(0, 10),
     json: false,
@@ -98,7 +101,7 @@ export function parseArgs(argv: string[]): Args {
     else if (v === '--compare') a.compare = [next(), next()];
     else if (v === '--edition') a.editions.push(next() as EditionKey);
     else if (v === '--out') a.out = next();
-    else if (v === '--background') a.background = next();
+    else if (v === '--background') { a.background = next(); a.backgroundExplicit = true; }
     else if (v === '--format') a.formats.push(...(next().split(',') as AcrFormat[]));
     else if (v === '--stamp') a.stamp = next();
     else if (v === '--attest') a.attest = next();
@@ -146,7 +149,8 @@ function printHelp(): void {
       '  fcharts-audit --target <url> --selector <css>\n' +
       '                [--out <dir>] [--background <css>] [--json] [--quiet]\n' +
       '  In target mode --edition/--format/--attest are ignored (no ACR is generated) and the\n' +
-      '  exit code is 0 (a diagnostic, not a CI gate). fcharts-specific checks report n/a.\n\n' +
+      '  exit code is 0 (a diagnostic, not a CI gate). fcharts-specific checks report n/a.\n' +
+      '  Contrast background: auto-detected from the target element unless --background is given.\n\n' +
       'Compare mode (diff two generated ACRs — what changed in conformance between versions):\n' +
       '  fcharts-audit --compare <old.json> <new.json>   [--json]\n' +
       '  Takes the acr-<edition>.json files two runs wrote. Exit 1 when a claim weakened.\n' +
@@ -400,6 +404,22 @@ async function runTargetMode(args: Args): Promise<number> {
     } catch {
       console.error(`fcharts-audit: selector not found on ${target}: ${selector}`);
       return 2;
+    }
+
+    // Contrast is judged against a background. Grading a dark page against the old #ffffff
+    // default produced false failures, so without an explicit --background the effective
+    // background is read from the target element's ancestry (first non-transparent).
+    if (!args.backgroundExplicit) {
+      args.background = await page.evaluate((sel) => {
+        let el: Element | null = document.querySelector(sel);
+        while (el) {
+          const bg = getComputedStyle(el).backgroundColor;
+          if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') return bg;
+          el = el.parentElement;
+        }
+        return '#ffffff';
+      }, selector);
+      if (!args.quiet) console.log(`background auto-detected: ${args.background} (override with --background)`);
     }
 
     const report = await runConformance(page, selector, { background: args.background, axeSource: loadAxe() });

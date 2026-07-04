@@ -1117,6 +1117,24 @@ export class FChart {
     this.announceTimer = view ? view.setTimeout(run, ANNOUNCE_DEBOUNCE_MS) : (run(), 0);
   }
 
+  /** Announce the settled visible range after keyboard zoom — a zoom that changes the view but
+   *  says nothing is a real state change a blind user can't perceive (WCAG 4.1.3). Shares the
+   *  announce timer so zoom + arrow interleavings coalesce to one message. */
+  private queueZoomAnnounce(): void {
+    const view = this.doc.defaultView;
+    if (this.announceTimer) view?.clearTimeout(this.announceTimer);
+    const run = (): void => {
+      const [lo, hi] = this.domain;
+      this.liveRegion.announce(
+        format(this.strings.zoomRange, {
+          start: this.options.formatX(lo),
+          end: this.options.formatX(hi),
+        }),
+      );
+    };
+    this.announceTimer = view ? view.setTimeout(run, ANNOUNCE_DEBOUNCE_MS) : (run(), 0);
+  }
+
   /** The marker that owns the readout/highlight: a live hover wins over a standing selection. */
   private focusAnn(): number | null {
     return this.hoveredAnn ?? this.selectedAnn;
@@ -1313,6 +1331,7 @@ export class FChart {
     const factor = zoomFactor(e.key);
     if (factor !== null) {
       this.zoomAroundCursor(factor);
+      this.queueZoomAnnounce();
       return;
     }
     const next = stepCursor(this.cursor, e.key, {
