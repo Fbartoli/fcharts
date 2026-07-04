@@ -23,6 +23,7 @@ function sourceOf(snip: string): string {
 const root = document.getElementById('gallery')!;
 for (const ex of EXAMPLES) {
   const section = document.createElement('section');
+  section.id = ex.snip; // drill-down link targets (#bars, #donut, …)
   const h2 = document.createElement('h2');
   h2.textContent = ex.title;
   const note = document.createElement('p');

@@ -32,6 +32,13 @@ test('parseArgs: edition/format defaults are still applied for the fixture path'
   assert.deepEqual(a.formats, ['md', 'html', 'json']);
 });
 
+test('parseArgs: --background flips backgroundExplicit (target mode auto-detects otherwise)', () => {
+  assert.equal(parseArgs([]).backgroundExplicit, false);
+  const a = parseArgs(['--background', '#0c1016']);
+  assert.equal(a.background, '#0c1016');
+  assert.equal(a.backgroundExplicit, true);
+});
+
 test('parseArgs: --compare captures its two file operands in order', () => {
   const a = parseArgs(['--compare', 'old/acr.json', 'new/acr.json']);
   assert.deepEqual(a.compare, ['old/acr.json', 'new/acr.json']);
@@ -46,6 +53,7 @@ const argsWith = (over: Partial<Args>): Args => ({
   editions: ['en301549'],
   out: './out',
   background: '#ffffff',
+  backgroundExplicit: false,
   formats: ['json'],
   stamp: '2026-07-03',
   json: false,

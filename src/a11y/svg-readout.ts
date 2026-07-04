@@ -47,7 +47,12 @@ export function attachReadout(root: Element, opts: AttachReadoutOptions = {}): (
   root.querySelectorAll(hitSelector).forEach((target) => {
     const title = target.querySelector('title');
     if (!title) return;
-    target.setAttribute('data-fc-label', title.textContent ?? '');
+    const label = title.textContent ?? '';
+    target.setAttribute('data-fc-label', label);
+    // Keep the per-target accessible name in the tree: removing <title> would silently strip
+    // it for screen readers, trading a visual nicety for an AX regression.
+    target.setAttribute('role', 'img');
+    target.setAttribute('aria-label', label);
     title.remove();
     lifted.push({ target, title });
   });
@@ -84,6 +89,8 @@ export function attachReadout(root: Element, opts: AttachReadoutOptions = {}): (
     for (const { target, title } of lifted) {
       target.append(title);
       target.removeAttribute('data-fc-label');
+      target.removeAttribute('role');
+      target.removeAttribute('aria-label');
     }
   };
 }

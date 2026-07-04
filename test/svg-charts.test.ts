@@ -252,6 +252,9 @@ test('buildBarsSVG: bar + value per row, limit marker, derived over/near/ok stat
   assert.ok(svg.includes(`fill="#dc2626"`), 'over → red');
   assert.ok(svg.includes(`fill="#d97706"`), 'near → amber');
   assert.ok(svg.includes(`fill="#16a34a"`), 'ok → green');
+  // Status must reach AT in text, never color alone (WCAG 1.4.1): the value text carries it.
+  assert.ok(svg.includes('aria-label="Sky: 24% of 25% — near"'), 'status in the accessible value label');
+  assert.ok(svg.includes('aria-label="Aave: 30% of 25% — over"'), 'over status announced too');
   const sum = embedded(svg)!;
   assert.equal(sum.type, 'bars');
   const rows = sum.rows as { label: string; status: string; pctOfLimit: number }[];

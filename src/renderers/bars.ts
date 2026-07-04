@@ -114,10 +114,20 @@ export function buildBarsSVG(spec: { rows: readonly BarRow[] }, opts: BarsOption
           `stroke="${esc(theme.tick)}" stroke-width="2"/>`,
       );
     }
-    // Row label (left, drill-down link when href set) + value (right margin).
+    // Row label (left, drill-down link when href set) + value (right margin). The value text
+    // carries the full row story as its accessible name — status must never be color-only
+    // (WCAG 1.4.1): "EU desk: 84% of 100% — ok".
+    const valueLabel = status
+      ? `${row.label}: ${fmt(row.value)}${row.limit !== undefined ? ` of ${fmt(row.limit)}` : ''} — ${status}`
+      : undefined;
     parts.push(
       anchor(row.href, text(4, cy + 4, esc(row.label), { fill: theme.tick })),
-      text(width - 4, cy + 4, esc(fmt(row.value)), { fill: theme.tick, anchor: 'end', weight: 600 }),
+      text(width - 4, cy + 4, esc(fmt(row.value)), {
+        fill: theme.tick,
+        anchor: 'end',
+        weight: 600,
+        label: valueLabel,
+      }),
     );
   });
 

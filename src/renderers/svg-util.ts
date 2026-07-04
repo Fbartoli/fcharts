@@ -46,11 +46,14 @@ export function text(
   x: number,
   y: number,
   content: string,
-  o: { fill: string; size?: number; anchor?: 'middle' | 'end'; weight?: 600 },
+  o: { fill: string; size?: number; anchor?: 'middle' | 'end'; weight?: 600; label?: string },
 ): string {
   return (
     `<text x="${n(x)}" y="${n(y)}"` +
     (o.anchor ? ` text-anchor="${o.anchor}"` : '') +
+    // aria-label overrides the visible content as the accessible name — for when the visible
+    // text is a bare number whose meaning (units, status) must reach AT too.
+    (o.label ? ` aria-label="${esc(o.label)}"` : '') +
     ` font-family="system-ui,sans-serif" font-size="${n(o.size ?? 11)}"` +
     (o.weight ? ` font-weight="${o.weight}"` : '') +
     ` fill="${esc(o.fill)}">${content}</text>`

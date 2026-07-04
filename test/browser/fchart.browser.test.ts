@@ -243,6 +243,13 @@ test('keyboard zoom: + narrows the domain around the cursor, - widens it back', 
   const [z0, z1] = await domain();
   assert.ok(z1 - z0 < d1 - d0, `zoomed width ${z1 - z0} should shrink from ${d1 - d0}`);
   assert.ok(z0 >= d0 && z1 <= d1, 'zoomed view stays inside the data');
+  // A zoom is a real state change: it must be announced, not silent (WCAG 4.1.3). The
+  // announcement is debounced like cursor moves, so wait past the window.
+  await page.waitForTimeout(260);
+  const announced = await page.evaluate(
+    () => document.querySelector('[aria-live]')?.textContent?.trim() ?? '',
+  );
+  assert.match(announced, /^Showing .+ to .+$/, `keyboard zoom announces the range: "${announced}"`);
   await page.keyboard.press('-');
   const [w0, w1] = await domain();
   assert.ok(w1 - w0 > z1 - z0, 'minus widens the view again');

@@ -60,9 +60,14 @@
     <h1>Gallery</h1>
     <p class="sub">Every chart type, with the exact source above each render — the displayed
       code is the executed code, extracted from the same function that draws the output.</p>
-    <p class="hint">Everything below is accessible by construction: <kbd>Tab</kbd> into the
-      live charts and use <kbd>←</kbd> <kbd>→</kbd> — values are announced. <kbd>Ctrl</kbd>+<kbd>F</kbd>
-      finds tick labels and data in the static SVGs. All of it reads to screen readers and agents.</p>
+    <p class="hint">Two kinds of examples, two interaction contracts. The <strong>live canvas
+      charts</strong> are operable widgets: <kbd>Tab</kbd> in, <kbd>←</kbd> <kbd>→</kbd> walk the
+      data with announced values. The <strong>SVG builders</strong> produce static, perceivable
+      graphics for reports and SSR — <kbd>Ctrl</kbd>+<kbd>F</kbd>-findable tick and label text
+      on the chart-shaped ones, embedded machine-readable data everywhere, plus real links
+      (donut/bars) and hover readouts (scatter) where wired. Static content isn't
+      keyboard-navigated — it's read; when you need per-point navigation, that's what the
+      live chart is for.</p>
     <div id="gallery"></div>
   </main>
   <script type="module" src="./gallery.ts"></script>

@@ -6,6 +6,7 @@
  */
 import {
   FChart,
+  attachReadout,
   buildBarsSVG,
   buildDonutSVG,
   buildHeatmapSVG,
@@ -98,22 +99,22 @@ export const EXAMPLES: Example[] = [
     },
   },
   {
-    title: 'Donut with drill-down legend',
-    note: 'Slices and legend rows are real links when href is set — focusable, announced, ' +
-      'and the summary sentence is embedded for agents.',
+    title: 'Donut with drill-down links',
+    note: 'Each slice and its legend row is a REAL focusable link (href) — Tab through them, ' +
+      'Enter follows. Here every desk drills into the bars detail below; in an app the href ' +
+      'would filter a dashboard.',
     snip: 'donut',
     run: (host) => {
       // snip:donut
       host.innerHTML = buildDonutSVG(
         {
           slices: [
-            { label: 'Equities', value: 46 },
-            { label: 'Bonds', value: 31 },
-            { label: 'Commodities', value: 14 },
-            { label: 'Cash', value: 9 },
+            { label: 'EU desk', value: 34, href: '#bars' },
+            { label: 'US desk', value: 39, href: '#bars' },
+            { label: 'APAC desk', value: 27, href: '#bars' },
           ],
         },
-        { size: 190, title: 'Allocation', centerLabel: '4', theme: darkTheme },
+        { size: 190, title: 'Risk budget share', centerLabel: '3', theme: darkTheme },
       );
       // endsnip
     },
@@ -121,16 +122,17 @@ export const EXAMPLES: Example[] = [
   {
     title: 'Horizontal bars with caps',
     note: 'A limit draws the target tick and derives an ok / near / over status — encoded by ' +
-      'position, color, AND the accessible label (never color alone).',
+      'position, color, AND the accessible label (never color alone). Row labels are links ' +
+      'here too: Tab to one and press Enter to roll back up to the donut.',
     snip: 'bars',
     run: (host) => {
       // snip:bars
       host.innerHTML = buildBarsSVG(
         {
           rows: [
-            { label: 'EU desk', value: 84, limit: 100 },
-            { label: 'US desk', value: 97, limit: 100 },
-            { label: 'APAC desk', value: 112, limit: 100 },
+            { label: 'EU desk', value: 84, limit: 100, href: '#donut' },
+            { label: 'US desk', value: 97, limit: 100, href: '#donut' },
+            { label: 'APAC desk', value: 112, limit: 100, href: '#donut' },
           ],
         },
         { width: 560, title: 'Risk budget usage', formatValue: (v) => `${v}%`, theme: darkTheme },
@@ -140,8 +142,8 @@ export const EXAMPLES: Example[] = [
   },
   {
     title: 'Sparklines with trend + delta',
-    note: 'Inline micro-trends; the accessible label carries range, current value, and ' +
-      'direction. colorByTrend keeps direction readable at a glance.',
+    note: 'Inline micro-trends; the accessible label carries the direction and delta ' +
+      '("Latency: up 2.2%"). colorByTrend keeps direction readable at a glance.',
     snip: 'sparklines',
     run: (host) => {
       // snip:sparklines
@@ -163,7 +165,8 @@ export const EXAMPLES: Example[] = [
   },
   {
     title: 'Progress / gauge bars',
-    note: 'The thin KPI bar: value, max, and an optional cap tick, all in the accessible name.',
+    note: 'The thin KPI bar: the value and its cap, both in the accessible name ' +
+      '("Storage: 64% (cap 90%)").',
     snip: 'progress',
     run: (host) => {
       // snip:progress
@@ -177,9 +180,11 @@ export const EXAMPLES: Example[] = [
     },
   },
   {
-    title: 'Dot-strip scatter with reference line',
-    note: 'Numeric x on categorical rows — deploy durations, latencies per service, reviews ' +
-      'per repo. Points carry per-dot accessible labels.',
+    title: 'Dot-strip scatter with hover readout',
+    note: 'Numeric x on categorical rows. Each dot ships a tooltip label; attachReadout swaps ' +
+      'the native tooltip for the styled readout box the live charts use, keeping every ' +
+      'dot’s name in the accessibility tree. The chart’s description carries the ' +
+      'aggregate story.',
     snip: 'scatter',
     run: (host) => {
       // snip:scatter
@@ -195,8 +200,9 @@ export const EXAMPLES: Example[] = [
           ],
           refLines: [{ x: 60, label: 'SLO 60s' }],
         },
-        { width: 560, title: 'Deploy durations', xLabel: 'seconds', theme: darkTheme },
+        { width: 560, title: 'Deploy durations', xLabel: 'seconds', hoverRadius: 12, theme: darkTheme },
       );
+      attachReadout(host); // FChart-parity styled readout on the .fc-hit dots
       // endsnip
     },
   },
@@ -209,9 +215,11 @@ export const EXAMPLES: Example[] = [
       // snip:heatmap
       const rows = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
       const cols = ['00', '04', '08', '12', '16', '20'];
-      const cells = rows.flatMap((row, r) =>
-        cols.map((col, c) => ({ row, col, value: Math.round(20 + 60 * Math.abs(Math.sin(r + c * 1.7))) })),
-      );
+      const cells = rows
+        .flatMap((row, r) =>
+          cols.map((col, c) => ({ row, col, value: Math.round(20 + 60 * Math.abs(Math.sin(r + c * 1.7))) })),
+        )
+        .filter((cell) => !(cell.row === 'Wed' && cell.col === '12')); // a gap → outlined missing cell
       host.innerHTML = buildHeatmapSVG({ rows, cols, cells }, {
         width: 560,
         title: 'Alerts by hour',

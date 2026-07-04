@@ -23,6 +23,8 @@ interface ReadoutState {
 interface HitState {
   hasTitle: boolean;
   label: string | null;
+  role: string | null;
+  ariaLabel: string | null;
 }
 
 declare global {
@@ -32,7 +34,13 @@ declare global {
       hitCenter(): { x: number; y: number };
       readout(): ReadoutState;
       hit(): HitState;
-      teardown(): { readoutInDom: boolean; titleRestored: boolean; labelAttr: string | null };
+      teardown(): {
+        readoutInDom: boolean;
+        titleRestored: boolean;
+        labelAttr: string | null;
+        roleAttr: string | null;
+        ariaLabelAttr: string | null;
+      };
       dispose?: () => void;
     };
     __ready?: boolean;
@@ -76,7 +84,12 @@ window.__readout = {
   },
   hit() {
     const hit = document.querySelector('#charts .fc-hit');
-    return { hasTitle: !!hit.querySelector('title'), label: hit.getAttribute('data-fc-label') };
+    return {
+      hasTitle: !!hit.querySelector('title'),
+      label: hit.getAttribute('data-fc-label'),
+      role: hit.getAttribute('role'),
+      ariaLabel: hit.getAttribute('aria-label'),
+    };
   },
   teardown() {
     window.__readout.dispose();
@@ -85,6 +98,8 @@ window.__readout = {
       readoutInDom: !!document.querySelector('.fc-readout'),
       titleRestored: !!hit.querySelector('title'),
       labelAttr: hit.getAttribute('data-fc-label'),
+      roleAttr: hit.getAttribute('role'),
+      ariaLabelAttr: hit.getAttribute('aria-label'),
     };
   },
 };
@@ -119,6 +134,9 @@ test('attachReadout: lifts the <title> on attach so the native tooltip cannot al
   const hit = await page.evaluate(() => window.__readout.hit());
   assert.equal(hit.hasTitle, false, '<title> removed from the hit-target on attach');
   assert.equal(hit.label, 'pos-1 · APY 5%', 'label lifted into data-fc-label');
+  // Removing <title> must not strip the accessible name — it moves to role=img + aria-label.
+  assert.equal(hit.role, 'img', 'hit-target stays exposed to AT');
+  assert.equal(hit.ariaLabel, 'pos-1 · APY 5%', 'accessible name preserved through the lift');
 });
 
 test('attachReadout: hovering a hit-target shows the styled box with its label + swatch', async () => {
@@ -143,4 +161,6 @@ test('attachReadout: disposer removes the box, listeners, and restores the <titl
   assert.equal(state.readoutInDom, false, 'box removed on dispose');
   assert.equal(state.titleRestored, true, '<title> restored to the hit-target');
   assert.equal(state.labelAttr, null, 'data-fc-label cleaned up');
+  assert.equal(state.roleAttr, null, 'role removed once the <title> is back');
+  assert.equal(state.ariaLabelAttr, null, 'aria-label removed once the <title> is back');
 });
