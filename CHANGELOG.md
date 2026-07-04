@@ -5,7 +5,28 @@ versioning: [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **Keyboard zoom is announced** (WCAG 4.1.3): `+`/`-` changed the view silently; the settled
+  range now announces through the live region — new `zoomRange` string, translated in the
+  de/fr/es packs, debounce-shared with cursor announcements.
+- **Bar status reaches assistive technology** (WCAG 1.4.1): `buildBarsSVG`'s ok/near/over
+  status lived only in color + position; the value text now carries
+  `"label: value of limit — status"` as its accessible name.
+- **`attachReadout` preserves accessible names**: lifting a hit-target's `<title>` (to
+  suppress the native tooltip) also stripped its name from the accessibility tree; the lift
+  now sets `role="img"` + `aria-label`, restored on dispose.
+- **`fcharts-audit` target mode auto-detects the background**: contrast was graded against a
+  default `#ffffff`, producing false failures on dark pages; the effective background is now
+  read from the target element's ancestry (an explicit `--background` still wins).
+
 ### Added
+- **Guided attestation** at [fcharts.dev/attest](https://fcharts.dev/attest): the
+  human-attestation criteria load live from the deployed ACR JSON, and the form emits the
+  exact `{signer, date}` file `--attest` consumes.
+- **Examples gallery** at [fcharts.dev/gallery](https://fcharts.dev/gallery): every chart type
+  with the exact executed source above each render (sliced from the raw module — minification
+  can't garble it), including drill-down links, the hover readout, and two live
+  keyboard-navigable charts.
 - **Generated API reference** at [fcharts.dev/api](https://fcharts.dev/api/) — typedoc over the
   existing TSDoc for all five public entries (core, react, vue, svelte, compliance), built into
   the site on every deploy, zero typedoc warnings. Types referenced by public signatures
