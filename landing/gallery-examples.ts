@@ -142,8 +142,8 @@ export const EXAMPLES: Example[] = [
   },
   {
     title: 'Sparklines with trend + delta',
-    note: 'Inline micro-trends; the accessible label carries range, current value, and ' +
-      'direction. colorByTrend keeps direction readable at a glance.',
+    note: 'Inline micro-trends; the accessible label carries the direction and delta ' +
+      '("Latency: up 2.2%"). colorByTrend keeps direction readable at a glance.',
     snip: 'sparklines',
     run: (host) => {
       // snip:sparklines
@@ -165,7 +165,8 @@ export const EXAMPLES: Example[] = [
   },
   {
     title: 'Progress / gauge bars',
-    note: 'The thin KPI bar: value, max, and an optional cap tick, all in the accessible name.',
+    note: 'The thin KPI bar: the value and its cap, both in the accessible name ' +
+      '("Storage: 64% (cap 90%)").',
     snip: 'progress',
     run: (host) => {
       // snip:progress
@@ -180,9 +181,10 @@ export const EXAMPLES: Example[] = [
   },
   {
     title: 'Dot-strip scatter with hover readout',
-    note: 'Numeric x on categorical rows. Every dot carries its own accessible label, and ' +
-      'attachReadout adds the same styled hover box the live charts use — pointer sugar on ' +
-      'top of data that is already readable without it.',
+    note: 'Numeric x on categorical rows. Each dot ships a tooltip label; attachReadout swaps ' +
+      'the native tooltip for the styled readout box the live charts use, keeping every ' +
+      'dot’s name in the accessibility tree. The chart’s description carries the ' +
+      'aggregate story.',
     snip: 'scatter',
     run: (host) => {
       // snip:scatter
@@ -213,9 +215,11 @@ export const EXAMPLES: Example[] = [
       // snip:heatmap
       const rows = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
       const cols = ['00', '04', '08', '12', '16', '20'];
-      const cells = rows.flatMap((row, r) =>
-        cols.map((col, c) => ({ row, col, value: Math.round(20 + 60 * Math.abs(Math.sin(r + c * 1.7))) })),
-      );
+      const cells = rows
+        .flatMap((row, r) =>
+          cols.map((col, c) => ({ row, col, value: Math.round(20 + 60 * Math.abs(Math.sin(r + c * 1.7))) })),
+        )
+        .filter((cell) => !(cell.row === 'Wed' && cell.col === '12')); // a gap → outlined missing cell
       host.innerHTML = buildHeatmapSVG({ rows, cols, cells }, {
         width: 560,
         title: 'Alerts by hour',
