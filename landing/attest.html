@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sign a chart-layer ACR — guided attestation — fcharts</title>
+  <meta name="description" content="Generate the attestation file that signs an fcharts Accessibility Conformance Report: review the human-judgment criteria, attest, download attest.json — no docs required." />
+  <link rel="canonical" href="https://fcharts.dev/attest" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://fcharts.dev/attest" />
+  <meta property="og:title" content="Sign a chart-layer ACR — guided attestation" />
+  <meta property="og:description" content="Review the human-judgment criteria, attest, download attest.json. The auditor's side of the fcharts conformance workflow." />
+  <meta property="og:image" content="https://fcharts.dev/social-preview.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <style>
+    :root{--bg:#06080c;--panel:#0c1016;--ink:#e8eef4;--muted:#8794a3;--faint:#5a6675;
+      --line:rgba(255,255,255,.08);--line-2:rgba(255,255,255,.22);--accent:#6ee7a8;
+      --accent-dim:rgba(110,231,168,.12);--danger:#f87171}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);line-height:1.6;
+      font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+    nav{border-bottom:1px solid var(--line);padding:14px 0}
+    .wrap{max-width:760px;margin:0 auto;padding:0 24px}
+    nav .wrap{display:flex;gap:18px;align-items:baseline}
+    .logo{font-weight:800;font-size:17px;color:var(--ink);text-decoration:none}
+    .logo b{color:var(--accent)}
+    nav a{color:var(--muted);font-size:13.5px;text-decoration:none}
+    nav a:hover{color:var(--ink)}
+    main{padding:40px 0 60px}
+    h1{font-size:clamp(26px,4.5vw,34px);line-height:1.15;letter-spacing:-.02em;margin:0 0 6px}
+    .sub{color:var(--muted);margin:0 0 28px;font-size:16px}
+    h2{font-size:19px;margin:32px 0 10px}
+    p{margin:12px 0;color:#cdd6e0}
+    a{color:var(--accent)}
+    code{font-family:ui-monospace,Menlo,monospace;font-size:.9em;background:#10151d;
+      padding:.12em .35em;border-radius:4px}
+    pre{background:#05070a;border:1px solid var(--line);border-radius:10px;padding:13px 15px;
+      overflow-x:auto;font-size:13px;line-height:1.55}
+    .crit{border:1px solid var(--line);border-radius:10px;padding:13px 15px;margin:10px 0;
+      background:var(--panel)}
+    .crit label{display:flex;gap:11px;align-items:flex-start;cursor:pointer}
+    .crit input{margin-top:4px;accent-color:var(--accent);flex:none;width:16px;height:16px}
+    .crit .num{font-weight:700;white-space:nowrap}
+    .crit .remarks{display:block;color:var(--muted);font-size:13px;margin-top:4px}
+    .field{margin:14px 0}
+    .field label{display:block;font-size:13.5px;font-weight:600;margin-bottom:5px}
+    .field input{width:100%;max-width:420px;background:var(--panel);border:1px solid var(--line-2);
+      color:var(--ink);border-radius:8px;padding:9px 12px;font:inherit;font-size:14px}
+    .field input:focus{outline:none;border-color:var(--accent)}
+    .btn{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:14px;
+      padding:11px 18px;border-radius:10px;cursor:pointer;border:1px solid transparent;
+      background:var(--accent);color:#04210f;font-family:inherit;margin-top:8px}
+    .btn:disabled{background:var(--panel);color:var(--faint);border-color:var(--line-2);
+      cursor:not-allowed}
+    .status{min-height:1.3em;font-size:13.5px;margin-top:10px}
+    .status.err{color:var(--danger)}
+    .callout{border:1px solid rgba(110,231,168,.35);background:var(--accent-dim);
+      border-radius:10px;padding:13px 17px;margin:20px 0;font-size:14.5px;color:#cdd6e0}
+  </style>
+</head>
+<body>
+  <nav><div class="wrap">
+    <a class="logo" href="/">f<b>charts</b></a>
+    <a href="/acr-en301549" target="_blank" rel="noopener">Sample ACR</a>
+    <a href="/guides/wcag-chart-requirements">WCAG for charts</a>
+  </div></nav>
+  <main class="wrap">
+    <h1>Sign a chart-layer ACR</h1>
+    <p class="sub">The automated gate re-proves the machine-checkable criteria on every build.
+      A handful of criteria rest on human judgment — this page walks you through attesting
+      them and generates the signature file, no docs required.</p>
+
+    <h2>1. Review the criteria that need a human</h2>
+    <p>Loaded live from the current generated report, so this list can never drift from what
+      you're actually signing:</p>
+    <div id="criteria" aria-live="polite"><p class="status">Loading the current ACR…</p></div>
+
+    <h2>2. Who is attesting</h2>
+    <div class="field">
+      <label for="signer">Name and role (as it should appear on the report)</label>
+      <input id="signer" type="text" autocomplete="name"
+        placeholder="Jane Doe, Accessibility Auditor, Example Corp" />
+    </div>
+    <div class="field">
+      <label for="date">Attestation date</label>
+      <input id="date" type="date" />
+    </div>
+
+    <h2>3. Generate the signature file</h2>
+    <button class="btn" id="download" disabled>Download attest.json</button>
+    <p class="status" id="status" role="status"></p>
+
+    <div class="callout">
+      Then sign the next report by passing the file to the gate:
+      <pre><code>fcharts-audit --fixture ./a11y/fixture.ts --attest ./attest.json</code></pre>
+      The generated ACR switches from <strong>DRAFT</strong> to
+      <strong>Signed by you on the date above</strong> — and the CI gate keeps re-proving the
+      automated criteria under your signature on every commit.
+    </div>
+  </main>
+
+  <script type="module">
+    const list = document.getElementById('criteria');
+    const btn = document.getElementById('download');
+    const status = document.getElementById('status');
+    const signer = document.getElementById('signer');
+    const date = document.getElementById('date');
+    date.value = new Date().toISOString().slice(0, 10);
+
+    let boxes = [];
+    function refresh() {
+      const ready = boxes.length > 0 && boxes.every((b) => b.checked) && signer.value.trim().length >= 3;
+      btn.disabled = !ready;
+      status.textContent = ready
+        ? 'Ready — the file will carry your name, the date, and cover the criteria above.'
+        : 'Tick every criterion and fill in your name to enable the download.';
+      status.className = 'status';
+    }
+
+    (async () => {
+      try {
+        const res = await fetch('/acr-en301549.json');
+        const model = await res.json();
+        const rows = model.criteria.filter((c) => c.attestationRequired && c.applicability === 'applicable');
+        list.innerHTML = '';
+        for (const c of rows) {
+          const div = document.createElement('div');
+          div.className = 'crit';
+          const label = document.createElement('label');
+          const box = document.createElement('input');
+          box.type = 'checkbox';
+          box.addEventListener('change', refresh);
+          const span = document.createElement('span');
+          const remarks = document.createElement('span');
+          remarks.className = 'remarks';
+          remarks.textContent = c.remarks;
+          span.append(Object.assign(document.createElement('span'), { className: 'num', textContent: `${c.num} ${c.name}` }), remarks);
+          label.append(box, span);
+          div.append(label);
+          list.append(div);
+          boxes.push(box);
+        }
+        refresh();
+      } catch {
+        list.innerHTML = '<p class="status err">Could not load the current ACR — check your connection and reload.</p>';
+      }
+    })();
+    signer.addEventListener('input', refresh);
+
+    btn.addEventListener('click', () => {
+      const payload = JSON.stringify({ signer: signer.value.trim(), date: date.value }, null, 2) + '\n';
+      const url = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
+      const a = Object.assign(document.createElement('a'), { href: url, download: 'attest.json' });
+      a.click();
+      URL.revokeObjectURL(url);
+      status.textContent = 'attest.json downloaded — pass it to fcharts-audit with --attest.';
+    });
+  </script>
+</body>
+</html>
