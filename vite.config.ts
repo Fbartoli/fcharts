@@ -40,6 +40,7 @@ export default defineConfig(({ command }) => {
           input: {
             main: resolve(here, 'landing/index.html'),
             playground: resolve(here, 'landing/playground.html'),
+            attest: resolve(here, 'landing/attest.html'),
             guideCanvas: resolve(here, 'landing/guides/accessible-canvas-charts.html'),
             guideWcag: resolve(here, 'landing/guides/wcag-chart-requirements.html'),
             guideAudit: resolve(here, 'landing/guides/audit-any-chart.html'),
